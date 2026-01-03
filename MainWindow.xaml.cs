@@ -130,19 +130,43 @@ public partial class MainWindow : Window
 
         // Modulwerte bei Tmin/Tmax
         var vocTmin = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMin);
+        var vocTmax = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMax);
+
         var vmpTmin = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMin);  // Näherung
         var vmpTmax = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMax);  // Näherung
 
         var pmaxTmin = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMin);
         var pmaxTmax = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMax);
 
+        var iscTmin = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMin);
         var iscTmax = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMax);
 
-        // IMPP bei Tmax aus P(T)/VMPP(T)
+        // IMPP aus P/V
+        var imppTmin = pmaxTmin / Math.Max(0.1, vmpTmin);
         var imppTmax = pmaxTmax / Math.Max(0.1, vmpTmax);
 
+        // String-Min/Max (Serie: Spannung skaliert mit N, Strom bleibt gleich)
+        var vStringVocMin = nModule * Math.Min(vocTmin, vocTmax);
+        var vStringVocMax = nModule * Math.Max(vocTmin, vocTmax);
+
+        var vStringVmpMin = nModule * Math.Min(vmpTmin, vmpTmax);
+        var vStringVmpMax = nModule * Math.Max(vmpTmin, vmpTmax);
+
+        var iStringScMin = Math.Min(iscTmin, iscTmax);
+        var iStringScMax = Math.Max(iscTmin, iscTmax);
+
+        var iStringImppMin = Math.Min(imppTmin, imppTmax);
+        var iStringImppMax = Math.Max(imppTmin, imppTmax);
+
+        // Gesamtströme am MPPT (Parallelschaltung: Ströme addieren, Spannung bleibt wie String)
+        var iArrayScMin = nStrings * iStringScMin;
+        var iArrayScMax = nStrings * iStringScMax;
+
+        var iArrayImppMin = nStrings * iStringImppMin;
+        var iArrayImppMax = nStrings * iStringImppMax;
+
         // Prüfungen
-        var messages = new System.Collections.Generic.List<string>();
+        var messages = new List<string>();
         bool ok = true;
 
         // 1) Max. DC-Spannung bei Kälte
@@ -237,10 +261,16 @@ public partial class MainWindow : Window
             $"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp, UMPP={modul.SpannungImMppUmppV:F2} V, IMPP={modul.StromImMppImppA:F2} A, UOC={modul.LeerlaufspannungUocV:F2} V, ISC={modul.KurzschlusstromIscA:F2} A)" + Environment.NewLine +
             $"- WR: {wr.Hersteller} {wr.Model} (Vdc_max={wr.MaxDcEingangsspannungV} V, Start={wr.StartspannungV} V, MPPT={wr.MpptSpannungsbereichV} V, I_in_max={wr.MaxBetriebsPvEingangsstromA} A, I_sc_max={wr.MaxEingangsKurzschlussstromA} A, MPPTs={wr.AnzahlDerMpptTrackers}, Max Strings/MPPT={wr.MaxStringsProMppt})" + Environment.NewLine +
             $"Parameter: Tmin={tMin} °C, Tmax={tMax} °C, Sicherheitsmarge={marginPct} %, Module/String={nModule}, Parallele Strings={nStrings}" + Environment.NewLine +
-            $"Abgeleitete Werte:" + Environment.NewLine +
-            $"- VOC(Tmin)={vocTmin:F2} V, VMPP(Tmin)≈{vmpTmin:F2} V, VMPP(Tmax)≈{vmpTmax:F2} V" + Environment.NewLine +
-            $"- ISC(Tmax)={iscTmax:F2} A, IMPP(Tmax)≈{imppTmax:F2} A" + Environment.NewLine +
-            $"- Effektive Grenzen: Vdc_max={vdcMaxEff:F1} V, MPPT={mpptMinEff:F1}–{mpptMaxEff:F1} V, Start={vStartEff:F1} V, I_in_max={iInMaxEff:F2} A, I_sc_max={iScMaxEff:F2} A, Pdc_MPPT={pDcPerMpptEff:F0} W" + Environment.NewLine +
+            $"Abgeleitete Werte (pro String):" + Environment.NewLine +
+            $"- Spannung OC (Leerlauf): min={vStringVocMin:F1} V, max={vStringVocMax:F1} V" + Environment.NewLine +
+            $"- Spannung MPP: min={vStringVmpMin:F1} V, max={vStringVmpMax:F1} V" + Environment.NewLine +
+            $"- Strom ISC: min={iStringScMin:F2} A, max={iStringScMax:F2} A" + Environment.NewLine +
+            $"- Strom IMPP: min={iStringImppMin:F2} A, max={iStringImppMax:F2} A" + Environment.NewLine +
+            $"Gesamtströme am MPPT (parallele Strings):" + Environment.NewLine +
+            $"- ISC gesamt: min={iArrayScMin:F2} A, max={iArrayScMax:F2} A" + Environment.NewLine +
+            $"- IMPP gesamt: min={iArrayImppMin:F2} A, max={iArrayImppMax:F2} A" + Environment.NewLine +
+            $"Hinweis: Bei parallelen Strings ist die Arrayspannung identisch zur Stringspannung." + Environment.NewLine +
+            $"- Effektive Grenzen (mit Sicherheitsmarge): Vdc_max={vdcMaxEff:F1} V, MPPT={mpptMinEff:F1}–{mpptMaxEff:F1} V, Start={vStartEff:F1} V, I_in_max={iInMaxEff:F2} A, I_sc_max={iScMaxEff:F2} A, Pdc_MPPT={pDcPerMpptEff:F0} W" + Environment.NewLine +
             $"Prüfergebnis: {(ok ? "Alle Bedingungen erfüllt." : "Einschränkungen/Verstöße vorhanden.")}" + Environment.NewLine;
 
         if (!ok)
