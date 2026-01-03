@@ -266,6 +266,7 @@ public partial class MainWindow : Window
             $"- Spannung MPP: min={vStringVmpMin:F1} V, max={vStringVmpMax:F1} V" + Environment.NewLine +
             $"- Strom ISC: min={iStringScMin:F2} A, max={iStringScMax:F2} A" + Environment.NewLine +
             $"- Strom IMPP: min={iStringImppMin:F2} A, max={iStringImppMax:F2} A" + Environment.NewLine +
+            $"- PV Leistung Total: {pTotal:F2} W" + Environment.NewLine +
             $"Gesamtströme am MPPT (parallele Strings):" + Environment.NewLine +
             $"- ISC gesamt: min={iArrayScMin:F2} A, max={iArrayScMax:F2} A" + Environment.NewLine +
             $"- IMPP gesamt: min={iArrayImppMin:F2} A, max={iArrayImppMax:F2} A" + Environment.NewLine +
