@@ -1,12 +1,100 @@
-﻿<Window x:Class="AnWa_Solar.MainWindow"
+﻿<Window x:Class="AnWaSolar.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:AnWa_Solar"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="AnWa-Solar"
+        Height="600"
+        Width="1000"
+        WindowStartupLocation="CenterScreen">
     <Grid>
+        <DockPanel>
+            <materialDesign:ColorZone Mode="PrimaryMid"
+                                      DockPanel.Dock="Top"
+                                      Padding="16">
+                <DockPanel>
+                    <TextBlock Text="AnWa-Solar"
+                               Foreground="White"
+                               FontSize="18"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+            </materialDesign:ColorZone>
 
+            <TabControl Margin="8">
+                <TabItem Header="String-Berechnung">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="16"
+                                    Orientation="Vertical">
+
+                            <materialDesign:Card Padding="16"
+                                                 Margin="0,0,0,12">
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="Eingabedaten"
+                                               FontWeight="Bold"
+                                               FontSize="16" />
+                                    <StackPanel Orientation="Horizontal"
+                                                Margin="0,8,0,0">
+                                        <StackPanel Width="450">
+                                            <TextBlock Text="PV-Modul" />
+                                            <ComboBox x:Name="ModuleCombo"
+                                                      DisplayMemberPath="DisplayName"
+                                                      MinWidth="400"
+                                                      IsEditable="False" />
+                                        </StackPanel>
+                                        <StackPanel Width="450"
+                                                    Margin="24,0,0,0">
+                                            <TextBlock Text="Wechselrichter" />
+                                            <ComboBox x:Name="InverterCombo"
+                                                      DisplayMemberPath="DisplayName"
+                                                      MinWidth="400"
+                                                      IsEditable="False" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <materialDesign:Card Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="Ergebnis (Platzhalter)"
+                                               FontWeight="Bold" />
+                                    <TextBlock x:Name="StringCalcOutput"
+                                               Text="Bitte Modul und Wechselrichter auswählen."
+                                               TextWrapping="Wrap"
+                                               Margin="0,6,0,0" />
+                                    <Button Content="Berechnen (Demo)"
+                                            Margin="0,12,0,0"
+                                            Click="OnCalculateStringClick" />
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="Markdown Vorschau">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="16"
+                                    Orientation="Vertical">
+                            <materialDesign:Card Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="Markdown in HTML umwandeln"
+                                               FontWeight="Bold" />
+                                    <TextBox x:Name="MarkdownInput"
+                                             AcceptsReturn="True"
+                                             Height="120"
+                                             TextWrapping="Wrap"
+                                             materialDesign:HintAssist.Hint="Markdown eingeben..." />
+                                    <Button Content="In HTML umwandeln"
+                                            Margin="0,8,0,0"
+                                            Click="OnConvertMarkdownClick" />
+                                    <TextBlock x:Name="HtmlOutput"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0" />
+                                </StackPanel>
+                            </materialDesign:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
     </Grid>
 </Window>

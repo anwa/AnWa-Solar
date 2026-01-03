@@ -1,0 +1,30 @@
+{
+  "Module": [
+    {
+      "Hersteller": "Trina",
+      "Model": "TSM-455-NEG9R.28",
+      "Nominalleistung-PMAX (Wp)": 455,
+      "Spannung im MPP-UMPP (V)": 45.0,
+      "Strom im MPP-IMPP (A)": 10.11,
+      "Leerlaufspannung-UOC (V)": 53.4,
+      "Kurzschlusstrom-ISC (A)": 10.77,
+      "Modulwirkungsgrad η m (%)": 22.8,
+      "Temperaturkoeffzient von PMAX (%/°C)": -0.29,
+      "Temperaturkoeffzient von VOC (%/°C)": -0.24,
+      "Temperaturkoeffzient von ISC (%/°C)": -0.04
+    },
+    {
+      "Hersteller": "AIKO",
+      "Model": "AIKO-A500-MAH60Db",
+      "Nominalleistung-PMAX (Wp)": 500,
+      "Spannung im MPP-UMPP (V)": 37.9,
+      "Strom im MPP-IMPP (A)": 13.21,
+      "Leerlaufspannung-UOC (V)": 45.02,
+      "Kurzschlusstrom-ISC (A)": 14.05,
+      "Modulwirkungsgrad η m (%)": 22.6,
+      "Temperaturkoeffzient von PMAX (%/°C)": -0.26,
+      "Temperaturkoeffzient von VOC (%/°C)": -0.22,
+      "Temperaturkoeffzient von ISC (%/°C)": -0.05
+    }
+  ]
+}

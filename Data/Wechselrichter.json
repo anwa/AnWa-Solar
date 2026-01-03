@@ -1,0 +1,40 @@
+{
+  "Wechselrichter": [
+    {
+      "Hersteller": "Deye",
+      "Model": "SUN-15K-SG05LP3-EU-SM2",
+      "Max.DC-Eingangsleistung (W)": 24000,
+      "Max.DC-Eingangsspannung (V)": 800,
+      "Startspannung (V)": 160,
+      "MPPT-Spannungsbereich (V)": "160-650",
+      "Nenn-DC-Eingangsspannung (V)": 550,
+      "Max. Betriebs-PV-Eingangsstrom (A)": 36,
+      "Max. Eingangs-Kurzschlussstrom (A)": 54,
+      "Anzahl der MPP Trackers": 2
+    },
+    {
+      "Hersteller": "Deye",
+      "Model": "SUN-18K-SG05LP3-EU-SM2",
+      "Max.DC-Eingangsleistung (W)": 28800,
+      "Max.DC-Eingangsspannung (V)": 800,
+      "Startspannung (V)": 160,
+      "MPPT-Spannungsbereich (V)": "160-650",
+      "Nenn-DC-Eingangsspannung (V)": 550,
+      "Max. Betriebs-PV-Eingangsstrom (A)": 36,
+      "Max. Eingangs-Kurzschlussstrom (A)": 54,
+      "Anzahl der MPP Trackers": 2
+    },
+    {
+      "Hersteller": "Deye",
+      "Model": "SUN-20K-SG05LP3-EU-SM2",
+      "Max.DC-Eingangsleistung (W)": 32000,
+      "Max.DC-Eingangsspannung (V)": 800,
+      "Startspannung (V)": 160,
+      "MPPT-Spannungsbereich (V)": "160-650",
+      "Nenn-DC-Eingangsspannung (V)": 550,
+      "Max. Betriebs-PV-Eingangsstrom (A)": 36,
+      "Max. Eingangs-Kurzschlussstrom (A)": 54,
+      "Anzahl der MPP Trackers": 2
+    }
+  ]
+}
