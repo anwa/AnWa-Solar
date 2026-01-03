@@ -10,11 +10,10 @@ from typing import List, Dict, Optional, Tuple
 # Konfiguration
 # ============================
 
-REPO_PATH = Path(r"C:\Users\e0117812\source\repos\AnWa-Solar")
+REPO_PATH = Path(r".\\")
 
 # prePrompt: wird am Anfang eingefügt
 PREPROMPT_CANDIDATES = [
-    Path(r"C:\Users\e0117812\source\repos\AnWa-Solar\prePrompt.md"),
     REPO_PATH / "prePrompt.md",
 ]
 
@@ -22,7 +21,7 @@ CONFIG_CANDIDATES = [
     Path(r"solar-moduls.json"),
 ]
 
-OUTPUT_PATH = Path(r"C:\Users\e0117812\source\repos\AnWa-Solar\Prompt.md")
+OUTPUT_PATH = Path(r".\\Prompt.md")
 # OUTPUT_PATH = Path(r"D:\Projekte\Create Prompt\spi2udp_Prompt.md")
 
 REPO_TREE_IGNORE = {
@@ -34,6 +33,11 @@ REPO_TREE_IGNORE = {
     "node_modules",
     "__pycache__",
     "git.log",
+    "CreatePrompt.py",
+    "prePrompt.md",
+    "Prompt.md",
+    "README.md",
+    "LIZENCE",
     # "ConfigService.cs",
 }
 
@@ -498,7 +502,7 @@ def build_prompt() -> str:
         "## Pfade",
         "- Repository: {0}".format(REPO_PATH),
         # "- Datenwurzeln: {0}, {1}".format(PROJECT_ROOT, TNA_ROOT, FPT_ROOT),
-        "- Beispiel-Config: {0}".format(cfg_path if cfg_path else "[nicht gefunden]"),
+        # "- Beispiel-Config: {0}".format(cfg_path if cfg_path else "[nicht gefunden]"),
         # "- Beispiel-Log: {0}".format(SAMPLE_LOG_PATH),
     ]
     parts.append(NL.join(paths))
