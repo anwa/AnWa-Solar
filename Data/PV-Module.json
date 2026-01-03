@@ -11,7 +11,9 @@
       "Modulwirkungsgrad η m (%)": 22.8,
       "Temperaturkoeffzient von PMAX (%/°C)": -0.29,
       "Temperaturkoeffzient von VOC (%/°C)": -0.24,
-      "Temperaturkoeffzient von ISC (%/°C)": -0.04
+      "Temperaturkoeffzient von ISC (%/°C)": -0.04,
+      "Betriebstemperatur-Min (°C)": -40,
+      "Betriebstemperatur-Max (°C)": 85
     },
     {
       "Hersteller": "AIKO",
@@ -24,7 +26,9 @@
       "Modulwirkungsgrad η m (%)": 22.6,
       "Temperaturkoeffzient von PMAX (%/°C)": -0.26,
       "Temperaturkoeffzient von VOC (%/°C)": -0.22,
-      "Temperaturkoeffzient von ISC (%/°C)": -0.05
+      "Temperaturkoeffzient von ISC (%/°C)": -0.05,
+      "Betriebstemperatur-Min (°C)": -40,
+      "Betriebstemperatur-Max (°C)": 85
     }
   ]
 }

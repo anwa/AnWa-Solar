@@ -35,7 +35,9 @@ public class Wechselrichter
     [JsonPropertyName("Anzahl der MPP Trackers")]
     public int AnzahlDerMpptTrackers { get; set; }
 
-    // Für UI-Darstellung
+    [JsonPropertyName("Max. Strings pro MPPT")]
+    public int MaxStringsProMppt { get; set; }
+
     [JsonIgnore]
     public string DisplayName => $"{Hersteller} {Model} (MPPT {MpptSpannungsbereichV} V)";
 }

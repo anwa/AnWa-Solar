@@ -25,6 +25,7 @@
                         <StackPanel Margin="16"
                                     Orientation="Vertical">
 
+                            <!-- Auswahl von Modul und Wechselrichter -->
                             <materialDesign:Card Padding="16"
                                                  Margin="0,0,0,12">
                                 <StackPanel Orientation="Vertical">
@@ -52,12 +53,95 @@
                                 </StackPanel>
                             </materialDesign:Card>
 
+                            <!-- Neue Card: Berechnungsparameter -->
+                            <materialDesign:Card Padding="16"
+                                                 Margin="0,0,0,12">
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="Berechnungsparameter"
+                                               FontWeight="Bold"
+                                               FontSize="16" />
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0"
+                                                    Margin="0,0,12,0">
+                                            <TextBlock Text="Min. Temperatur (°C)" />
+                                            <TextBox x:Name="MinTempInput"
+                                                     Text="-20"
+                                                     materialDesign:HintAssist.Hint="z. B. -20"
+                                                     ToolTip="Niedrigste Umgebungstemperatur am Standort in °C" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1"
+                                                    Margin="12,0,0,0">
+                                            <TextBlock Text="Max. Temperatur (°C)" />
+                                            <TextBox x:Name="MaxTempInput"
+                                                     Text="40"
+                                                     materialDesign:HintAssist.Hint="z. B. 40"
+                                                     ToolTip="Höchste Umgebungstemperatur am Standort in °C" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="8,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0"
+                                                    Margin="0,0,12,0">
+                                            <TextBlock Text="Anzahl Module pro String" />
+                                            <TextBox x:Name="ModuleProStringInput"
+                                                     Text="10"
+                                                     materialDesign:HintAssist.Hint="z. B. 10"
+                                                     ToolTip="Seriell verschaltete Module pro String" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1"
+                                                    Margin="12,0,0,0">
+                                            <TextBlock Text="Anzahl paralleler Strings" />
+                                            <TextBox x:Name="ParalleleStringsInput"
+                                                     Text="2"
+                                                     materialDesign:HintAssist.Hint="z. B. 2"
+                                                     ToolTip="Parallel auf einen MPPT geführte Strings" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="8,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0"
+                                                    Margin="0,0,12,0">
+                                            <TextBlock Text="Sicherheitsmarge (%)" />
+                                            <TextBox x:Name="SicherheitsmargeInput"
+                                                     Text="10"
+                                                     materialDesign:HintAssist.Hint="z. B. 10"
+                                                     ToolTip="Prozentuale Reserve für Spannung und Strom" />
+                                        </StackPanel>
+
+                                        <!-- Platzhalter für künftige Parameter -->
+                                        <StackPanel Grid.Column="1"
+                                                    Margin="12,0,0,0">
+                                            <TextBlock Text="(Reserviert)" />
+                                            <TextBox IsEnabled="False" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </materialDesign:Card>
+
                             <materialDesign:Card Padding="16">
                                 <StackPanel>
                                     <TextBlock Text="Ergebnis (Platzhalter)"
                                                FontWeight="Bold" />
                                     <TextBlock x:Name="StringCalcOutput"
-                                               Text="Bitte Modul und Wechselrichter auswählen."
+                                               Text="Bitte Modul, Wechselrichter und Parameter wählen."
                                                TextWrapping="Wrap"
                                                Margin="0,6,0,0" />
                                     <Button Content="Berechnen (Demo)"

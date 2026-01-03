@@ -31,13 +31,19 @@ public class PVModule
     [JsonPropertyName("Temperaturkoeffzient von PMAX (%/°C)")]
     public double TemperaturkoeffPmaxProzentProGradC { get; set; }
 
+    // Wird als Näherung für UMPP-Änderung genutzt, sofern kein separater UMPP-Koeffizient vorliegt
     [JsonPropertyName("Temperaturkoeffzient von VOC (%/°C)")]
     public double TemperaturkoeffVocProzentProGradC { get; set; }
 
     [JsonPropertyName("Temperaturkoeffzient von ISC (%/°C)")]
     public double TemperaturkoeffIscProzentProGradC { get; set; }
 
-    // Für UI-Darstellung
+    [JsonPropertyName("Betriebstemperatur-Min (°C)")]
+    public double BetriebstemperaturMinC { get; set; }
+
+    [JsonPropertyName("Betriebstemperatur-Max (°C)")]
+    public double BetriebstemperaturMaxC { get; set; }
+
     [JsonIgnore]
     public string DisplayName => $"{Hersteller} {Model} ({NominalleistungPmaxWp} Wp)";
 }

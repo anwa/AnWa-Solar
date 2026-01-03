@@ -10,7 +10,8 @@
       "Nenn-DC-Eingangsspannung (V)": 550,
       "Max. Betriebs-PV-Eingangsstrom (A)": 36,
       "Max. Eingangs-Kurzschlussstrom (A)": 54,
-      "Anzahl der MPP Trackers": 2
+      "Anzahl der MPP Trackers": 2,
+      "Max. Strings pro MPPT": 2
     },
     {
       "Hersteller": "Deye",
@@ -22,7 +23,8 @@
       "Nenn-DC-Eingangsspannung (V)": 550,
       "Max. Betriebs-PV-Eingangsstrom (A)": 36,
       "Max. Eingangs-Kurzschlussstrom (A)": 54,
-      "Anzahl der MPP Trackers": 2
+      "Anzahl der MPP Trackers": 2,
+      "Max. Strings pro MPPT": 2
     },
     {
       "Hersteller": "Deye",
@@ -34,7 +36,8 @@
       "Nenn-DC-Eingangsspannung (V)": 550,
       "Max. Betriebs-PV-Eingangsstrom (A)": 36,
       "Max. Eingangs-Kurzschlussstrom (A)": 54,
-      "Anzahl der MPP Trackers": 2
+      "Anzahl der MPP Trackers": 2,
+      "Max. Strings pro MPPT": 2
     }
   ]
 }
