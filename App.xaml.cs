@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using AnWaSolar.Services;
+using AnWaSolar.Windows;
 
 namespace AnWaSolar;
 
@@ -40,11 +41,11 @@ public partial class App : Application
         builder.Logging.ClearProviders();
         builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
         builder.Logging.AddDebug();
-        builder.Logging.AddConsole(); // hilfreich in Debug/VS Output
+        builder.Logging.AddConsole();
 
         builder.Services.AddSingleton(jsonOptions);
         builder.Services.AddSingleton<ILogFilePathProvider, LogFilePathProvider>();
-        builder.Services.AddSingleton<ILoggerProvider, JsonFileLoggerProvider>(); // eigener JSON-File-Logger
+        builder.Services.AddSingleton<ILoggerProvider, JsonFileLoggerProvider>();
 
         // Services
         builder.Services.AddSingleton<IMarkdownService, MarkdownService>();

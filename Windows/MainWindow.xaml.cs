@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 
-namespace AnWaSolar;
+namespace AnWaSolar.Windows;
 
 public partial class MainWindow : Window
 {
@@ -379,7 +379,7 @@ public partial class MainWindow : Window
                 refs.NSlider.Maximum = 30;
                 refs.NSlider.IsSelectionRangeEnabled = false;
                 refs.NSlider.Value = Math.Max(1, cfg.ModuleProString);
-                // Strings-Slider bleibt nach WR-Spezifikation
+
                 var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? 10;
                 refs.SSlider.Minimum = 1;
                 refs.SSlider.Maximum = Math.Max(1, maxBySpec);
