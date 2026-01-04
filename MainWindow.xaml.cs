@@ -1,16 +1,15 @@
-﻿using AnWaSolar.Models;
-using AnWaSolar.Services;
-using MaterialDesignThemes.Wpf;
-using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.Unicode;
 using System.Windows;
 using System.Windows.Controls;
+using AnWaSolar.Models;
+using AnWaSolar.Services;
+using Microsoft.Extensions.Logging;
+using MaterialDesignThemes.Wpf;
+using Microsoft.Win32;
 
 namespace AnWaSolar;
 
@@ -338,23 +337,6 @@ public partial class MainWindow : Window
         {
             _logger.LogError(ex, "Fehler beim Öffnen des Parameter-Dialogs.");
             MessageBox.Show("Fehler beim Parameter-Dialog. Details siehe Log.", "Fehler",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void OnConvertMarkdownClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var md = MarkdownInput.Text ?? string.Empty;
-            var html = _markdown.ToHtml(md);
-            HtmlOutput.Text = html;
-            _logger.LogInformation("Markdown erfolgreich in HTML konvertiert. Länge={Laenge}", html.Length);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Fehler bei der Markdown-Konvertierung.");
-            MessageBox.Show("Fehler bei der Markdown-Konvertierung. Details siehe Log.", "Fehler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -860,7 +842,7 @@ public partial class MainWindow : Window
             var htmlBody = _markdown.ToHtml(_reportMarkdown);
             var htmlDoc = new StringBuilder();
             htmlDoc.AppendLine("<!DOCTYPE html>");
-            htmlDoc.AppendLine("<html><head><meta charset=utf-8><title>Bericht</title></head><body>");
+            htmlDoc.AppendLine("<html><head><meta charset=" + (char)34 + "utf-8" + (char)34 + "><title>Bericht</title></head><body>");
             htmlDoc.AppendLine(htmlBody);
             htmlDoc.AppendLine("</body></html>");
 
