@@ -1,14 +1,16 @@
-﻿using System;
+﻿using AnWaSolar.Models;
+using AnWaSolar.Services;
+using MaterialDesignThemes.Wpf;
+using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.Unicode;
 using System.Windows;
 using System.Windows.Controls;
-using AnWaSolar.Models;
-using AnWaSolar.Services;
-using Microsoft.Extensions.Logging;
-using MaterialDesignThemes.Wpf;
 
 namespace AnWaSolar;
 
@@ -25,6 +27,10 @@ public partial class MainWindow : Window
     private readonly List<StringConfiguration> _stringConfigs = new();
 
     private CalculationParameters _parameters;
+
+    // Bericht
+    private string _reportMarkdown = string.Empty;
+    private bool _reportPreviewMode = false;
 
     #endregion
 
@@ -54,6 +60,10 @@ public partial class MainWindow : Window
             StringsCard.Visibility = System.Windows.Visibility.Collapsed;
             ResultsOutput.Text = "Keine Berechnung vorhanden.";
         }
+
+        // Initialen Bericht erzeugen
+        BuildMarkdownReport();
+        UpdateReportView();
     }
 
     #endregion
@@ -446,6 +456,8 @@ public partial class MainWindow : Window
         if (_selectedInverter is null)
         {
             ResultsOutput.Text = "Bitte zuerst einen Wechselrichter auswählen.";
+            BuildMarkdownReport();
+            UpdateReportView();
             return;
         }
 
@@ -457,6 +469,8 @@ public partial class MainWindow : Window
         if (!TryParseRangeV(_selectedInverter.MpptSpannungsbereichV, out var mpptMin, out var mpptMax))
         {
             ResultsOutput.Text = $"MPPT-Spannungsbereich des Wechselrichters ist ungültig: '{_selectedInverter.MpptSpannungsbereichV}'.";
+            BuildMarkdownReport();
+            UpdateReportView();
             return;
         }
 
@@ -644,6 +658,285 @@ public partial class MainWindow : Window
         _logger.LogInformation("String-Berechnung aktualisiert. OK={Ok}.", globalOk);
         if (!globalOk)
             _logger.LogWarning("Einschränkungen: {Messages}", string.Join(" | ", globalMessages));
+
+        // Bericht neu erzeugen und Ansicht aktualisieren
+        BuildMarkdownReport();
+        UpdateReportView();
+    }
+
+    #endregion
+
+    #region Bericht
+
+    // Bericht in Markdown erzeugen (inkl. Berechnungshinweisen)
+    private void BuildMarkdownReport()
+    {
+        var md = new StringBuilder();
+
+        md.AppendLine("# Bericht: PV-String-Auslegung");
+        md.AppendLine($"Erstellt am {DateTime.Now:yyyy-MM-dd HH:mm}");
+        md.AppendLine();
+
+        if (_selectedInverter is null)
+        {
+            md.AppendLine("Hinweis: Bitte zuerst einen Wechselrichter auswählen, um einen vollständigen Bericht zu erzeugen.");
+            _reportMarkdown = md.ToString();
+            ReportMarkdownTextBox.Text = _reportMarkdown;
+            return;
+        }
+
+        // Parameter
+        md.AppendLine("## Parameter und Rahmenbedingungen");
+        md.AppendLine($"- Temperaturbereich: Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C");
+        md.AppendLine($"- Sicherheitsmarge: {_parameters.SicherheitsmargePct} %");
+        md.AppendLine();
+
+        // WR-Daten
+        md.AppendLine("## Wechselrichter");
+        md.AppendLine($"- Hersteller/Modell: {_selectedInverter.Hersteller} {_selectedInverter.Model}");
+        md.AppendLine($"- MPPT-Spannungsbereich: {_selectedInverter.MpptSpannungsbereichV} V");
+        md.AppendLine($"- Max. DC-Eingangsspannung: {_selectedInverter.MaxDcEingangsspannungV} V");
+        md.AppendLine($"- Startspannung: {_selectedInverter.StartspannungV} V");
+        md.AppendLine($"- Max. Betriebs-PV-Eingangsstrom: {_selectedInverter.MaxBetriebsPvEingangsstromA} A");
+        md.AppendLine($"- Max. Eingangs-Kurzschlussstrom: {_selectedInverter.MaxEingangsKurzschlussstromA} A");
+        md.AppendLine($"- Anzahl MPPT: {_selectedInverter.AnzahlDerMpptTrackers}, Max. Strings pro MPPT: {_selectedInverter.MaxStringsProMppt}");
+        md.AppendLine();
+
+        // Hinweise zu Berechnungen
+        md.AppendLine("### Berechnungshinweise");
+        md.AppendLine("- Spannungen und Ströme werden temperaturabhängig auf Basis der angegebenen Temperaturkoeffizienten abgeschätzt.");
+        md.AppendLine("- Sicherheitsmargen werden auf Grenzwerte angewendet: z. B. Vdc_max reduziert, Startspannung und MPPT-Untergrenze erhöht.");
+        md.AppendLine("- Strings in Serie erhöhen die Spannung proportional zur Modulanzahl, der Strom bleibt gleich. Parallelschaltung addiert Ströme.");
+        md.AppendLine();
+
+        // Pro MPPT
+        var tMin = _parameters.MinTempC;
+        var tMax = _parameters.MaxTempC;
+        var m = _parameters.SicherheitsmargePct / 100.0;
+
+        if (!TryParseRangeV(_selectedInverter.MpptSpannungsbereichV, out var mpptMin, out var mpptMax))
+        {
+            md.AppendLine("Warnung: MPPT-Spannungsbereich des Wechselrichters ist ungültig. Bericht ggf. unvollständig.");
+            _reportMarkdown = md.ToString();
+            ReportMarkdownTextBox.Text = _reportMarkdown;
+            return;
+        }
+
+        var vdcMaxEff = _selectedInverter.MaxDcEingangsspannungV * (1 - m);
+        var vStartEff = _selectedInverter.StartspannungV * (1 + m);
+        var mpptMinEff = mpptMin * (1 + m);
+        var mpptMaxEff = mpptMax * (1 - m);
+        var iInMaxEff = _selectedInverter.MaxBetriebsPvEingangsstromA * (1 - m);
+        var iScMaxEff = _selectedInverter.MaxEingangsKurzschlussstromA * (1 - m);
+
+        var mpptCount = Math.Max(1, _selectedInverter.AnzahlDerMpptTrackers);
+        var pDcPerMppt = _selectedInverter.MaxDcEingangsleistungW / (double)mpptCount;
+        var pDcPerMpptEff = pDcPerMppt * (1 - m);
+
+        md.AppendLine("### Effektive Grenzen (mit Sicherheitsmarge)");
+        md.AppendLine($"- Vdc_max={vdcMaxEff:F1} V, MPPT={mpptMinEff:F1}–{mpptMaxEff:F1} V, Start={vStartEff:F1} V, I_in_max={iInMaxEff:F2} A, I_sc_max={iScMaxEff:F2} A, Pdc_MPPT={pDcPerMpptEff:F0} W");
+        md.AppendLine();
+
+        for (int i = 0; i < mpptCount; i++)
+        {
+            var cfg = _stringConfigs.ElementAtOrDefault(i);
+            md.AppendLine($"## MPPT {i + 1}");
+
+            if (cfg is null || cfg.SelectedModule is null)
+            {
+                md.AppendLine("- Kein PV-Modul ausgewählt.");
+                md.AppendLine();
+                continue;
+            }
+
+            var modul = cfg.SelectedModule;
+            var nModule = Math.Max(1, cfg.ModuleProString);
+            var nStrings = Math.Max(1, cfg.ParalleleStrings);
+
+            md.AppendLine($"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp, UMPP={modul.SpannungImMppUmppV:F2} V, IMPP={modul.StromImMppImppA:F2} A, UOC={modul.LeerlaufspannungUocV:F2} V, ISC={modul.KurzschlusstromIscA:F2} A)");
+            md.AppendLine($"- Einstellungen: Module/String={nModule}, Parallele Strings={nStrings}");
+            md.AppendLine();
+
+            var vocTmin = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMin);
+            var vocTmax = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMax);
+
+            var vmpTmin = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMin);
+            var vmpTmax = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMax);
+
+            var pmaxTmin = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMin);
+            var pmaxTmax = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMax);
+
+            var iscTmin = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMin);
+            var iscTmax = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMax);
+
+            var imppTmin = pmaxTmin / Math.Max(0.1, vmpTmin);
+            var imppTmax = pmaxTmax / Math.Max(0.1, vmpTmax);
+
+            var vStringVocMin = nModule * Math.Min(vocTmin, vocTmax);
+            var vStringVocMax = nModule * Math.Max(vocTmin, vocTmax);
+
+            var vStringVmpMin = nModule * Math.Min(vmpTmin, vmpTmax);
+            var vStringVmpMax = nModule * Math.Max(vmpTmin, vmpTmax);
+
+            var iStringScMin = Math.Min(iscTmin, iscTmax);
+            var iStringScMax = Math.Max(iscTmin, iscTmax);
+
+            var iStringImppMin = Math.Min(imppTmin, imppTmax);
+            var iStringImppMax = Math.Max(imppTmin, imppTmax);
+
+            var iArrayScMin = nStrings * iStringScMin;
+            var iArrayScMax = nStrings * iStringScMax;
+
+            var iArrayImppMin = nStrings * iStringImppMin;
+            var iArrayImppMax = nStrings * iStringImppMax;
+
+            md.AppendLine("### Ergebnisse (kondensiert)");
+            md.AppendLine($"- String-Spannung OC: min={vStringVocMin:F1} V, max={vStringVocMax:F1} V");
+            md.AppendLine($"- String-Spannung MPP: min={vStringVmpMin:F1} V, max={vStringVmpMax:F1} V");
+            md.AppendLine($"- String-Ströme ISC: min={iStringScMin:F2} A, max={iStringScMax:F2} A");
+            md.AppendLine($"- String-Ströme IMPP: min={iStringImppMin:F2} A, max={iStringImppMax:F2} A");
+            md.AppendLine($"- Gesamtströme am MPPT: ISC min={iArrayScMin:F2} A / max={iArrayScMax:F2} A; IMPP min={iArrayImppMin:F2} A / max={iArrayImppMax:F2} A");
+            md.AppendLine();
+
+            md.AppendLine("### Empfehlungen und Grenzprüfung");
+            var vStringVocTmin = nModule * vocTmin;
+            var vStringVmpTmax = nModule * vmpTmax;
+            var vStringVmpTmin = nModule * vmpTmin;
+
+            var pStringMax = nModule * pmaxTmin;
+            var pTotal = nStrings * pStringMax;
+
+            var nMaxFromVoc = (int)Math.Floor(vdcMaxEff / vocTmin);
+            var nMinFromMppt = (int)Math.Ceiling(mpptMinEff / vmpTmax);
+            var nMaxFromMppt = (int)Math.Floor(mpptMaxEff / vmpTmin);
+            var nMinFromStart = (int)Math.Ceiling(vStartEff / vmpTmax);
+
+            var nLower = Math.Max(1, Math.Max(nMinFromMppt, nMinFromStart));
+            var nUpper = Math.Min(nMaxFromVoc, nMaxFromMppt);
+
+            var sMaxIscAllowed = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
+            var sMaxImppAllowed = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
+            var sMaxPowerAllowed = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
+            var sMaxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
+            var sUpper = new[] { sMaxIscAllowed, sMaxImppAllowed, sMaxPowerAllowed, sMaxBySpec }
+                         .Where(x => x > 0)
+                         .DefaultIfEmpty(0)
+                         .Min();
+
+            md.AppendLine($"- Zulässige Module/String: {(nLower <= nUpper ? $"{nLower} … {nUpper}" : "kein gültiger Bereich")}");
+            md.AppendLine($"- Zulässige parallele Strings/MPPT: {(sUpper > 0 ? $"bis {sUpper}" : "0")}");
+            md.AppendLine();
+
+            md.AppendLine("### Detail-Hinweise");
+            if (vStringVocTmin > vdcMaxEff + 1e-6)
+                md.AppendLine($"- Überschreitung der max. DC-Spannung bei Tmin: {vStringVocTmin:F1} V > {vdcMaxEff:F1} V.");
+            if (vStringVmpTmax < mpptMinEff - 1e-6)
+                md.AppendLine($"- Unterschreitung MPPT-Untergrenze bei Tmax: {vStringVmpTmax:F1} V < {mpptMinEff:F1} V.");
+            if (vStringVmpTmin > mpptMaxEff + 1e-6)
+                md.AppendLine($"- Überschreitung MPPT-Obergrenze bei Tmin: {vStringVmpTmin:F1} V > {mpptMaxEff:F1} V.");
+            if (vStringVmpTmax < vStartEff - 1e-6)
+                md.AppendLine($"- Startspannung nicht erreicht: {vStringVmpTmax:F1} V < {vStartEff:F1} V.");
+            if (iArrayScMax > iScMaxEff + 1e-6)
+                md.AppendLine($"- Kurzschlussstrom-Grenze überschritten: {iArrayScMax:F2} A > {iScMaxEff:F2} A.");
+            if (iArrayImppMax > iInMaxEff + 1e-6)
+                md.AppendLine($"- Eingangsstrom-Grenze überschritten: {iArrayImppMax:F2} A > {iInMaxEff:F2} A.");
+            if (pTotal > pDcPerMpptEff + 1e-6)
+                md.AppendLine($"- DC-Leistungsgrenze überschritten: {pTotal:F0} W > {pDcPerMpptEff:F0} W pro MPPT.");
+            md.AppendLine();
+        }
+
+        _reportMarkdown = md.ToString();
+        ReportMarkdownTextBox.Text = _reportMarkdown;
+    }
+
+    // Ansicht aktualisieren (Markdown vs. HTML-Preview)
+    private void UpdateReportView()
+    {
+        if (_reportPreviewMode)
+        {
+            ReportMarkdownTextBox.Visibility = Visibility.Collapsed;
+            ReportPreviewContainer.Visibility = Visibility.Visible;
+
+            var htmlBody = _markdown.ToHtml(_reportMarkdown);
+            var htmlDoc = new StringBuilder();
+            htmlDoc.AppendLine("<!DOCTYPE html>");
+            htmlDoc.AppendLine("<html><head><meta charset=utf-8><title>Bericht</title></head><body>");
+            htmlDoc.AppendLine(htmlBody);
+            htmlDoc.AppendLine("</body></html>");
+
+            try
+            {
+                ReportPreviewBrowser.NavigateToString(htmlDoc.ToString());
+                _logger.LogInformation("Berichtsvorschau aktualisiert. Länge={Laenge}.", htmlBody.Length);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fehler beim Aktualisieren der Berichtsvorschau.");
+                MessageBox.Show("Fehler beim Aktualisieren der Berichtsvorschau. Details siehe Log.", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        else
+        {
+            ReportPreviewContainer.Visibility = Visibility.Collapsed;
+            ReportMarkdownTextBox.Visibility = Visibility.Visible;
+        }
+    }
+
+    // Umschalten der Ansicht
+    private void OnToggleReportViewClick(object sender, RoutedEventArgs e)
+    {
+        _reportPreviewMode = !_reportPreviewMode;
+        UpdateReportView();
+        _logger.LogInformation("Bericht-Ansicht umgeschaltet: {Mode}.", _reportPreviewMode ? "Vorschau" : "Markdown");
+    }
+
+    // Markdown kopieren
+    private void OnCopyReportClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Clipboard.SetText(_reportMarkdown ?? string.Empty);
+            _logger.LogInformation("Markdown-Bericht in Zwischenablage kopiert. Länge={Laenge}.", (_reportMarkdown ?? string.Empty).Length);
+            MessageBox.Show("Markdown-Bericht wurde in die Zwischenablage kopiert.", "Info",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Kopieren des Markdown-Berichts.");
+            MessageBox.Show("Fehler beim Kopieren. Details siehe Log.", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // Markdown speichern
+    private void OnSaveReportClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dlg = new SaveFileDialog
+            {
+                Title = "Markdown-Bericht speichern",
+                Filter = "Markdown-Datei (*.md)|*.md|Textdatei (*.txt)|*.txt",
+                FileName = "AnWa-Solar-Bericht.md",
+                AddExtension = true,
+                OverwritePrompt = true
+            };
+            var ok = dlg.ShowDialog(this);
+            if (ok == true)
+            {
+                System.IO.File.WriteAllText(dlg.FileName, _reportMarkdown ?? string.Empty, new System.Text.UTF8Encoding(false));
+                _logger.LogInformation("Markdown-Bericht gespeichert: {Path}.", dlg.FileName);
+                MessageBox.Show("Markdown-Bericht wurde gespeichert.", "Info",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Speichern des Markdown-Berichts.");
+            MessageBox.Show("Fehler beim Speichern. Details siehe Log.", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     #endregion

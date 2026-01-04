@@ -99,25 +99,51 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <TabItem Header="Markdown Vorschau">
+                <!-- Bericht -->
+                <TabItem Header="Bericht">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="16"
                                     Orientation="Vertical">
                             <materialDesign:Card Padding="16">
                                 <StackPanel>
-                                    <TextBlock Text="Markdown in HTML umwandeln"
-                                               FontWeight="Bold" />
-                                    <TextBox x:Name="MarkdownInput"
+                                    <DockPanel>
+                                        <TextBlock Text="Bericht"
+                                                   FontWeight="Bold"
+                                                   FontSize="16"
+                                                   DockPanel.Dock="Left" />
+                                        <Button Content="Ansicht umschalten (Markdown/Vorschau)"
+                                                DockPanel.Dock="Right"
+                                                Click="OnToggleReportViewClick"
+                                                Margin="8,0,0,0" />
+                                    </DockPanel>
+
+                                    <!-- Markdown-Quelle -->
+                                    <TextBox x:Name="ReportMarkdownTextBox"
+                                             Margin="0,8,0,0"
                                              AcceptsReturn="True"
-                                             Height="120"
                                              TextWrapping="Wrap"
-                                             materialDesign:HintAssist.Hint="Markdown eingeben..." />
-                                    <Button Content="In HTML umwandeln"
-                                            Margin="0,8,0,0"
-                                            Click="OnConvertMarkdownClick" />
-                                    <TextBlock x:Name="HtmlOutput"
-                                               TextWrapping="Wrap"
-                                               Margin="0,8,0,0" />
+                                             IsReadOnly="True"
+                                             Height="400"
+                                             VerticalScrollBarVisibility="Auto"
+                                             materialDesign:HintAssist.Hint="Markdown-Quelltext des Berichts" />
+
+                                    <!-- HTML-Vorschau -->
+                                    <Grid Margin="0,8,0,0"
+                                          x:Name="ReportPreviewContainer"
+                                          Visibility="Collapsed">
+                                        <WebBrowser x:Name="ReportPreviewBrowser"
+                                                    Height="400" />
+                                    </Grid>
+
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,12,0,0">
+                                        <Button Content="Markdown kopieren"
+                                                Margin="0,0,8,0"
+                                                Click="OnCopyReportClick" />
+                                        <Button Content="Markdown speichern"
+                                                Click="OnSaveReportClick" />
+                                    </StackPanel>
                                 </StackPanel>
                             </materialDesign:Card>
                         </StackPanel>
