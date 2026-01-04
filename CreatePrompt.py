@@ -36,6 +36,8 @@ REPO_TREE_IGNORE = {
     "CreatePrompt.py",
     "prePrompt.md",
     "Prompt.md",
+    "prompt_01.md",
+    "prompt_02.md",
     "README.md",
     "LIZENCE",
     # "ConfigService.cs",
@@ -532,15 +534,6 @@ def build_prompt() -> str:
         "```",
     ]
     parts.append(NL.join(repo_tree))
-
-    # Beispiel-Config
-    cfg_section = ["## Beispiel settings.json"]
-    if cfg_path:
-        cfg_text = safe_read_text(cfg_path, MAX_FILE_BYTES)
-        cfg_section.extend(["```json", cfg_text.rstrip("\n"), "```"])
-    else:
-        cfg_section.append("[Beispiel-Config nicht gefunden]")
-    parts.append(NL.join(cfg_section))
 
     # Alle Quelltexte
     src_files = list_source_files(REPO_PATH, SOURCE_EXTS, REPO_TREE_IGNORE)
