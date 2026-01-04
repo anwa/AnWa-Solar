@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using AnWaSolar.Models;
 using AnWaSolar.Services;
 using Microsoft.Extensions.Logging;
+using MaterialDesignThemes.Wpf;
 
 namespace AnWaSolar;
 
@@ -98,7 +99,7 @@ public partial class MainWindow : Window
             var cfg = new StringConfiguration { MpptIndex = i + 1, ModuleProString = 10, ParalleleStrings = 1 };
             _stringConfigs.Add(cfg);
 
-            var card = new materialDesignThemes.Wpf.Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
+            var card = new Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
             var sp = new StackPanel { Orientation = Orientation.Vertical };
             card.Content = sp;
 
@@ -200,6 +201,8 @@ public partial class MainWindow : Window
 
             // Speichere Referenz für spätere UI-Updates
             sp.Tag = new MpptUiRefs { SummaryText = summary };
+
+            StringsPanel.Children.Add(card);
         }
 
         StringsCard.Visibility = Visibility.Visible;
@@ -218,10 +221,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var win = new SelectInverterWindow(
-                (Microsoft.Extensions.Logging.ILogger<SelectInverterWindow>)_logger,
-                _dataStore.Wechselrichter);
-
+            var win = new SelectInverterWindow(_dataStore.Wechselrichter);
             win.Owner = this;
             var res = win.ShowDialog();
             if (res == true && win.Selected is not null)
@@ -229,6 +229,8 @@ public partial class MainWindow : Window
                 _selectedInverter = win.Selected;
                 InverterSummaryText.Text =
                     $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | Vdc_max={_selectedInverter.MaxDcEingangsspannungV} V, Start={_selectedInverter.StartspannungV} V, MPPT={_selectedInverter.MpptSpannungsbereichV} V, I_in_max={_selectedInverter.MaxBetriebsPvEingangsstromA} A, I_sc_max={_selectedInverter.MaxEingangsKurzschlussstromA} A, MPPTs={_selectedInverter.AnzahlDerMpptTrackers}, Max Strings/MPPT={_selectedInverter.MaxStringsProMppt}";
+
+                _logger.LogInformation("Wechselrichter übernommen: {Hersteller} {Model}.", _selectedInverter.Hersteller, _selectedInverter.Model);
 
                 BuildStringsUi();
                 Recalculate();
@@ -246,10 +248,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var win = new SelectModuleWindow(
-                (Microsoft.Extensions.Logging.ILogger<SelectModuleWindow>)_logger,
-                _dataStore.Module);
-
+            var win = new SelectModuleWindow(_dataStore.Module);
             win.Owner = this;
             var res = win.ShowDialog();
             if (res == true && win.Selected is not null)
@@ -261,6 +260,7 @@ public partial class MainWindow : Window
                     refs.SummaryText.Text = $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
                 }
 
+                _logger.LogInformation("PV-Modul für MPPT {Mppt} übernommen: {Hersteller} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Hersteller, cfg.SelectedModule.Model);
                 Recalculate();
             }
         }
@@ -276,9 +276,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var win = new ParametersWindow(
-                (Microsoft.Extensions.Logging.ILogger<ParametersWindow>)_logger,
-                _parameters);
+            var win = new ParametersWindow(_parameters);
             win.Owner = this;
             var res = win.ShowDialog();
             if (res == true)
@@ -290,6 +288,8 @@ public partial class MainWindow : Window
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 _parameters = win.Parameters;
+                _logger.LogInformation("Berechnungsparameter übernommen: Tmin={Tmin}, Tmax={Tmax}, Sicherheitsmarge={Margin} %.",
+                    _parameters.MinTempC, _parameters.MaxTempC, _parameters.SicherheitsmargePct);
                 UpdateParametersSummary();
                 Recalculate();
             }

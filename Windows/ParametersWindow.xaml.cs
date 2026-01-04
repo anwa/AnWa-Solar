@@ -1,20 +1,16 @@
 ﻿using System;
 using System.Globalization;
 using System.Windows;
-using Microsoft.Extensions.Logging;
 
 namespace AnWaSolar;
 
 public partial class ParametersWindow : Window
 {
-    private readonly ILogger<ParametersWindow> _logger;
-
     public CalculationParameters Parameters { get; private set; }
 
-    public ParametersWindow(ILogger<ParametersWindow> logger, CalculationParameters current)
+    public ParametersWindow(CalculationParameters current)
     {
         InitializeComponent();
-        _logger = logger;
 
         Parameters = new CalculationParameters
         {
@@ -48,9 +44,6 @@ public partial class ParametersWindow : Window
         Parameters.MinTempC = tMin;
         Parameters.MaxTempC = tMax;
         Parameters.SicherheitsmargePct = marginPct;
-
-        _logger.LogInformation("Parameter im Dialog angepasst: Tmin={Tmin}, Tmax={Tmax}, Sicherheitsmarge={Margin}.",
-            tMin, tMax, marginPct);
 
         DialogResult = true;
         Close();

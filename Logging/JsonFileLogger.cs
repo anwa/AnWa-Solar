@@ -59,7 +59,11 @@ internal sealed class JsonFileLogger : ILogger
         _jsonOptions = jsonOptions;
     }
 
-    public IDisposable? BeginScope<TState>(TState state) => default;
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+    {
+        // Scopes werden aktuell nicht genutzt; Rückgabe bleibt null.
+        return default;
+    }
 
     public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
 

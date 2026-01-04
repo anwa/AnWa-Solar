@@ -1,3 +1,6 @@
+- Fehlerbehebung: Build-Probleme durch falsche MaterialDesign-Namespace-Verwendung in MainWindow.xaml.cs korrigiert.
+- Fehlerbehebung: Warnung CS8633 im JsonFileLogger durch Hinzufügen des notnull-Constraints behoben.
+- Verbesserung: Fensterkonstruktoren vereinfacht, Logging zentralisiert im MainWindow.
 - Neu: Tab „String-Berechnung“ in vier klar getrennte Abschnitte strukturiert (Wechselrichter, Strings, Ergebnisse, Parameter).
 - Neu: Auswahlfenster für Wechselrichter und PV-Module mit Hersteller-/Modell-Filter und Detailprüfung.
 - Neu: Parameter-Dialog mit Persistenz in appsettings.json; Parameter werden beim Start geladen.
