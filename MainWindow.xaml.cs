@@ -405,10 +405,15 @@ public partial class MainWindow : Window
                 var cfg = _stringConfigs.FirstOrDefault(c => c.MpptIndex == sel.MpptIndex);
                 if (cfg is null) continue;
 
+                // Aktivierungsstatus übernehmen
+                cfg.IsEnabled = sel.IsEnabled;
+
+                // Mengen übernehmen und begrenzen
                 cfg.ModuleProString = Math.Max(1, sel.ModuleProString);
                 var maxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
                 cfg.ParalleleStrings = Math.Max(1, Math.Min(sel.ParalleleStrings, maxBySpec));
 
+                // Modulreferenz übernehmen
                 if (sel.Module is not null)
                 {
                     var mod = _dataStore.Module.FirstOrDefault(x =>
@@ -445,6 +450,7 @@ public partial class MainWindow : Window
                     MpptIndex = c.MpptIndex,
                     ModuleProString = c.ModuleProString,
                     ParalleleStrings = c.ParalleleStrings,
+                    IsEnabled = c.IsEnabled,
                     Module = c.SelectedModule is null ? null : new SelectedRef
                     {
                         Hersteller = c.SelectedModule.Hersteller,

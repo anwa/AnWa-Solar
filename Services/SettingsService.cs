@@ -28,6 +28,7 @@ public class MpptStringSelection
     public SelectedRef? Module { get; set; }
     public int ModuleProString { get; set; } = 10;
     public int ParalleleStrings { get; set; } = 1;
+    public bool IsEnabled { get; set; } = true;
 }
 
 public class LastSelection
@@ -144,7 +145,8 @@ public class SettingsService : ISettingsService
                         {
                             MpptIndex = o["MpptIndex"]?.GetValue<int>() ?? 0,
                             ModuleProString = o["ModuleProString"]?.GetValue<int>() ?? 10,
-                            ParalleleStrings = o["ParalleleStrings"]?.GetValue<int>() ?? 1
+                            ParalleleStrings = o["ParalleleStrings"]?.GetValue<int>() ?? 1,
+                            IsEnabled = o["IsEnabled"]?.GetValue<bool>() ?? true
                         };
                         var modRef = o["Module"] as JsonObject;
                         if (modRef is not null)
@@ -199,7 +201,8 @@ public class SettingsService : ISettingsService
                 {
                     ["MpptIndex"] = s.MpptIndex,
                     ["ModuleProString"] = s.ModuleProString,
-                    ["ParalleleStrings"] = s.ParalleleStrings
+                    ["ParalleleStrings"] = s.ParalleleStrings,
+                    ["IsEnabled"] = s.IsEnabled
                 };
                 if (s.Module is not null)
                 {

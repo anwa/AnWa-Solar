@@ -7,6 +7,8 @@ Unveröffentlich
 - Neu: In den String-Abschnitten steuern Slider die Anzahl der Module pro String und die Anzahl paralleler Strings. Grenzen werden dynamisch aus den Berechnungsergebnissen abgeleitet.
 - Neu: ToggleButton pro String zum schnellen Aktivieren/Deaktivieren, ohne die Daten zu verlieren.
 - Verbesserung: Sofortige Aktualisierung der Slider-Bereiche bei jeder Änderung von WR, Modulen und Parametern.
+- Neu: Der Aktivierungsstatus (Toggle) pro MPPT wird in appsettings.json gespeichert und beim Start automatisch wiederhergestellt.
+- Verbesserung: Komfortsteigerung beim Arbeiten mit temporär deaktivierten Strings ohne Datenverlust.
 
 v0.1.2
 - Neu: Bericht-Tab mit automatisch erzeugtem Markdown-Bericht, umschaltbar zwischen Markdown-Quelle und HTML-Vorschau.
