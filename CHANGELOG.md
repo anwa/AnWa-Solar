@@ -1,3 +1,9 @@
+
+- Neu: Die zuletzt gewählte Konfiguration (Wechselrichter, PV-Module je MPPT, Module pro String und parallele Strings) wird in appsettings.json gespeichert und beim Start automatisch geladen.
+- Verbesserung: Komfortsteigerung durch automatische Wiederherstellung des Arbeitsstands.
+- Hinweis: Schreiben in appsettings.json erfordert Schreibrechte im Ausgabeverzeichnis; für produktive Umgebungen kann ein benutzerspezifischer Speicherort verwendet werden.
+
+v0.1.0
 - Fehlerbehebung: Build-Probleme durch falsche MaterialDesign-Namespace-Verwendung in MainWindow.xaml.cs korrigiert.
 - Fehlerbehebung: Warnung CS8633 im JsonFileLogger durch Hinzufügen des notnull-Constraints behoben.
 - Verbesserung: Fensterkonstruktoren vereinfacht, Logging zentralisiert im MainWindow.

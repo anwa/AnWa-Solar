@@ -44,10 +44,16 @@ public partial class MainWindow : Window
         _parameters = _settings.LoadParameters();
         UpdateParametersSummary();
 
-        // Hinweistext initial
-        InverterSummaryText.Text = "Kein Wechselrichter ausgewählt.";
-        StringsCard.Visibility = System.Windows.Visibility.Collapsed;
-        ResultsOutput.Text = "Keine Berechnung vorhanden.";
+        // Letzte Auswahl wiederherstellen
+        TryRestoreLastSelection();
+
+        // Falls kein WR geladen werden konnte:
+        if (_selectedInverter is null)
+        {
+            InverterSummaryText.Text = "Kein Wechselrichter ausgewählt.";
+            StringsCard.Visibility = System.Windows.Visibility.Collapsed;
+            ResultsOutput.Text = "Keine Berechnung vorhanden.";
+        }
     }
 
     #endregion
@@ -131,15 +137,15 @@ public partial class MainWindow : Window
             var nDec = new Button { Content = "−", Width = 32 };
             nInc.Click += (s, e) =>
             {
-                if (TryParseInt(nBox.Text, out var val)) { val = val + 1; nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; Recalculate(); }
+                if (TryParseInt(nBox.Text, out var val)) { val = val + 1; nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; PersistLastSelection(); Recalculate(); }
             };
             nDec.Click += (s, e) =>
             {
-                if (TryParseInt(nBox.Text, out var val)) { val = Math.Max(1, val - 1); nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; Recalculate(); }
+                if (TryParseInt(nBox.Text, out var val)) { val = Math.Max(1, val - 1); nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; PersistLastSelection(); Recalculate(); }
             };
             nBox.TextChanged += (s, e) =>
             {
-                if (TryParseInt(nBox.Text, out var val) && val > 0) { cfg.ModuleProString = val; Recalculate(); }
+                if (TryParseInt(nBox.Text, out var val) && val > 0) { cfg.ModuleProString = val; PersistLastSelection(); Recalculate(); }
             };
             nPanel.Children.Add(nBox);
             nPanel.Children.Add(nInc);
@@ -165,12 +171,13 @@ public partial class MainWindow : Window
                     }
                     sBox.Text = val.ToString(CultureInfo.InvariantCulture);
                     cfg.ParalleleStrings = val;
+                    PersistLastSelection();
                     Recalculate();
                 }
             };
             sDec.Click += (ss, ee) =>
             {
-                if (TryParseInt(sBox.Text, out var val)) { val = Math.Max(1, val - 1); sBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ParalleleStrings = val; Recalculate(); }
+                if (TryParseInt(sBox.Text, out var val)) { val = Math.Max(1, val - 1); sBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ParalleleStrings = val; PersistLastSelection(); Recalculate(); }
             };
             sBox.TextChanged += (ss, ee) =>
             {
@@ -184,6 +191,7 @@ public partial class MainWindow : Window
                         sBox.Text = val.ToString(CultureInfo.InvariantCulture);
                     }
                     cfg.ParalleleStrings = val;
+                    PersistLastSelection();
                     Recalculate();
                 }
             };
@@ -213,6 +221,26 @@ public partial class MainWindow : Window
         public TextBlock SummaryText { get; set; } = new TextBlock();
     }
 
+    private void RefreshStringsUiSummaries()
+    {
+        if (_selectedInverter is null) return;
+        var mpptCount = Math.Max(1, _selectedInverter.AnzahlDerMpptTrackers);
+
+        for (int i = 0; i < mpptCount; i++)
+        {
+            var cfg = _stringConfigs.ElementAtOrDefault(i);
+            var card = StringsPanel.Children[i] as Card;
+            var sp = card?.Content as StackPanel;
+            var refs = sp?.Tag as MpptUiRefs;
+            if (cfg is not null && refs is not null)
+            {
+                refs.SummaryText.Text = cfg.SelectedModule is null
+                    ? "Kein PV-Modul ausgewählt."
+                    : $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
+            }
+        }
+    }
+
     #endregion
 
     #region Events
@@ -233,6 +261,7 @@ public partial class MainWindow : Window
                 _logger.LogInformation("Wechselrichter übernommen: {Hersteller} {Model}.", _selectedInverter.Hersteller, _selectedInverter.Model);
 
                 BuildStringsUi();
+                PersistLastSelection();
                 Recalculate();
             }
         }
@@ -261,6 +290,7 @@ public partial class MainWindow : Window
                 }
 
                 _logger.LogInformation("PV-Modul für MPPT {Mppt} übernommen: {Hersteller} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Hersteller, cfg.SelectedModule.Model);
+                PersistLastSelection();
                 Recalculate();
             }
         }
@@ -328,6 +358,89 @@ public partial class MainWindow : Window
         ParametersSummaryText.Text = $"Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, Sicherheitsmarge={_parameters.SicherheitsmargePct} %";
     }
 
+    private void TryRestoreLastSelection()
+    {
+        try
+        {
+            var last = _settings.LoadLastSelection();
+            if (last.Inverter is null) return;
+
+            var wr = _dataStore.Wechselrichter.FirstOrDefault(x =>
+                string.Equals(x.Hersteller, last.Inverter.Hersteller, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(x.Model, last.Inverter.Model, StringComparison.OrdinalIgnoreCase));
+            if (wr is null) return;
+
+            _selectedInverter = wr;
+            InverterSummaryText.Text =
+                $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | Vdc_max={_selectedInverter.MaxDcEingangsspannungV} V, Start={_selectedInverter.StartspannungV} V, MPPT={_selectedInverter.MpptSpannungsbereichV} V, I_in_max={_selectedInverter.MaxBetriebsPvEingangsstromA} A, I_sc_max={_selectedInverter.MaxEingangsKurzschlussstromA} A, MPPTs={_selectedInverter.AnzahlDerMpptTrackers}, Max Strings/MPPT={_selectedInverter.MaxStringsProMppt}";
+
+            BuildStringsUi();
+
+            foreach (var sel in last.Strings)
+            {
+                var cfg = _stringConfigs.FirstOrDefault(c => c.MpptIndex == sel.MpptIndex);
+                if (cfg is null) continue;
+
+                cfg.ModuleProString = Math.Max(1, sel.ModuleProString);
+                var maxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
+                cfg.ParalleleStrings = Math.Max(1, Math.Min(sel.ParalleleStrings, maxBySpec));
+
+                if (sel.Module is not null)
+                {
+                    var mod = _dataStore.Module.FirstOrDefault(x =>
+                        string.Equals(x.Hersteller, sel.Module.Hersteller, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(x.Model, sel.Module.Model, StringComparison.OrdinalIgnoreCase));
+                    cfg.SelectedModule = mod;
+                }
+            }
+
+            RefreshStringsUiSummaries();
+            Recalculate();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler bei der Wiederherstellung der letzten Auswahl.");
+        }
+    }
+
+    private void PersistLastSelection()
+    {
+        try
+        {
+            if (_selectedInverter is null) return;
+
+            var sel = new LastSelection
+            {
+                Inverter = new SelectedRef
+                {
+                    Hersteller = _selectedInverter.Hersteller,
+                    Model = _selectedInverter.Model
+                },
+                Strings = _stringConfigs.Select(c => new MpptStringSelection
+                {
+                    MpptIndex = c.MpptIndex,
+                    ModuleProString = c.ModuleProString,
+                    ParalleleStrings = c.ParalleleStrings,
+                    Module = c.SelectedModule is null ? null : new SelectedRef
+                    {
+                        Hersteller = c.SelectedModule.Hersteller,
+                        Model = c.SelectedModule.Model
+                    }
+                }).ToList()
+            };
+
+            var ok = _settings.SaveLastSelection(sel);
+            if (!ok)
+            {
+                _logger.LogWarning("Letzte Auswahl konnte nicht gespeichert werden.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Speichern der letzten Auswahl.");
+        }
+    }
+
     private void Recalculate()
     {
         if (_selectedInverter is null)
@@ -388,8 +501,8 @@ public partial class MainWindow : Window
             var vocTmin = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMin);
             var vocTmax = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMax);
 
-            var vmpTmin = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMin);  // Näherung
-            var vmpTmax = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMax);  // Näherung
+            var vmpTmin = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMin);
+            var vmpTmax = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMax);
 
             var pmaxTmin = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMin);
             var pmaxTmax = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMax);
