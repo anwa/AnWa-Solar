@@ -100,55 +100,65 @@
                     </ScrollViewer>
                 </TabItem>
 
-                <!-- Bericht -->
+                <!-- Bericht: nutzt volle Tab-Fläche dynamisch -->
                 <TabItem Header="Bericht">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="16"
-                                    Orientation="Vertical">
-                            <materialDesign:Card Padding="16">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <TextBlock Text="Bericht"
-                                                   FontWeight="Bold"
-                                                   FontSize="16"
-                                                   DockPanel.Dock="Left" />
-                                        <Button Content="Ansicht umschalten (Markdown/Vorschau)"
-                                                DockPanel.Dock="Right"
-                                                Click="OnToggleReportViewClick"
-                                                Margin="8,0,0,0" />
-                                    </DockPanel>
+                    <Grid Margin="16">
+                        <materialDesign:Card Padding="16"
+                                             VerticalAlignment="Stretch"
+                                             HorizontalAlignment="Stretch">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
 
+                                <!-- Kopfzeile mit Umschalt-Button -->
+                                <DockPanel Grid.Row="0">
+                                    <TextBlock Text="Bericht"
+                                               FontWeight="Bold"
+                                               FontSize="16"
+                                               DockPanel.Dock="Left" />
+                                    <Button Content="Ansicht umschalten (Markdown/Vorschau)"
+                                            DockPanel.Dock="Right"
+                                            Click="OnToggleReportViewClick"
+                                            Margin="8,0,0,0" />
+                                </DockPanel>
+
+                                <!-- Inhaltsbereich: füllt dynamisch den verfügbaren Platz -->
+                                <Grid Grid.Row="1">
                                     <!-- Markdown-Quelle -->
                                     <TextBox x:Name="ReportMarkdownTextBox"
-                                             Margin="0,8,0,0"
                                              AcceptsReturn="True"
                                              TextWrapping="Wrap"
                                              IsReadOnly="True"
-                                             Height="400"
+                                             VerticalAlignment="Stretch"
+                                             HorizontalAlignment="Stretch"
                                              VerticalScrollBarVisibility="Auto"
                                              materialDesign:HintAssist.Hint="Markdown-Quelltext des Berichts" />
-
                                     <!-- HTML-Vorschau -->
-                                    <Grid Margin="0,8,0,0"
-                                          x:Name="ReportPreviewContainer"
+                                    <Grid x:Name="ReportPreviewContainer"
                                           Visibility="Collapsed">
                                         <WebBrowser x:Name="ReportPreviewBrowser"
-                                                    Height="400" />
+                                                    VerticalAlignment="Stretch"
+                                                    HorizontalAlignment="Stretch" />
                                     </Grid>
+                                </Grid>
 
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Right"
-                                                Margin="0,12,0,0">
-                                        <Button Content="Markdown kopieren"
-                                                Margin="0,0,8,0"
-                                                Click="OnCopyReportClick" />
-                                        <Button Content="Markdown speichern"
-                                                Click="OnSaveReportClick" />
-                                    </StackPanel>
+                                <!-- Aktionen -->
+                                <StackPanel Grid.Row="2"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,12,0,0">
+                                    <Button Content="Markdown kopieren"
+                                            Margin="0,0,8,0"
+                                            Click="OnCopyReportClick" />
+                                    <Button Content="Markdown speichern"
+                                            Click="OnSaveReportClick" />
                                 </StackPanel>
-                            </materialDesign:Card>
-                        </StackPanel>
-                    </ScrollViewer>
+                            </Grid>
+                        </materialDesign:Card>
+                    </Grid>
                 </TabItem>
             </TabControl>
         </DockPanel>

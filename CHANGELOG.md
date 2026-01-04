@@ -13,6 +13,7 @@ Unveröffentlich
 - Neu: Slider „Anzahl Module“ mit fester Grenzen 1..(zulässiges Max + 5) und Markierung des zulässigen Bereichs (SelectionStart/End).
 - Neu: Buttontexte passen sich dem Zustand an („PV-Modul auswählen“ → „PV-Modul ändern“), zusätzlich „Modul entfernen“ pro MPPT.
 - Verbesserung: Wechselrichter-Button passt sich nach Auswahl zu „Wechselrichter ändern“ an.
+- Verbesserung: Der Bericht-Tab nutzt die gesamte verfügbare Fläche dynamisch. Markdown-Quelle und HTML-Vorschau passen sich automatisch an die Größe des Fensters/Tabs an.
 
 v0.1.2
 - Neu: Bericht-Tab mit automatisch erzeugtem Markdown-Bericht, umschaltbar zwischen Markdown-Quelle und HTML-Vorschau.
