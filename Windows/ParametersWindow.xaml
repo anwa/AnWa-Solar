@@ -1,0 +1,73 @@
+﻿<Window x:Class="AnWaSolar.ParametersWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Berechnungsparameter"
+        Width="520"
+        Height="360"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+    <Grid>
+        <DockPanel>
+            <materialDesign:ColorZone Mode="PrimaryMid"
+                                      DockPanel.Dock="Top"
+                                      Padding="12">
+                <TextBlock Text="Berechnungsparameter"
+                           Foreground="White"
+                           FontSize="16"
+                           VerticalAlignment="Center" />
+            </materialDesign:ColorZone>
+
+            <StackPanel Margin="12"
+                        Orientation="Vertical">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="240" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="0"
+                               Text="Min. Temperatur (°C)" />
+                    <TextBox Grid.Row="0"
+                             Grid.Column="1"
+                             x:Name="MinTempInput"
+                             Text="-20"
+                             materialDesign:HintAssist.Hint="z. B. -20" />
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="0"
+                               Text="Max. Temperatur (°C)" />
+                    <TextBox Grid.Row="1"
+                             Grid.Column="1"
+                             x:Name="MaxTempInput"
+                             Text="40"
+                             materialDesign:HintAssist.Hint="z. B. 40" />
+                    <TextBlock Grid.Row="2"
+                               Grid.Column="0"
+                               Text="Sicherheitsmarge (%)" />
+                    <TextBox Grid.Row="2"
+                             Grid.Column="1"
+                             x:Name="SicherheitsmargeInput"
+                             Text="10"
+                             materialDesign:HintAssist.Hint="z. B. 10" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,12,0,0">
+                    <Button Content="Abbrechen"
+                            Margin="0,0,8,0"
+                            IsCancel="True" />
+                    <Button Content="Speichern"
+                            IsDefault="True"
+                            Click="OnSaveClick" />
+                </StackPanel>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>

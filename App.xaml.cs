@@ -41,14 +41,15 @@ public partial class App : Application
         builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
         builder.Logging.AddDebug();
         builder.Logging.AddConsole(); // hilfreich in Debug/VS Output
-        
+
         builder.Services.AddSingleton(jsonOptions);
         builder.Services.AddSingleton<ILogFilePathProvider, LogFilePathProvider>();
         builder.Services.AddSingleton<ILoggerProvider, JsonFileLoggerProvider>(); // eigener JSON-File-Logger
 
         // Services
         builder.Services.AddSingleton<IMarkdownService, MarkdownService>();
-        
+        builder.Services.AddSingleton<ISettingsService, SettingsService>();
+
         // Data-Services registrieren
         builder.Services.AddSingleton<IDataPathProvider, DataPathProvider>();
         builder.Services.AddSingleton<IDataStore, JsonDataStore>();

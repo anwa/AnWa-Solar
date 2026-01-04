@@ -25,128 +25,73 @@
                         <StackPanel Margin="16"
                                     Orientation="Vertical">
 
-                            <!-- Auswahl von Modul und Wechselrichter -->
+                            <!-- Abschnitt 1: Wechselrichter -->
                             <materialDesign:Card Padding="16"
                                                  Margin="0,0,0,12">
                                 <StackPanel Orientation="Vertical">
-                                    <TextBlock Text="Eingabedaten"
-                                               FontWeight="Bold"
-                                               FontSize="16" />
-                                    <StackPanel Orientation="Horizontal"
-                                                Margin="0,8,0,0">
-                                        <StackPanel Width="450">
-                                            <TextBlock Text="PV-Modul" />
-                                            <ComboBox x:Name="ModuleCombo"
-                                                      DisplayMemberPath="DisplayName"
-                                                      MinWidth="400"
-                                                      IsEditable="False" />
-                                        </StackPanel>
-                                        <StackPanel Width="450"
-                                                    Margin="24,0,0,0">
-                                            <TextBlock Text="Wechselrichter" />
-                                            <ComboBox x:Name="InverterCombo"
-                                                      DisplayMemberPath="DisplayName"
-                                                      MinWidth="400"
-                                                      IsEditable="False" />
-                                        </StackPanel>
-                                    </StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="Wechselrichter"
+                                                   FontWeight="Bold"
+                                                   FontSize="16"
+                                                   DockPanel.Dock="Left" />
+                                        <Button Content="Wechselrichter auswählen"
+                                                DockPanel.Dock="Right"
+                                                Click="OnSelectInverterClick"
+                                                Margin="8,0,0,0" />
+                                    </DockPanel>
+                                    <TextBlock x:Name="InverterSummaryText"
+                                               Margin="0,8,0,0"
+                                               Text="Kein Wechselrichter ausgewählt." />
                                 </StackPanel>
                             </materialDesign:Card>
 
-                            <!-- Neue Card: Berechnungsparameter -->
+                            <!-- Abschnitt 2: Strings (dynamisch pro MPPT) -->
                             <materialDesign:Card Padding="16"
-                                                 Margin="0,0,0,12">
-                                <StackPanel Orientation="Vertical">
-                                    <TextBlock Text="Berechnungsparameter"
-                                               FontWeight="Bold"
-                                               FontSize="16" />
-
-                                    <Grid Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <StackPanel Grid.Column="0"
-                                                    Margin="0,0,12,0">
-                                            <TextBlock Text="Min. Temperatur (°C)" />
-                                            <TextBox x:Name="MinTempInput"
-                                                     Text="-20"
-                                                     materialDesign:HintAssist.Hint="z. B. -20"
-                                                     ToolTip="Niedrigste Umgebungstemperatur am Standort in °C" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Column="1"
-                                                    Margin="12,0,0,0">
-                                            <TextBlock Text="Max. Temperatur (°C)" />
-                                            <TextBox x:Name="MaxTempInput"
-                                                     Text="40"
-                                                     materialDesign:HintAssist.Hint="z. B. 40"
-                                                     ToolTip="Höchste Umgebungstemperatur am Standort in °C" />
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <Grid Margin="8,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <StackPanel Grid.Column="0"
-                                                    Margin="0,0,12,0">
-                                            <TextBlock Text="Anzahl Module pro String" />
-                                            <TextBox x:Name="ModuleProStringInput"
-                                                     Text="10"
-                                                     materialDesign:HintAssist.Hint="z. B. 10"
-                                                     ToolTip="Seriell verschaltete Module pro String" />
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Column="1"
-                                                    Margin="12,0,0,0">
-                                            <TextBlock Text="Anzahl paralleler Strings" />
-                                            <TextBox x:Name="ParalleleStringsInput"
-                                                     Text="2"
-                                                     materialDesign:HintAssist.Hint="z. B. 2"
-                                                     ToolTip="Parallel auf einen MPPT geführte Strings" />
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <Grid Margin="8,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <StackPanel Grid.Column="0"
-                                                    Margin="0,0,12,0">
-                                            <TextBlock Text="Sicherheitsmarge (%)" />
-                                            <TextBox x:Name="SicherheitsmargeInput"
-                                                     Text="10"
-                                                     materialDesign:HintAssist.Hint="z. B. 10"
-                                                     ToolTip="Prozentuale Reserve für Spannung und Strom" />
-                                        </StackPanel>
-
-                                        <!-- Platzhalter für künftige Parameter -->
-                                        <StackPanel Grid.Column="1"
-                                                    Margin="12,0,0,0">
-                                            <TextBlock Text="(Reserviert)" />
-                                            <TextBox IsEnabled="False" />
-                                        </StackPanel>
-                                    </Grid>
-                                </StackPanel>
-                            </materialDesign:Card>
-
-                            <materialDesign:Card Padding="16">
+                                                 Margin="0,0,0,12"
+                                                 x:Name="StringsCard"
+                                                 Visibility="Collapsed">
                                 <StackPanel>
-                                    <TextBlock Text="Ergebnis (Platzhalter)"
-                                               FontWeight="Bold" />
-                                    <TextBlock x:Name="StringCalcOutput"
-                                               Text="Bitte Modul, Wechselrichter und Parameter wählen."
+                                    <TextBlock Text="Strings"
+                                               FontWeight="Bold"
+                                               FontSize="16" />
+                                    <TextBlock x:Name="StringsHintText"
+                                               Margin="0,6,0,12"
+                                               Text="Bitte pro MPPT PV-Modul wählen und Anzahl einstellen." />
+                                    <StackPanel x:Name="StringsPanel"
+                                                Orientation="Vertical" />
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <!-- Abschnitt 3: Ergebnisse -->
+                            <materialDesign:Card Padding="16"
+                                                 Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="Ergebnisse"
+                                               FontWeight="Bold"
+                                               FontSize="16" />
+                                    <TextBlock x:Name="ResultsOutput"
+                                               Margin="0,8,0,0"
                                                TextWrapping="Wrap"
-                                               Margin="0,6,0,0" />
-                                    <Button Content="Berechnen (Demo)"
-                                            Margin="0,12,0,0"
-                                            Click="OnCalculateStringClick" />
+                                               Text="Keine Berechnung vorhanden." />
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <!-- Abschnitt 4: Parameter -->
+                            <materialDesign:Card Padding="16">
+                                <StackPanel Orientation="Vertical">
+                                    <DockPanel>
+                                        <TextBlock Text="Parameter"
+                                                   FontWeight="Bold"
+                                                   FontSize="16"
+                                                   DockPanel.Dock="Left" />
+                                        <Button Content="Parameter ändern"
+                                                DockPanel.Dock="Right"
+                                                Click="OnEditParametersClick"
+                                                Margin="8,0,0,0" />
+                                    </DockPanel>
+                                    <TextBlock x:Name="ParametersSummaryText"
+                                               Margin="0,8,0,0"
+                                               Text="Tmin, Tmax, Sicherheitsmarge werden hier angezeigt." />
                                 </StackPanel>
                             </materialDesign:Card>
 

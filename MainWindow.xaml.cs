@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using AnWaSolar.Models;
 using AnWaSolar.Services;
 using Microsoft.Extensions.Logging;
@@ -10,25 +13,45 @@ namespace AnWaSolar;
 
 public partial class MainWindow : Window
 {
+    #region Felder
+
     private readonly ILogger<MainWindow> _logger;
     private readonly IMarkdownService _markdown;
     private readonly IDataStore _dataStore;
+    private readonly ISettingsService _settings;
 
-    public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore)
+    private Wechselrichter? _selectedInverter;
+    private readonly List<StringConfiguration> _stringConfigs = new();
+
+    private CalculationParameters _parameters;
+
+    #endregion
+
+    #region Konstruktor
+
+    public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings)
     {
         InitializeComponent();
         _logger = logger;
         _markdown = markdown;
         _dataStore = dataStore;
+        _settings = settings;
 
         _logger.LogInformation("Hauptfenster initialisiert.");
 
-        ModuleCombo.ItemsSource = _dataStore.Module;
-        ModuleCombo.SelectedItem = _dataStore.Module.FirstOrDefault();
+        // Parameter laden und anzeigen
+        _parameters = _settings.LoadParameters();
+        UpdateParametersSummary();
 
-        InverterCombo.ItemsSource = _dataStore.Wechselrichter;
-        InverterCombo.SelectedItem = _dataStore.Wechselrichter.FirstOrDefault();
+        // Hinweistext initial
+        InverterSummaryText.Text = "Kein Wechselrichter ausgewählt.";
+        StringsCard.Visibility = System.Windows.Visibility.Collapsed;
+        ResultsOutput.Text = "Keine Berechnung vorhanden.";
     }
+
+    #endregion
+
+    #region Hilfsfunktionen Parsing/Physik
 
     private bool TryParseDouble(string? text, out double value)
     {
@@ -40,13 +63,11 @@ public partial class MainWindow : Window
         return int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out value) ||
                int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
     }
-
     private static double ApplyTempCoeff(double valueAt25, double coeffPctPerC, double tC)
     {
         // x(T) = x25 * (1 + alpha[%/°C] * (T-25) / 100)
         return valueAt25 * (1.0 + (coeffPctPerC / 100.0) * (tC - 25.0));
     }
-
     private static bool TryParseRangeV(string range, out double vMin, out double vMax)
     {
         vMin = vMax = 0;
@@ -57,6 +78,230 @@ public partial class MainWindow : Window
             && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out vMax)
             && vMin > 0 && vMax > vMin;
     }
+
+    #endregion
+
+    #region UI-Erstellung Strings
+
+    // Erstellt die String-Abschnitte dynamisch basierend auf _selectedInverter
+    private void BuildStringsUi()
+    {
+        StringsPanel.Children.Clear();
+        _stringConfigs.Clear();
+
+        if (_selectedInverter is null) return;
+
+        var mpptCount = Math.Max(1, _selectedInverter.AnzahlDerMpptTrackers);
+
+        for (int i = 0; i < mpptCount; i++)
+        {
+            var cfg = new StringConfiguration { MpptIndex = i + 1, ModuleProString = 10, ParalleleStrings = 1 };
+            _stringConfigs.Add(cfg);
+
+            var card = new materialDesignThemes.Wpf.Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
+            var sp = new StackPanel { Orientation = Orientation.Vertical };
+            card.Content = sp;
+
+            var header = new DockPanel();
+            var title = new TextBlock { Text = $"MPPT {cfg.MpptIndex}", FontWeight = FontWeights.Bold, FontSize = 14 };
+            header.Children.Add(title);
+
+            var btnSelect = new Button { Content = "PV-Modul auswählen", Margin = new Thickness(8, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Right };
+            btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
+            header.Children.Add(btnSelect);
+
+            sp.Children.Add(header);
+
+            var summary = new TextBlock { Text = "Kein PV-Modul ausgewählt.", Margin = new Thickness(0, 6, 0, 8) };
+            sp.Children.Add(summary);
+
+            // Steuerung: Module pro String
+            var grid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var leftPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 8, 0) };
+            var rightPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 0, 0) };
+
+            var lblN = new TextBlock { Text = "Anzahl Module pro String" };
+            var nPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            var nBox = new TextBox { Width = 80, Text = cfg.ModuleProString.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 0, 8, 0) };
+            var nInc = new Button { Content = "+", Width = 32, Margin = new Thickness(0, 0, 4, 0) };
+            var nDec = new Button { Content = "−", Width = 32 };
+            nInc.Click += (s, e) =>
+            {
+                if (TryParseInt(nBox.Text, out var val)) { val = val + 1; nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; Recalculate(); }
+            };
+            nDec.Click += (s, e) =>
+            {
+                if (TryParseInt(nBox.Text, out var val)) { val = Math.Max(1, val - 1); nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; Recalculate(); }
+            };
+            nBox.TextChanged += (s, e) =>
+            {
+                if (TryParseInt(nBox.Text, out var val) && val > 0) { cfg.ModuleProString = val; Recalculate(); }
+            };
+            nPanel.Children.Add(nBox);
+            nPanel.Children.Add(nInc);
+            nPanel.Children.Add(nDec);
+            leftPanel.Children.Add(lblN);
+            leftPanel.Children.Add(nPanel);
+
+            var lblS = new TextBlock { Text = "Anzahl paralleler Strings" };
+            var sPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            var sBox = new TextBox { Width = 80, Text = cfg.ParalleleStrings.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 0, 8, 0) };
+            var sInc = new Button { Content = "+", Width = 32, Margin = new Thickness(0, 0, 4, 0) };
+            var sDec = new Button { Content = "−", Width = 32 };
+            sInc.Click += (ss, ee) =>
+            {
+                if (TryParseInt(sBox.Text, out var val))
+                {
+                    var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
+                    val = val + 1;
+                    if (val > maxBySpec && maxBySpec > 0)
+                    {
+                        MessageBox.Show($"Max. Strings/MPPT überschritten ({maxBySpec}).", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                        val = maxBySpec;
+                    }
+                    sBox.Text = val.ToString(CultureInfo.InvariantCulture);
+                    cfg.ParalleleStrings = val;
+                    Recalculate();
+                }
+            };
+            sDec.Click += (ss, ee) =>
+            {
+                if (TryParseInt(sBox.Text, out var val)) { val = Math.Max(1, val - 1); sBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ParalleleStrings = val; Recalculate(); }
+            };
+            sBox.TextChanged += (ss, ee) =>
+            {
+                if (TryParseInt(sBox.Text, out var val) && val > 0)
+                {
+                    var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
+                    if (val > maxBySpec && maxBySpec > 0)
+                    {
+                        MessageBox.Show($"Max. Strings/MPPT überschritten ({maxBySpec}).", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                        val = maxBySpec;
+                        sBox.Text = val.ToString(CultureInfo.InvariantCulture);
+                    }
+                    cfg.ParalleleStrings = val;
+                    Recalculate();
+                }
+            };
+            sPanel.Children.Add(sBox);
+            sPanel.Children.Add(sInc);
+            sPanel.Children.Add(sDec);
+            rightPanel.Children.Add(lblS);
+            rightPanel.Children.Add(sPanel);
+
+            grid.Children.Add(leftPanel);
+            grid.Children.Add(rightPanel);
+            Grid.SetColumn(leftPanel, 0);
+            Grid.SetColumn(rightPanel, 1);
+            sp.Children.Add(grid);
+
+            // Speichere Referenz für spätere UI-Updates
+            sp.Tag = new MpptUiRefs { SummaryText = summary };
+        }
+
+        StringsCard.Visibility = Visibility.Visible;
+    }
+
+    private sealed class MpptUiRefs
+    {
+        public TextBlock SummaryText { get; set; } = new TextBlock();
+    }
+
+    #endregion
+
+    #region Events
+
+    private void OnSelectInverterClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var win = new SelectInverterWindow(
+                (Microsoft.Extensions.Logging.ILogger<SelectInverterWindow>)_logger,
+                _dataStore.Wechselrichter);
+
+            win.Owner = this;
+            var res = win.ShowDialog();
+            if (res == true && win.Selected is not null)
+            {
+                _selectedInverter = win.Selected;
+                InverterSummaryText.Text =
+                    $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | Vdc_max={_selectedInverter.MaxDcEingangsspannungV} V, Start={_selectedInverter.StartspannungV} V, MPPT={_selectedInverter.MpptSpannungsbereichV} V, I_in_max={_selectedInverter.MaxBetriebsPvEingangsstromA} A, I_sc_max={_selectedInverter.MaxEingangsKurzschlussstromA} A, MPPTs={_selectedInverter.AnzahlDerMpptTrackers}, Max Strings/MPPT={_selectedInverter.MaxStringsProMppt}";
+
+                BuildStringsUi();
+                Recalculate();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Öffnen der Wechselrichter-Auswahl.");
+            MessageBox.Show("Fehler bei der Wechselrichter-Auswahl. Details siehe Log.", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OnSelectModuleForMppt(StringConfiguration cfg, StackPanel container)
+    {
+        try
+        {
+            var win = new SelectModuleWindow(
+                (Microsoft.Extensions.Logging.ILogger<SelectModuleWindow>)_logger,
+                _dataStore.Module);
+
+            win.Owner = this;
+            var res = win.ShowDialog();
+            if (res == true && win.Selected is not null)
+            {
+                cfg.SelectedModule = win.Selected;
+
+                if (container.Tag is MpptUiRefs refs)
+                {
+                    refs.SummaryText.Text = $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
+                }
+
+                Recalculate();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Öffnen der Modul-Auswahl.");
+            MessageBox.Show("Fehler bei der Modul-Auswahl. Details siehe Log.", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OnEditParametersClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var win = new ParametersWindow(
+                (Microsoft.Extensions.Logging.ILogger<ParametersWindow>)_logger,
+                _parameters);
+            win.Owner = this;
+            var res = win.ShowDialog();
+            if (res == true)
+            {
+                var saved = _settings.SaveParameters(win.Parameters);
+                if (!saved)
+                {
+                    MessageBox.Show("Parameter konnten nicht gespeichert werden. Sie bleiben nur temporär gültig.", "Fehler",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                _parameters = win.Parameters;
+                UpdateParametersSummary();
+                Recalculate();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Öffnen des Parameter-Dialogs.");
+            MessageBox.Show("Fehler beim Parameter-Dialog. Details siehe Log.", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OnConvertMarkdownClick(object sender, RoutedEventArgs e)
     {
         try
@@ -74,228 +319,219 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnCalculateStringClick(object sender, RoutedEventArgs e)
+    #endregion
+
+    #region Berechnung
+
+    private void UpdateParametersSummary()
     {
-        var modul = ModuleCombo.SelectedItem as PVModule;
-        var wr = InverterCombo.SelectedItem as Wechselrichter;
+        ParametersSummaryText.Text = $"Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, Sicherheitsmarge={_parameters.SicherheitsmargePct} %";
+    }
 
-        if (modul is null || wr is null)
+    private void Recalculate()
+    {
+        if (_selectedInverter is null)
         {
-            StringCalcOutput.Text = "Bitte sowohl PV-Modul als auch Wechselrichter auswählen.";
+            ResultsOutput.Text = "Bitte zuerst einen Wechselrichter auswählen.";
             return;
         }
 
-        if (!TryParseDouble(MinTempInput.Text, out var tMin) ||
-            !TryParseDouble(MaxTempInput.Text, out var tMax) ||
-            tMin >= tMax)
-        {
-            StringCalcOutput.Text = "Ungültiger Temperaturbereich. Tmin < Tmax angeben.";
-            return;
-        }
-        if (!TryParseInt(ModuleProStringInput.Text, out var nModule) || nModule <= 0)
-        {
-            StringCalcOutput.Text = "Ungültige Anzahl 'Module pro String' (muss > 0 sein).";
-            return;
-        }
-        if (!TryParseInt(ParalleleStringsInput.Text, out var nStrings) || nStrings <= 0)
-        {
-            StringCalcOutput.Text = "Ungültige Anzahl 'Parallele Strings' (muss > 0 sein).";
-            return;
-        }
-        if (!TryParseDouble(SicherheitsmargeInput.Text, out var marginPct) || marginPct < 0 || marginPct > 50)
-        {
-            StringCalcOutput.Text = "Ungültige Sicherheitsmarge (%). Bereich 0–50 %.";
-            return;
-        }
+        var tMin = _parameters.MinTempC;
+        var tMax = _parameters.MaxTempC;
+        var marginPct = _parameters.SicherheitsmargePct;
         var m = marginPct / 100.0;
 
-        if (!TryParseRangeV(wr.MpptSpannungsbereichV, out var mpptMin, out var mpptMax))
+        if (!TryParseRangeV(_selectedInverter.MpptSpannungsbereichV, out var mpptMin, out var mpptMax))
         {
-            StringCalcOutput.Text = $"MPPT-Spannungsbereich des Wechselrichters ist ungültig: '{wr.MpptSpannungsbereichV}'.";
+            ResultsOutput.Text = $"MPPT-Spannungsbereich des Wechselrichters ist ungültig: '{_selectedInverter.MpptSpannungsbereichV}'.";
             return;
         }
 
-        // Effektive (verschärfte) Grenzwerte mit Sicherheitsmarge
-        var vdcMaxEff = wr.MaxDcEingangsspannungV * (1 - m);
-        var vStartEff = wr.StartspannungV * (1 + m);
+        var vdcMaxEff = _selectedInverter.MaxDcEingangsspannungV * (1 - m);
+        var vStartEff = _selectedInverter.StartspannungV * (1 + m);
         var mpptMinEff = mpptMin * (1 + m);
         var mpptMaxEff = mpptMax * (1 - m);
-        var iInMaxEff = wr.MaxBetriebsPvEingangsstromA * (1 - m);
-        var iScMaxEff = wr.MaxEingangsKurzschlussstromA * (1 - m);
+        var iInMaxEff = _selectedInverter.MaxBetriebsPvEingangsstromA * (1 - m);
+        var iScMaxEff = _selectedInverter.MaxEingangsKurzschlussstromA * (1 - m);
 
-        // Per-MPPT-Leistungsgrenze (Annahme: Gesamtleistung verteilt sich gleichmäßig auf MPPTs)
-        var mpptCount = Math.Max(1, wr.AnzahlDerMpptTrackers);
-        var pDcPerMppt = wr.MaxDcEingangsleistungW / (double)mpptCount;
+        var mpptCount = Math.Max(1, _selectedInverter.AnzahlDerMpptTrackers);
+        var pDcPerMppt = _selectedInverter.MaxDcEingangsleistungW / (double)mpptCount;
         var pDcPerMpptEff = pDcPerMppt * (1 - m);
 
-        // Modulwerte bei Tmin/Tmax
-        var vocTmin = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMin);
-        var vocTmax = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMax);
+        var sb = new StringBuilder();
+        sb.AppendLine("Berechnung basierend auf:");
+        sb.AppendLine($"- WR: {_selectedInverter.Hersteller} {_selectedInverter.Model} (Vdc_max={_selectedInverter.MaxDcEingangsspannungV} V, Start={_selectedInverter.StartspannungV} V, MPPT={_selectedInverter.MpptSpannungsbereichV} V, I_in_max={_selectedInverter.MaxBetriebsPvEingangsstromA} A, I_sc_max={_selectedInverter.MaxEingangsKurzschlussstromA} A, MPPTs={_selectedInverter.AnzahlDerMpptTrackers}, Max Strings/MPPT={_selectedInverter.MaxStringsProMppt})");
+        sb.AppendLine($"- Parameter: Tmin={tMin} °C, Tmax={tMax} °C, Sicherheitsmarge={marginPct} %");
+        sb.AppendLine($"- Effektive Grenzen (mit Sicherheitsmarge): Vdc_max={vdcMaxEff:F1} V, MPPT={mpptMinEff:F1}–{mpptMaxEff:F1} V, Start={vStartEff:F1} V, I_in_max={iInMaxEff:F2} A, I_sc_max={iScMaxEff:F2} A, Pdc_MPPT={pDcPerMpptEff:F0} W");
 
-        var vmpTmin = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMin);  // Näherung
-        var vmpTmax = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMax);  // Näherung
+        bool globalOk = true;
+        var globalMessages = new List<string>();
 
-        var pmaxTmin = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMin);
-        var pmaxTmax = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMax);
-
-        var iscTmin = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMin);
-        var iscTmax = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMax);
-
-        // IMPP aus P/V
-        var imppTmin = pmaxTmin / Math.Max(0.1, vmpTmin);
-        var imppTmax = pmaxTmax / Math.Max(0.1, vmpTmax);
-
-        // String-Min/Max (Serie: Spannung skaliert mit N, Strom bleibt gleich)
-        var vStringVocMin = nModule * Math.Min(vocTmin, vocTmax);
-        var vStringVocMax = nModule * Math.Max(vocTmin, vocTmax);
-
-        var vStringVmpMin = nModule * Math.Min(vmpTmin, vmpTmax);
-        var vStringVmpMax = nModule * Math.Max(vmpTmin, vmpTmax);
-
-        var iStringScMin = Math.Min(iscTmin, iscTmax);
-        var iStringScMax = Math.Max(iscTmin, iscTmax);
-
-        var iStringImppMin = Math.Min(imppTmin, imppTmax);
-        var iStringImppMax = Math.Max(imppTmin, imppTmax);
-
-        // Gesamtströme am MPPT (Parallelschaltung: Ströme addieren, Spannung bleibt wie String)
-        var iArrayScMin = nStrings * iStringScMin;
-        var iArrayScMax = nStrings * iStringScMax;
-
-        var iArrayImppMin = nStrings * iStringImppMin;
-        var iArrayImppMax = nStrings * iStringImppMax;
-
-        // Prüfungen
-        var messages = new List<string>();
-        bool ok = true;
-
-        // 1) Max. DC-Spannung bei Kälte
-        var vStringVocTmin = nModule * vocTmin;
-        if (vStringVocTmin > vdcMaxEff + 1e-6)
+        for (int i = 0; i < mpptCount; i++)
         {
-            ok = false;
-            var nMaxVoc = (int)Math.Floor(vdcMaxEff / vocTmin);
-            messages.Add($"Überschreitung der max. DC-Spannung: N*VOC(Tmin)={vStringVocTmin:F1} V > {vdcMaxEff:F1} V. Max. Module pro String (Spannungsgrenze): {Math.Max(0, nMaxVoc)}.");
+            var cfg = _stringConfigs.ElementAtOrDefault(i);
+            sb.AppendLine("");
+            sb.AppendLine($"MPPT {i + 1}:");
+
+            if (cfg is null || cfg.SelectedModule is null)
+            {
+                sb.AppendLine("- Kein PV-Modul ausgewählt.");
+                globalOk = false;
+                globalMessages.Add($"MPPT {i + 1}: Bitte PV-Modul auswählen.");
+                continue;
+            }
+
+            var modul = cfg.SelectedModule;
+            var nModule = Math.Max(1, cfg.ModuleProString);
+            var nStrings = Math.Max(1, cfg.ParalleleStrings);
+
+            var vocTmin = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMin);
+            var vocTmax = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMax);
+
+            var vmpTmin = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMin);  // Näherung
+            var vmpTmax = ApplyTempCoeff(modul.SpannungImMppUmppV, modul.TemperaturkoeffVocProzentProGradC, tMax);  // Näherung
+
+            var pmaxTmin = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMin);
+            var pmaxTmax = ApplyTempCoeff(modul.NominalleistungPmaxWp, modul.TemperaturkoeffPmaxProzentProGradC, tMax);
+
+            var iscTmin = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMin);
+            var iscTmax = ApplyTempCoeff(modul.KurzschlusstromIscA, modul.TemperaturkoeffIscProzentProGradC, tMax);
+
+            var imppTmin = pmaxTmin / Math.Max(0.1, vmpTmin);
+            var imppTmax = pmaxTmax / Math.Max(0.1, vmpTmax);
+
+            var vStringVocMin = nModule * Math.Min(vocTmin, vocTmax);
+            var vStringVocMax = nModule * Math.Max(vocTmin, vocTmax);
+
+            var vStringVmpMin = nModule * Math.Min(vmpTmin, vmpTmax);
+            var vStringVmpMax = nModule * Math.Max(vmpTmin, vmpTmax);
+
+            var iStringScMin = Math.Min(iscTmin, iscTmax);
+            var iStringScMax = Math.Max(iscTmin, iscTmax);
+
+            var iStringImppMin = Math.Min(imppTmin, imppTmax);
+            var iStringImppMax = Math.Max(imppTmin, imppTmax);
+
+            var iArrayScMin = nStrings * iStringScMin;
+            var iArrayScMax = nStrings * iStringScMax;
+
+            var iArrayImppMin = nStrings * iStringImppMin;
+            var iArrayImppMax = nStrings * iStringImppMax;
+
+            var messages = new List<string>();
+            bool ok = true;
+
+            var vStringVocTmin = nModule * vocTmin;
+            if (vStringVocTmin > vdcMaxEff + 1e-6)
+            {
+                ok = false;
+                var nMaxVoc = (int)Math.Floor(vdcMaxEff / vocTmin);
+                messages.Add($"Überschreitung der max. DC-Spannung: N*VOC(Tmin)={vStringVocTmin:F1} V > {vdcMaxEff:F1} V. Max. Module/String: {Math.Max(0, nMaxVoc)}.");
+            }
+
+            var vStringVmpTmax = nModule * vmpTmax;
+            var vStringVmpTmin = nModule * vmpTmin;
+            if (vStringVmpTmax < mpptMinEff - 1e-6)
+            {
+                ok = false;
+                var nMinMppt = (int)Math.Ceiling(mpptMinEff / vmpTmax);
+                messages.Add($"Unterschreitung MPPT-Untergrenze bei heiß: N*VMPP(Tmax)={vStringVmpTmax:F1} V < {mpptMinEff:F1} V. Min. Module/String: {Math.Max(1, nMinMppt)}.");
+            }
+            if (vStringVmpTmin > mpptMaxEff + 1e-6)
+            {
+                ok = false;
+                var nMaxMppt = (int)Math.Floor(mpptMaxEff / vmpTmin);
+                messages.Add($"Überschreitung MPPT-Obergrenze bei kalt: N*VMPP(Tmin)={vStringVmpTmin:F1} V > {mpptMaxEff:F1} V. Max. Module/String: {Math.Max(0, nMaxMppt)}.");
+            }
+
+            if (vStringVmpTmax < vStartEff - 1e-6)
+            {
+                ok = false;
+                var nMinStart = (int)Math.Ceiling(vStartEff / vmpTmax);
+                messages.Add($"Startspannung nicht erreicht: N*VMPP(Tmax)={vStringVmpTmax:F1} V < {vStartEff:F1} V. Min. Module/String: {Math.Max(1, nMinStart)}.");
+            }
+
+            var iTotalIsc = nStrings * iscTmax;
+            var iTotalImpp = nStrings * imppTmax;
+
+            if (iTotalIsc > iScMaxEff + 1e-6)
+            {
+                ok = false;
+                var sMaxIscViol = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
+                messages.Add($"Kurzschlussstrom-Grenze überschritten: {iTotalIsc:F2} A > {iScMaxEff:F2} A. Max. parallele Strings (ISC): {Math.Max(0, sMaxIscViol)}.");
+            }
+            if (iTotalImpp > iInMaxEff + 1e-6)
+            {
+                ok = false;
+                var sMaxImppViol = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
+                messages.Add($"Eingangsstrom-Grenze überschritten: {iTotalImpp:F2} A > {iInMaxEff:F2} A. Max. parallele Strings (IMPP): {Math.Max(0, sMaxImppViol)}.");
+            }
+
+            if (_selectedInverter.MaxStringsProMppt > 0 && nStrings > _selectedInverter.MaxStringsProMppt)
+            {
+                ok = false;
+                messages.Add($"Max. Strings/MPPT überschritten: {nStrings} > {_selectedInverter.MaxStringsProMppt}. Bitte reduzieren.");
+            }
+
+            var pStringMax = nModule * pmaxTmin;
+            var pTotal = nStrings * pStringMax;
+            if (pTotal > pDcPerMpptEff + 1e-6)
+            {
+                ok = false;
+                var sMaxPowerViol = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
+                messages.Add($"DC-Leistungsgrenze überschritten: {pTotal:F0} W > {pDcPerMpptEff:F0} W pro MPPT. Max. parallele Strings (Leistung): {Math.Max(0, sMaxPowerViol)}.");
+            }
+
+            var nMaxFromVoc = (int)Math.Floor(vdcMaxEff / vocTmin);
+            var nMinFromMppt = (int)Math.Ceiling(mpptMinEff / vmpTmax);
+            var nMaxFromMppt = (int)Math.Floor(mpptMaxEff / vmpTmin);
+            var nMinFromStart = (int)Math.Ceiling(vStartEff / vmpTmax);
+
+            var nLower = Math.Max(1, Math.Max(nMinFromMppt, nMinFromStart));
+            var nUpper = Math.Min(nMaxFromVoc, nMaxFromMppt);
+
+            var sMaxIscAllowed = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
+            var sMaxImppAllowed = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
+            var sMaxPowerAllowed = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
+            var sMaxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
+            var sUpper = new[] { sMaxIscAllowed, sMaxImppAllowed, sMaxPowerAllowed, sMaxBySpec }
+                         .Where(x => x > 0)
+                         .DefaultIfEmpty(0)
+                         .Min();
+
+            sb.AppendLine($"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp)");
+            sb.AppendLine($"- Einstellungen: Module/String={nModule}, Parallele Strings={nStrings}");
+            sb.AppendLine($"- String-Spannung OC: min={vStringVocMin:F1} V, max={vStringVocMax:F1} V");
+            sb.AppendLine($"- String-Spannung MPP: min={vStringVmpMin:F1} V, max={vStringVmpMax:F1} V");
+            sb.AppendLine($"- String-Ströme ISC: min={iStringScMin:F2} A, max={iStringScMax:F2} A");
+            sb.AppendLine($"- String-Ströme IMPP: min={iStringImppMin:F2} A, max={iStringImppMax:F2} A");
+            sb.AppendLine($"- PV-Leistung geschätzt (kalt, pro MPPT): {pTotal:F0} W");
+            sb.AppendLine($"- Zulässige Module/String: {(nLower <= nUpper ? $"{nLower} … {nUpper}" : "kein gültiger Bereich")}");
+            sb.AppendLine($"- Zulässige parallele Strings/MPPT: {(sUpper > 0 ? $"bis {sUpper}" : "0")}");
+
+            if (!ok)
+            {
+                globalOk = false;
+                foreach (var msg in messages) globalMessages.Add($"MPPT {i + 1}: {msg}");
+                sb.AppendLine("Hinweise:");
+                foreach (var msg in messages) sb.AppendLine($"  - {msg}");
+            }
         }
 
-        // 2) MPPT-Bereich (untere Grenze bei heiß, obere bei kalt)
-        var vStringVmpTmax = nModule * vmpTmax;
-        var vStringVmpTmin = nModule * vmpTmin;
-        if (vStringVmpTmax < mpptMinEff - 1e-6)
+        sb.AppendLine("");
+        sb.AppendLine($"Prüfergebnis: {(globalOk ? "Alle Bedingungen erfüllt." : "Einschränkungen/Verstöße vorhanden.")}");
+        if (!globalOk && globalMessages.Count > 0)
         {
-            ok = false;
-            var nMinMppt = (int)Math.Ceiling(mpptMinEff / vmpTmax);
-            messages.Add($"Unterschreitung MPPT-Untergrenze bei heiß: N*VMPP(Tmax)={vStringVmpTmax:F1} V < {mpptMinEff:F1} V. Min. Module pro String: {Math.Max(1, nMinMppt)}.");
-        }
-        if (vStringVmpTmin > mpptMaxEff + 1e-6)
-        {
-            ok = false;
-            var nMaxMppt = (int)Math.Floor(mpptMaxEff / vmpTmin);
-            messages.Add($"Überschreitung MPPT-Obergrenze bei kalt: N*VMPP(Tmin)={vStringVmpTmin:F1} V > {mpptMaxEff:F1} V. Max. Module pro String: {Math.Max(0, nMaxMppt)}.");
+            sb.AppendLine("Gesamthinweise:");
+            foreach (var gm in globalMessages) sb.AppendLine($"- {gm}");
         }
 
-        // 3) Startspannung (kritisch bei heiß)
-        if (vStringVmpTmax < vStartEff - 1e-6)
-        {
-            ok = false;
-            var nMinStart = (int)Math.Ceiling(vStartEff / vmpTmax);
-            messages.Add($"Startspannung nicht erreicht: N*VMPP(Tmax)={vStringVmpTmax:F1} V < {vStartEff:F1} V. Min. Module pro String für Start: {Math.Max(1, nMinStart)}.");
-        }
+        ResultsOutput.Text = sb.ToString();
 
-        // 4) Stromgrenzen je MPPT
-        var iTotalIsc = nStrings * iscTmax;
-        var iTotalImpp = nStrings * imppTmax;
-
-        if (iTotalIsc > iScMaxEff + 1e-6)
-        {
-            ok = false;
-            var sMaxIscViol = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
-            messages.Add($"Kurzschlussstrom-Grenze überschritten: {iTotalIsc:F2} A > {iScMaxEff:F2} A. Max. parallele Strings (ISC): {Math.Max(0, sMaxIscViol)}.");
-        }
-        if (iTotalImpp > iInMaxEff + 1e-6)
-        {
-            ok = false;
-            var sMaxImppViol = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
-            messages.Add($"Eingangsstrom-Grenze überschritten: {iTotalImpp:F2} A > {iInMaxEff:F2} A. Max. parallele Strings (IMPP): {Math.Max(0, sMaxImppViol)}.");
-        }
-
-        // 5) Max. Strings pro MPPT (herstellerseitig)
-        if (wr.MaxStringsProMppt > 0 && nStrings > wr.MaxStringsProMppt)
-        {
-            ok = false;
-            messages.Add($"Max. Strings/MPPT überschritten: {nStrings} > {wr.MaxStringsProMppt}. Bitte reduzieren.");
-        }
-
-        // 6) DC-Leistungsgrenze pro MPPT
-        var pStringMax = nModule * pmaxTmin;
-        var pTotal = nStrings * pStringMax;
-        if (pTotal > pDcPerMpptEff + 1e-6)
-        {
-            ok = false;
-            var sMaxPowerViol = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
-            messages.Add($"DC-Leistungsgrenze überschritten: {pTotal:F0} W > {pDcPerMpptEff:F0} W pro MPPT. Max. parallele Strings (Leistung): {Math.Max(0, sMaxPowerViol)}.");
-        }
-
-        // Empfehlung: zulässiger N-Bereich aus Grenzwerten
-        var nMaxFromVoc = (int)Math.Floor(vdcMaxEff / vocTmin);
-        var nMinFromMppt = (int)Math.Ceiling(mpptMinEff / vmpTmax);
-        var nMaxFromMppt = (int)Math.Floor(mpptMaxEff / vmpTmin);
-        var nMinFromStart = (int)Math.Ceiling(vStartEff / vmpTmax);
-
-        var nLower = Math.Max(1, Math.Max(nMinFromMppt, nMinFromStart));
-        var nUpper = Math.Min(nMaxFromVoc, nMaxFromMppt);
-
-        // Empfehlung für Strings (einmal zentral berechnen, andere Namen verwenden)
-        var sMaxIscAllowed = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
-        var sMaxImppAllowed = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
-        var sMaxPowerAllowed = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
-        var sMaxBySpec = wr.MaxStringsProMppt > 0 ? wr.MaxStringsProMppt : int.MaxValue;
-        var sUpper = new[] { sMaxIscAllowed, sMaxImppAllowed, sMaxPowerAllowed, sMaxBySpec }
-                     .Where(x => x > 0)
-                     .DefaultIfEmpty(0)
-                     .Min();
-
-        // Ergebnistext
-        var summary =
-            $"Auswahl:" + Environment.NewLine +
-            $"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp, UMPP={modul.SpannungImMppUmppV:F2} V, IMPP={modul.StromImMppImppA:F2} A, UOC={modul.LeerlaufspannungUocV:F2} V, ISC={modul.KurzschlusstromIscA:F2} A)" + Environment.NewLine +
-            $"- WR: {wr.Hersteller} {wr.Model} (Vdc_max={wr.MaxDcEingangsspannungV} V, Start={wr.StartspannungV} V, MPPT={wr.MpptSpannungsbereichV} V, I_in_max={wr.MaxBetriebsPvEingangsstromA} A, I_sc_max={wr.MaxEingangsKurzschlussstromA} A, MPPTs={wr.AnzahlDerMpptTrackers}, Max Strings/MPPT={wr.MaxStringsProMppt})" + Environment.NewLine +
-            $"Parameter: Tmin={tMin} °C, Tmax={tMax} °C, Sicherheitsmarge={marginPct} %, Module/String={nModule}, Parallele Strings={nStrings}" + Environment.NewLine +
-            $"Abgeleitete Werte (pro String):" + Environment.NewLine +
-            $"- Spannung OC (Leerlauf): min={vStringVocMin:F1} V, max={vStringVocMax:F1} V" + Environment.NewLine +
-            $"- Spannung MPP: min={vStringVmpMin:F1} V, max={vStringVmpMax:F1} V" + Environment.NewLine +
-            $"- Strom ISC: min={iStringScMin:F2} A, max={iStringScMax:F2} A" + Environment.NewLine +
-            $"- Strom IMPP: min={iStringImppMin:F2} A, max={iStringImppMax:F2} A" + Environment.NewLine +
-            $"- PV Leistung Total: {pTotal:F2} W" + Environment.NewLine +
-            $"Gesamtströme am MPPT (parallele Strings):" + Environment.NewLine +
-            $"- ISC gesamt: min={iArrayScMin:F2} A, max={iArrayScMax:F2} A" + Environment.NewLine +
-            $"- IMPP gesamt: min={iArrayImppMin:F2} A, max={iArrayImppMax:F2} A" + Environment.NewLine +
-            $"Hinweis: Bei parallelen Strings ist die Arrayspannung identisch zur Stringspannung." + Environment.NewLine +
-            $"- Effektive Grenzen (mit Sicherheitsmarge): Vdc_max={vdcMaxEff:F1} V, MPPT={mpptMinEff:F1}–{mpptMaxEff:F1} V, Start={vStartEff:F1} V, I_in_max={iInMaxEff:F2} A, I_sc_max={iScMaxEff:F2} A, Pdc_MPPT={pDcPerMpptEff:F0} W" + Environment.NewLine +
-            $"Prüfergebnis: {(ok ? "Alle Bedingungen erfüllt." : "Einschränkungen/Verstöße vorhanden.")}" + Environment.NewLine;
-
-        if (!ok)
-        {
-            summary += "Hinweise:" + Environment.NewLine + string.Join(Environment.NewLine, messages);
-        }
-
-        // Empfehlung für N und Strings
-        if (nLower <= nUpper)
-            summary += Environment.NewLine + $"Empfohlener Bereich Module/String: {nLower} … {nUpper}";
-        else
-            summary += Environment.NewLine + "Kein zulässiger Bereich für Module/String unter den aktuellen Parametern.";
-
-        if (sUpper > 0)
-            summary += Environment.NewLine + $"Zulässige maximale parallele Strings/MPPT: bis {sUpper}";
-        else
-            summary += Environment.NewLine + "Keine parallelen Strings zulässig (unter aktuellen Parametern).";
-
-        StringCalcOutput.Text = summary;
-
-        _logger.LogInformation("String-Berechnung abgeschlossen. OK={Ok}, N={N}, S={S}.", ok, nModule, nStrings);
-        if (!ok)
-            _logger.LogWarning("Einschränkungen: {Messages}", string.Join(" | ", messages));
-        _logger.LogDebug("Details: VOCmin={VocMin:F2}, VMPPmin={VmpMin:F2}, VMPPmax={VmpMax:F2}, ISCmax={IscMax:F2}, IMPPmax={ImppMax:F2}",
-            vocTmin, vmpTmin, vmpTmax, iscTmax, imppTmax);
+        _logger.LogInformation("String-Berechnung aktualisiert. OK={Ok}.", globalOk);
+        if (!globalOk)
+            _logger.LogWarning("Einschränkungen: {Messages}", string.Join(" | ", globalMessages));
     }
+
+    #endregion
 }
