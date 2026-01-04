@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         if (_selectedInverter is null)
         {
             InverterSummaryText.Text = "Kein Wechselrichter ausgewählt.";
+            SelectInverterButton.Content = "Wechselrichter auswählen";
             StringsCard.Visibility = System.Windows.Visibility.Collapsed;
             ResultsOutput.Text = "Keine Berechnung vorhanden.";
         }
@@ -117,7 +118,7 @@ public partial class MainWindow : Window
             var cfg = new StringConfiguration { MpptIndex = i + 1, ModuleProString = 10, ParalleleStrings = 1, IsEnabled = true };
             _stringConfigs.Add(cfg);
 
-            var card = new MaterialDesignThemes.Wpf.Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
+            var card = new Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
             var sp = new StackPanel { Orientation = Orientation.Vertical };
             card.Content = sp;
 
@@ -128,8 +129,8 @@ public partial class MainWindow : Window
             DockPanel.SetDock(title, Dock.Left);
             header.Children.Add(title);
 
-            var rightPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            DockPanel.SetDock(rightPanel, Dock.Right);
+            var rightHeaderPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            DockPanel.SetDock(rightHeaderPanel, Dock.Right);
 
             var toggle = new System.Windows.Controls.Primitives.ToggleButton
             {
@@ -154,22 +155,26 @@ public partial class MainWindow : Window
                 PersistLastSelection();
                 Recalculate();
             };
-            rightPanel.Children.Add(toggle);
+            rightHeaderPanel.Children.Add(toggle);
 
             var btnSelect = new Button { Content = "PV-Modul auswählen", Margin = new Thickness(8, 0, 0, 0) };
             btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
-            rightPanel.Children.Add(btnSelect);
+            rightHeaderPanel.Children.Add(btnSelect);
 
-            header.Children.Add(rightPanel);
+            var btnRemove = new Button { Content = "Modul entfernen", Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+            btnRemove.Click += (s, e) => OnRemoveModuleForMppt(cfg, sp);
+            rightHeaderPanel.Children.Add(btnRemove);
+
+            header.Children.Add(rightHeaderPanel);
             sp.Children.Add(header);
 
             // Zusammenfassungstext
             var summary = new TextBlock { Text = "Kein PV-Modul ausgewählt.", Margin = new Thickness(0, 6, 0, 8) };
             sp.Children.Add(summary);
 
-            // Raster für Slider
+            // Raster für Slider (3/4 links, 1/4 rechts)
             var grid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             // Linke Spalte: Slider für Module pro String
@@ -178,9 +183,10 @@ public partial class MainWindow : Window
             var nSlider = new Slider
             {
                 Minimum = 1,
-                Maximum = 30, // Platzhalter, wird nach Berechnung dynamisch gesetzt
+                Maximum = 30, // initial, wird nach Berechnung gesetzt
                 TickFrequency = 1,
-                IsSnapToTickEnabled = true
+                IsSnapToTickEnabled = true,
+                IsSelectionRangeEnabled = false
             };
             try
             {
@@ -193,7 +199,7 @@ public partial class MainWindow : Window
             {
                 if (_suppressSliderEvents) return;
                 var val = (int)Math.Round(nSlider.Value);
-                if (val <= 0) val = 1;
+                if (val < 1) val = 1;
                 cfg.ModuleProString = val;
                 PersistLastSelection();
                 Recalculate();
@@ -204,10 +210,11 @@ public partial class MainWindow : Window
             // Rechte Spalte: Slider für parallele Strings
             var rightPanel2 = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 0, 0) };
             var lblS = new TextBlock { Text = "Anzahl paralleler Strings" };
+            var specMaxStrings = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10;
             var sSlider = new Slider
             {
                 Minimum = 1,
-                Maximum = Math.Max(1, _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10),
+                Maximum = Math.Max(1, specMaxStrings),
                 TickFrequency = 1,
                 IsSnapToTickEnabled = true
             };
@@ -222,7 +229,7 @@ public partial class MainWindow : Window
             {
                 if (_suppressSliderEvents) return;
                 var val = (int)Math.Round(sSlider.Value);
-                if (val <= 0) val = 1;
+                if (val < 1) val = 1;
                 var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
                 if (maxBySpec > 0 && val > maxBySpec) val = maxBySpec;
                 cfg.ParalleleStrings = val;
@@ -243,6 +250,8 @@ public partial class MainWindow : Window
             {
                 SummaryText = summary,
                 Toggle = toggle,
+                SelectButton = btnSelect,
+                RemoveButton = btnRemove,
                 NSlider = nSlider,
                 SSlider = sSlider
             };
@@ -258,6 +267,8 @@ public partial class MainWindow : Window
     {
         public TextBlock SummaryText { get; set; } = new TextBlock();
         public System.Windows.Controls.Primitives.ToggleButton Toggle { get; set; } = new System.Windows.Controls.Primitives.ToggleButton();
+        public Button SelectButton { get; set; } = new Button();
+        public Button RemoveButton { get; set; } = new Button();
         public Slider NSlider { get; set; } = new Slider();
         public Slider SSlider { get; set; } = new Slider();
     }
@@ -278,6 +289,10 @@ public partial class MainWindow : Window
                 refs.SummaryText.Text = cfg.SelectedModule is null
                     ? "Kein PV-Modul ausgewählt."
                     : $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
+
+                // Button-Texte/Enablement anpassen
+                refs.SelectButton.Content = cfg.SelectedModule is null ? "PV-Modul auswählen" : "PV-Modul ändern";
+                refs.RemoveButton.IsEnabled = cfg.SelectedModule is not null;
             }
         }
     }
@@ -298,6 +313,7 @@ public partial class MainWindow : Window
                 _selectedInverter = win.Selected;
                 InverterSummaryText.Text =
                     $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | Vdc_max={_selectedInverter.MaxDcEingangsspannungV} V, Start={_selectedInverter.StartspannungV} V, MPPT={_selectedInverter.MpptSpannungsbereichV} V, I_in_max={_selectedInverter.MaxBetriebsPvEingangsstromA} A, I_sc_max={_selectedInverter.MaxEingangsKurzschlussstromA} A, MPPTs={_selectedInverter.AnzahlDerMpptTrackers}, Max Strings/MPPT={_selectedInverter.MaxStringsProMppt}";
+                SelectInverterButton.Content = "Wechselrichter ändern";
 
                 _logger.LogInformation("Wechselrichter übernommen: {Hersteller} {Model}.", _selectedInverter.Hersteller, _selectedInverter.Model);
 
@@ -328,6 +344,8 @@ public partial class MainWindow : Window
                 if (container.Tag is MpptUiRefs refs)
                 {
                     refs.SummaryText.Text = $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
+                    refs.SelectButton.Content = "PV-Modul ändern";
+                    refs.RemoveButton.IsEnabled = true;
                 }
 
                 _logger.LogInformation("PV-Modul für MPPT {Mppt} übernommen: {Hersteller} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Hersteller, cfg.SelectedModule.Model);
@@ -339,6 +357,43 @@ public partial class MainWindow : Window
         {
             _logger.LogError(ex, "Fehler beim Öffnen der Modul-Auswahl.");
             MessageBox.Show("Fehler bei der Modul-Auswahl. Details siehe Log.", "Fehler",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OnRemoveModuleForMppt(StringConfiguration cfg, StackPanel container)
+    {
+        try
+        {
+            cfg.SelectedModule = null;
+
+            if (container.Tag is MpptUiRefs refs)
+            {
+                refs.SummaryText.Text = "Kein PV-Modul ausgewählt.";
+                refs.SelectButton.Content = "PV-Modul auswählen";
+                refs.RemoveButton.IsEnabled = false;
+
+                // Slider zurücksetzen (Module: 1..30, Markierung aus)
+                _suppressSliderEvents = true;
+                refs.NSlider.Minimum = 1;
+                refs.NSlider.Maximum = 30;
+                refs.NSlider.IsSelectionRangeEnabled = false;
+                refs.NSlider.Value = Math.Max(1, cfg.ModuleProString);
+                // Strings-Slider bleibt nach WR-Spezifikation
+                var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? 10;
+                refs.SSlider.Minimum = 1;
+                refs.SSlider.Maximum = Math.Max(1, maxBySpec);
+                refs.SSlider.Value = Math.Max(1, Math.Min(cfg.ParalleleStrings, (int)refs.SSlider.Maximum));
+                _suppressSliderEvents = false;
+            }
+
+            PersistLastSelection();
+            Recalculate();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Entfernen des Moduls.");
+            MessageBox.Show("Fehler beim Entfernen des Moduls. Details siehe Log.", "Fehler",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -397,6 +452,7 @@ public partial class MainWindow : Window
             _selectedInverter = wr;
             InverterSummaryText.Text =
                 $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | Vdc_max={_selectedInverter.MaxDcEingangsspannungV} V, Start={_selectedInverter.StartspannungV} V, MPPT={_selectedInverter.MpptSpannungsbereichV} V, I_in_max={_selectedInverter.MaxBetriebsPvEingangsstromA} A, I_sc_max={_selectedInverter.MaxEingangsKurzschlussstromA} A, MPPTs={_selectedInverter.AnzahlDerMpptTrackers}, Max Strings/MPPT={_selectedInverter.MaxStringsProMppt}";
+            SelectInverterButton.Content = "Wechselrichter ändern";
 
             BuildStringsUi();
 
@@ -514,7 +570,7 @@ public partial class MainWindow : Window
         bool globalOk = true;
         var globalMessages = new List<string>();
 
-        _suppressSliderEvents = true; // UI-Update ohne Re-Entrancy
+        _suppressSliderEvents = true;
 
         for (int i = 0; i < mpptCount; i++)
         {
@@ -526,7 +582,7 @@ public partial class MainWindow : Window
             MpptUiRefs? refs = null;
             if (StringsPanel.Children.Count > i)
             {
-                var card = StringsPanel.Children[i] as MaterialDesignThemes.Wpf.Card;
+                var card = StringsPanel.Children[i] as Card;
                 var sp = card?.Content as StackPanel;
                 refs = sp?.Tag as MpptUiRefs;
             }
@@ -538,15 +594,14 @@ public partial class MainWindow : Window
             }
 
             // Toggle-Status auf UI spiegeln
-            if (refs?.Toggle is not null)
-                refs.Toggle.IsChecked = cfg.IsEnabled;
+            if (refs?.Toggle is not null) refs.Toggle.IsChecked = cfg.IsEnabled;
 
             if (!cfg.IsEnabled)
             {
                 sb.AppendLine("- Deaktiviert: MPPT wird in der Berechnung ausgelassen.");
                 // Slider deaktivieren
-                if (refs?.NSlider is not null) { refs.NSlider.IsEnabled = false; }
-                if (refs?.SSlider is not null) { refs.SSlider.IsEnabled = false; }
+                if (refs?.NSlider is not null) refs.NSlider.IsEnabled = false;
+                if (refs?.SSlider is not null) refs.SSlider.IsEnabled = false;
                 continue;
             }
 
@@ -560,19 +615,22 @@ public partial class MainWindow : Window
                 globalOk = false;
                 globalMessages.Add($"MPPT {i + 1}: Bitte PV-Modul auswählen.");
 
-                // Wenn kein Modul gewählt ist: N-Slider nur minimal bedienbar
+                // Module-Slider: 1..30, keine Markierung
                 if (refs?.NSlider is not null)
                 {
                     refs.NSlider.Minimum = 1;
-                    refs.NSlider.Maximum = 1;
-                    refs.NSlider.Value = 1;
+                    refs.NSlider.Maximum = 30;
+                    refs.NSlider.IsSelectionRangeEnabled = false;
+                    if (cfg.ModuleProString < 1) cfg.ModuleProString = 1;
+                    if (cfg.ModuleProString > refs.NSlider.Maximum) cfg.ModuleProString = (int)refs.NSlider.Maximum;
+                    refs.NSlider.Value = cfg.ModuleProString;
                 }
-                // S-Slider auf Spezifikation begrenzen
+                // Strings-Slider: 1..Spezifikation
                 if (refs?.SSlider is not null)
                 {
-                    var maxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 1;
+                    var specMax = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10;
                     refs.SSlider.Minimum = 1;
-                    refs.SSlider.Maximum = Math.Max(1, maxBySpec);
+                    refs.SSlider.Maximum = Math.Max(1, specMax);
                     if (cfg.ParalleleStrings < 1) cfg.ParalleleStrings = 1;
                     if (cfg.ParalleleStrings > refs.SSlider.Maximum) cfg.ParalleleStrings = (int)refs.SSlider.Maximum;
                     refs.SSlider.Value = cfg.ParalleleStrings;
@@ -660,13 +718,13 @@ public partial class MainWindow : Window
             {
                 ok = false;
                 var sMaxIscViol = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
-                messages.Add($"Kurzschlussstrom-Grenze überschritten: {iTotalIsc:F2} A > {iScMaxEff:F2} A. Max. parallele Strings (ISC): {Math.Max(0, sMaxIscViol)}.");
+                messages.Add($"Kurzschlussstrom-Grenze überschritten: {iTotalIsc:F2} A > {iScMaxEff:F2} A. Empfehlung: parallele Strings reduzieren (max. {Math.Max(0, sMaxIscViol)}).");
             }
             if (iTotalImpp > iInMaxEff + 1e-6)
             {
                 ok = false;
                 var sMaxImppViol = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
-                messages.Add($"Eingangsstrom-Grenze überschritten: {iTotalImpp:F2} A > {iInMaxEff:F2} A. Max. parallele Strings (IMPP): {Math.Max(0, sMaxImppViol)}.");
+                messages.Add($"Eingangsstrom-Grenze überschritten: {iTotalImpp:F2} A > {iInMaxEff:F2} A. Empfehlung: parallele Strings reduzieren (max. {Math.Max(0, sMaxImppViol)}).");
             }
 
             if (_selectedInverter.MaxStringsProMppt > 0 && nStrings > _selectedInverter.MaxStringsProMppt)
@@ -681,7 +739,7 @@ public partial class MainWindow : Window
             {
                 ok = false;
                 var sMaxPowerViol = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
-                messages.Add($"DC-Leistungsgrenze überschritten: {pTotal:F0} W > {pDcPerMpptEff:F0} W pro MPPT. Max. parallele Strings (Leistung): {Math.Max(0, sMaxPowerViol)}.");
+                messages.Add($"DC-Leistungsgrenze überschritten: {pTotal:F0} W > {pDcPerMpptEff:F0} W pro MPPT. Empfehlung: parallele Strings reduzieren (max. {Math.Max(0, sMaxPowerViol)}).");
             }
 
             // Zulässige Bereiche berechnen
@@ -693,44 +751,38 @@ public partial class MainWindow : Window
             var nLower = Math.Max(1, Math.Max(nMinFromMppt, nMinFromStart));
             var nUpper = Math.Min(nMaxFromVoc, nMaxFromMppt);
 
-            var sMaxIscAllowed = (int)Math.Floor(iScMaxEff / Math.Max(0.001, iscTmax));
-            var sMaxImppAllowed = (int)Math.Floor(iInMaxEff / Math.Max(0.001, imppTmax));
-            var sMaxPowerAllowed = (int)Math.Floor(pDcPerMpptEff / Math.Max(1.0, pStringMax));
-            var sMaxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
-            var sUpper = new[] { sMaxIscAllowed, sMaxImppAllowed, sMaxPowerAllowed, sMaxBySpec }
-                         .Where(x => x > 0)
-                         .DefaultIfEmpty(1)
-                         .Min();
-
-            // Slider-Grenzen aktualisieren
+            // Slider-Grenzen für Module: fest 1 .. (nUpper + 5)
             if (refs?.NSlider is not null)
             {
-                if (nLower <= nUpper)
+                var sliderMax = nUpper >= 1 ? nUpper + 5 : 30;
+                refs.NSlider.Minimum = 1;
+                refs.NSlider.Maximum = Math.Max(1, sliderMax);
+                // Markierung des zulässigen Bereichs
+                if (nLower <= nUpper && nUpper >= 1)
                 {
-                    refs.NSlider.Minimum = nLower;
-                    refs.NSlider.Maximum = nUpper;
-                    if (cfg.ModuleProString < nLower) cfg.ModuleProString = nLower;
-                    if (cfg.ModuleProString > nUpper) cfg.ModuleProString = nUpper;
-                    refs.NSlider.Value = cfg.ModuleProString;
-                    refs.NSlider.IsEnabled = true;
+                    refs.NSlider.IsSelectionRangeEnabled = true;
+                    refs.NSlider.SelectionStart = nLower;
+                    refs.NSlider.SelectionEnd = nUpper;
                 }
                 else
                 {
-                    refs.NSlider.Minimum = 1;
-                    refs.NSlider.Maximum = 1;
-                    refs.NSlider.Value = 1;
-                    refs.NSlider.IsEnabled = false;
+                    refs.NSlider.IsSelectionRangeEnabled = false;
                 }
+                // Wert nur innerhalb des Sliderbereichs halten (kein Clamp auf zulässigen Bereich)
+                if (cfg.ModuleProString < 1) cfg.ModuleProString = 1;
+                if (cfg.ModuleProString > refs.NSlider.Maximum) cfg.ModuleProString = (int)refs.NSlider.Maximum;
+                refs.NSlider.Value = cfg.ModuleProString;
             }
+
+            // Slider-Grenzen für Strings: fest 1 .. Spezifikation (WR)
             if (refs?.SSlider is not null)
             {
-                var sMax = Math.Max(1, sUpper);
+                var specMax = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10;
                 refs.SSlider.Minimum = 1;
-                refs.SSlider.Maximum = sMax;
+                refs.SSlider.Maximum = Math.Max(1, specMax);
                 if (cfg.ParalleleStrings < 1) cfg.ParalleleStrings = 1;
-                if (cfg.ParalleleStrings > sMax) cfg.ParalleleStrings = sMax;
+                if (cfg.ParalleleStrings > refs.SSlider.Maximum) cfg.ParalleleStrings = (int)refs.SSlider.Maximum;
                 refs.SSlider.Value = cfg.ParalleleStrings;
-                refs.SSlider.IsEnabled = sMax > 0;
             }
 
             // Ausgabe
@@ -742,7 +794,7 @@ public partial class MainWindow : Window
             sb.AppendLine($"- String-Ströme IMPP: min={iStringImppMin:F2} A, max={iStringImppMax:F2} A");
             sb.AppendLine($"- PV-Leistung geschätzt (kalt, pro MPPT): {pTotal:F0} W");
             sb.AppendLine($"- Zulässige Module/String: {(nLower <= nUpper ? $"{nLower} … {nUpper}" : "kein gültiger Bereich")}");
-            sb.AppendLine($"- Zulässige parallele Strings/MPPT: {(sUpper > 0 ? $"bis {sUpper}" : "0")}");
+            sb.AppendLine($"- Zulässige parallele Strings/MPPT (Herstellerangabe): {(_selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt.ToString() : "n/a")}");
 
             if (!ok)
             {
@@ -930,11 +982,11 @@ public partial class MainWindow : Window
             var sMaxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
             var sUpper = new[] { sMaxIscAllowed, sMaxImppAllowed, sMaxPowerAllowed, sMaxBySpec }
                          .Where(x => x > 0)
-                         .DefaultIfEmpty(0)
+                         .DefaultIfEmpty(1)
                          .Min();
 
             md.AppendLine($"- Zulässige Module/String: {(nLower <= nUpper ? $"{nLower} … {nUpper}" : "kein gültiger Bereich")}");
-            md.AppendLine($"- Zulässige parallele Strings/MPPT: {(sUpper > 0 ? $"bis {sUpper}" : "0")}");
+            md.AppendLine($"- Zulässige parallele Strings/MPPT (Herstellerangabe): {(_selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt.ToString() : "n/a")}");
             md.AppendLine();
 
             md.AppendLine("### Detail-Hinweise");

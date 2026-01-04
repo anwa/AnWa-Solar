@@ -9,6 +9,10 @@ Unveröffentlich
 - Verbesserung: Sofortige Aktualisierung der Slider-Bereiche bei jeder Änderung von WR, Modulen und Parametern.
 - Neu: Der Aktivierungsstatus (Toggle) pro MPPT wird in appsettings.json gespeichert und beim Start automatisch wiederhergestellt.
 - Verbesserung: Komfortsteigerung beim Arbeiten mit temporär deaktivierten Strings ohne Datenverlust.
+- Verbesserung: „Anzahl Module“ belegt 3/4 der Breite, „Anzahl paralleler Strings“ 1/4 für bessere Bedienbarkeit.
+- Neu: Slider „Anzahl Module“ mit fester Grenzen 1..(zulässiges Max + 5) und Markierung des zulässigen Bereichs (SelectionStart/End).
+- Neu: Buttontexte passen sich dem Zustand an („PV-Modul auswählen“ → „PV-Modul ändern“), zusätzlich „Modul entfernen“ pro MPPT.
+- Verbesserung: Wechselrichter-Button passt sich nach Auswahl zu „Wechselrichter ändern“ an.
 
 v0.1.2
 - Neu: Bericht-Tab mit automatisch erzeugtem Markdown-Bericht, umschaltbar zwischen Markdown-Quelle und HTML-Vorschau.

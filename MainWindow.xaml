@@ -34,7 +34,8 @@
                                                    FontWeight="Bold"
                                                    FontSize="16"
                                                    DockPanel.Dock="Left" />
-                                        <Button Content="Wechselrichter auswählen"
+                                        <Button x:Name="SelectInverterButton"
+                                                Content="Wechselrichter auswählen"
                                                 DockPanel.Dock="Right"
                                                 Click="OnSelectInverterClick"
                                                 Margin="8,0,0,0" />
