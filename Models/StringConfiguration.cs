@@ -12,4 +12,7 @@ public class StringConfiguration
     public int ModuleProString { get; set; } = 10;
 
     public int ParalleleStrings { get; set; } = 1;
+
+    // Aktivierungszustand des Strings; bei false wird der String in der Berechnung übersprungen
+    public bool IsEnabled { get; set; } = true;
 }

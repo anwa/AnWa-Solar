@@ -31,6 +31,9 @@ public partial class MainWindow : Window
     private string _reportMarkdown = string.Empty;
     private bool _reportPreviewMode = false;
 
+    // Unterdrückung für Slider-Events bei programmatischen Updates
+    private bool _suppressSliderEvents = false;
+
     #endregion
 
     #region Konstruktor
@@ -111,113 +114,138 @@ public partial class MainWindow : Window
 
         for (int i = 0; i < mpptCount; i++)
         {
-            var cfg = new StringConfiguration { MpptIndex = i + 1, ModuleProString = 10, ParalleleStrings = 1 };
+            var cfg = new StringConfiguration { MpptIndex = i + 1, ModuleProString = 10, ParalleleStrings = 1, IsEnabled = true };
             _stringConfigs.Add(cfg);
 
-            var card = new Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
+            var card = new MaterialDesignThemes.Wpf.Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
             var sp = new StackPanel { Orientation = Orientation.Vertical };
             card.Content = sp;
 
+            // Kopfzeile: Titel links, Toggle + Modul-Auswahl rechts
             var header = new DockPanel();
+
             var title = new TextBlock { Text = $"MPPT {cfg.MpptIndex}", FontWeight = FontWeights.Bold, FontSize = 14 };
+            DockPanel.SetDock(title, Dock.Left);
             header.Children.Add(title);
 
-            var btnSelect = new Button { Content = "PV-Modul auswählen", Margin = new Thickness(8, 0, 0, 0), HorizontalAlignment = HorizontalAlignment.Right };
-            btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
-            header.Children.Add(btnSelect);
+            var rightPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            DockPanel.SetDock(rightPanel, Dock.Right);
 
+            var toggle = new System.Windows.Controls.Primitives.ToggleButton
+            {
+                IsChecked = true,
+                ToolTip = "String aktivieren/deaktivieren"
+            };
+            try
+            {
+                var style = FindResource("MaterialDesignSwitchLightToggleButton") as Style;
+                if (style is not null) toggle.Style = style;
+            }
+            catch { /* Style optional */ }
+            toggle.Checked += (s, e) =>
+            {
+                cfg.IsEnabled = true;
+                PersistLastSelection();
+                Recalculate();
+            };
+            toggle.Unchecked += (s, e) =>
+            {
+                cfg.IsEnabled = false;
+                PersistLastSelection();
+                Recalculate();
+            };
+            rightPanel.Children.Add(toggle);
+
+            var btnSelect = new Button { Content = "PV-Modul auswählen", Margin = new Thickness(8, 0, 0, 0) };
+            btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
+            rightPanel.Children.Add(btnSelect);
+
+            header.Children.Add(rightPanel);
             sp.Children.Add(header);
 
+            // Zusammenfassungstext
             var summary = new TextBlock { Text = "Kein PV-Modul ausgewählt.", Margin = new Thickness(0, 6, 0, 8) };
             sp.Children.Add(summary);
 
-            // Steuerung: Module pro String
+            // Raster für Slider
             var grid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+            // Linke Spalte: Slider für Module pro String
             var leftPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 8, 0) };
-            var rightPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 0, 0) };
-
             var lblN = new TextBlock { Text = "Anzahl Module pro String" };
-            var nPanel = new StackPanel { Orientation = Orientation.Horizontal };
-            var nBox = new TextBox { Width = 80, Text = cfg.ModuleProString.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 0, 8, 0) };
-            var nInc = new Button { Content = "+", Width = 32, Margin = new Thickness(0, 0, 4, 0) };
-            var nDec = new Button { Content = "−", Width = 32 };
-            nInc.Click += (s, e) =>
+            var nSlider = new Slider
             {
-                if (TryParseInt(nBox.Text, out var val)) { val = val + 1; nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; PersistLastSelection(); Recalculate(); }
+                Minimum = 1,
+                Maximum = 30, // Platzhalter, wird nach Berechnung dynamisch gesetzt
+                TickFrequency = 1,
+                IsSnapToTickEnabled = true
             };
-            nDec.Click += (s, e) =>
+            try
             {
-                if (TryParseInt(nBox.Text, out var val)) { val = Math.Max(1, val - 1); nBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ModuleProString = val; PersistLastSelection(); Recalculate(); }
-            };
-            nBox.TextChanged += (s, e) =>
+                var s = FindResource("MaterialDesign3.MaterialDesignDiscreteSlider") as Style;
+                if (s is not null) nSlider.Style = s;
+            }
+            catch { /* Style optional */ }
+            nSlider.Value = cfg.ModuleProString;
+            nSlider.ValueChanged += (s, e) =>
             {
-                if (TryParseInt(nBox.Text, out var val) && val > 0) { cfg.ModuleProString = val; PersistLastSelection(); Recalculate(); }
+                if (_suppressSliderEvents) return;
+                var val = (int)Math.Round(nSlider.Value);
+                if (val <= 0) val = 1;
+                cfg.ModuleProString = val;
+                PersistLastSelection();
+                Recalculate();
             };
-            nPanel.Children.Add(nBox);
-            nPanel.Children.Add(nInc);
-            nPanel.Children.Add(nDec);
             leftPanel.Children.Add(lblN);
-            leftPanel.Children.Add(nPanel);
+            leftPanel.Children.Add(nSlider);
 
+            // Rechte Spalte: Slider für parallele Strings
+            var rightPanel2 = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 0, 0) };
             var lblS = new TextBlock { Text = "Anzahl paralleler Strings" };
-            var sPanel = new StackPanel { Orientation = Orientation.Horizontal };
-            var sBox = new TextBox { Width = 80, Text = cfg.ParalleleStrings.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(0, 0, 8, 0) };
-            var sInc = new Button { Content = "+", Width = 32, Margin = new Thickness(0, 0, 4, 0) };
-            var sDec = new Button { Content = "−", Width = 32 };
-            sInc.Click += (ss, ee) =>
+            var sSlider = new Slider
             {
-                if (TryParseInt(sBox.Text, out var val))
-                {
-                    var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
-                    val = val + 1;
-                    if (val > maxBySpec && maxBySpec > 0)
-                    {
-                        MessageBox.Show($"Max. Strings/MPPT überschritten ({maxBySpec}).", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
-                        val = maxBySpec;
-                    }
-                    sBox.Text = val.ToString(CultureInfo.InvariantCulture);
-                    cfg.ParalleleStrings = val;
-                    PersistLastSelection();
-                    Recalculate();
-                }
+                Minimum = 1,
+                Maximum = Math.Max(1, _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10),
+                TickFrequency = 1,
+                IsSnapToTickEnabled = true
             };
-            sDec.Click += (ss, ee) =>
+            try
             {
-                if (TryParseInt(sBox.Text, out var val)) { val = Math.Max(1, val - 1); sBox.Text = val.ToString(CultureInfo.InvariantCulture); cfg.ParalleleStrings = val; PersistLastSelection(); Recalculate(); }
-            };
-            sBox.TextChanged += (ss, ee) =>
+                var s2 = FindResource("MaterialDesign3.MaterialDesignDiscreteSlider") as Style;
+                if (s2 is not null) sSlider.Style = s2;
+            }
+            catch { /* Style optional */ }
+            sSlider.Value = cfg.ParalleleStrings;
+            sSlider.ValueChanged += (ss, ee) =>
             {
-                if (TryParseInt(sBox.Text, out var val) && val > 0)
-                {
-                    var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
-                    if (val > maxBySpec && maxBySpec > 0)
-                    {
-                        MessageBox.Show($"Max. Strings/MPPT überschritten ({maxBySpec}).", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
-                        val = maxBySpec;
-                        sBox.Text = val.ToString(CultureInfo.InvariantCulture);
-                    }
-                    cfg.ParalleleStrings = val;
-                    PersistLastSelection();
-                    Recalculate();
-                }
+                if (_suppressSliderEvents) return;
+                var val = (int)Math.Round(sSlider.Value);
+                if (val <= 0) val = 1;
+                var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
+                if (maxBySpec > 0 && val > maxBySpec) val = maxBySpec;
+                cfg.ParalleleStrings = val;
+                PersistLastSelection();
+                Recalculate();
             };
-            sPanel.Children.Add(sBox);
-            sPanel.Children.Add(sInc);
-            sPanel.Children.Add(sDec);
-            rightPanel.Children.Add(lblS);
-            rightPanel.Children.Add(sPanel);
+            rightPanel2.Children.Add(lblS);
+            rightPanel2.Children.Add(sSlider);
 
             grid.Children.Add(leftPanel);
-            grid.Children.Add(rightPanel);
+            grid.Children.Add(rightPanel2);
             Grid.SetColumn(leftPanel, 0);
-            Grid.SetColumn(rightPanel, 1);
+            Grid.SetColumn(rightPanel2, 1);
             sp.Children.Add(grid);
 
-            // Speichere Referenz für spätere UI-Updates
-            sp.Tag = new MpptUiRefs { SummaryText = summary };
+            // UI-Referenzen speichern
+            sp.Tag = new MpptUiRefs
+            {
+                SummaryText = summary,
+                Toggle = toggle,
+                NSlider = nSlider,
+                SSlider = sSlider
+            };
 
             StringsPanel.Children.Add(card);
         }
@@ -225,9 +253,13 @@ public partial class MainWindow : Window
         StringsCard.Visibility = Visibility.Visible;
     }
 
+    // UI-Referenzen pro MPPT, um Slider/Toggle dynamisch aktualisieren zu können
     private sealed class MpptUiRefs
     {
         public TextBlock SummaryText { get; set; } = new TextBlock();
+        public System.Windows.Controls.Primitives.ToggleButton Toggle { get; set; } = new System.Windows.Controls.Primitives.ToggleButton();
+        public Slider NSlider { get; set; } = new Slider();
+        public Slider SSlider { get; set; } = new Slider();
     }
 
     private void RefreshStringsUiSummaries()
@@ -476,17 +508,69 @@ public partial class MainWindow : Window
         bool globalOk = true;
         var globalMessages = new List<string>();
 
+        _suppressSliderEvents = true; // UI-Update ohne Re-Entrancy
+
         for (int i = 0; i < mpptCount; i++)
         {
             var cfg = _stringConfigs.ElementAtOrDefault(i);
             sb.AppendLine("");
             sb.AppendLine($"MPPT {i + 1}:");
 
-            if (cfg is null || cfg.SelectedModule is null)
+            // UI-Refs besorgen
+            MpptUiRefs? refs = null;
+            if (StringsPanel.Children.Count > i)
+            {
+                var card = StringsPanel.Children[i] as MaterialDesignThemes.Wpf.Card;
+                var sp = card?.Content as StackPanel;
+                refs = sp?.Tag as MpptUiRefs;
+            }
+
+            if (cfg is null)
+            {
+                sb.AppendLine("- Konfiguration fehlt.");
+                continue;
+            }
+
+            // Toggle-Status auf UI spiegeln
+            if (refs?.Toggle is not null)
+                refs.Toggle.IsChecked = cfg.IsEnabled;
+
+            if (!cfg.IsEnabled)
+            {
+                sb.AppendLine("- Deaktiviert: MPPT wird in der Berechnung ausgelassen.");
+                // Slider deaktivieren
+                if (refs?.NSlider is not null) { refs.NSlider.IsEnabled = false; }
+                if (refs?.SSlider is not null) { refs.SSlider.IsEnabled = false; }
+                continue;
+            }
+
+            // Slider wieder aktivieren (falls deaktiviert war)
+            if (refs?.NSlider is not null) refs.NSlider.IsEnabled = true;
+            if (refs?.SSlider is not null) refs.SSlider.IsEnabled = true;
+
+            if (cfg.SelectedModule is null)
             {
                 sb.AppendLine("- Kein PV-Modul ausgewählt.");
                 globalOk = false;
                 globalMessages.Add($"MPPT {i + 1}: Bitte PV-Modul auswählen.");
+
+                // Wenn kein Modul gewählt ist: N-Slider nur minimal bedienbar
+                if (refs?.NSlider is not null)
+                {
+                    refs.NSlider.Minimum = 1;
+                    refs.NSlider.Maximum = 1;
+                    refs.NSlider.Value = 1;
+                }
+                // S-Slider auf Spezifikation begrenzen
+                if (refs?.SSlider is not null)
+                {
+                    var maxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 1;
+                    refs.SSlider.Minimum = 1;
+                    refs.SSlider.Maximum = Math.Max(1, maxBySpec);
+                    if (cfg.ParalleleStrings < 1) cfg.ParalleleStrings = 1;
+                    if (cfg.ParalleleStrings > refs.SSlider.Maximum) cfg.ParalleleStrings = (int)refs.SSlider.Maximum;
+                    refs.SSlider.Value = cfg.ParalleleStrings;
+                }
                 continue;
             }
 
@@ -494,6 +578,7 @@ public partial class MainWindow : Window
             var nModule = Math.Max(1, cfg.ModuleProString);
             var nStrings = Math.Max(1, cfg.ParalleleStrings);
 
+            // Temperaturabhängige Werte
             var vocTmin = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMin);
             var vocTmax = ApplyTempCoeff(modul.LeerlaufspannungUocV, modul.TemperaturkoeffVocProzentProGradC, tMax);
 
@@ -509,6 +594,7 @@ public partial class MainWindow : Window
             var imppTmin = pmaxTmin / Math.Max(0.1, vmpTmin);
             var imppTmax = pmaxTmax / Math.Max(0.1, vmpTmax);
 
+            // String-Werte
             var vStringVocMin = nModule * Math.Min(vocTmin, vocTmax);
             var vStringVocMax = nModule * Math.Max(vocTmin, vocTmax);
 
@@ -530,6 +616,7 @@ public partial class MainWindow : Window
             var messages = new List<string>();
             bool ok = true;
 
+            // Prüfungen
             var vStringVocTmin = nModule * vocTmin;
             if (vStringVocTmin > vdcMaxEff + 1e-6)
             {
@@ -591,6 +678,7 @@ public partial class MainWindow : Window
                 messages.Add($"DC-Leistungsgrenze überschritten: {pTotal:F0} W > {pDcPerMpptEff:F0} W pro MPPT. Max. parallele Strings (Leistung): {Math.Max(0, sMaxPowerViol)}.");
             }
 
+            // Zulässige Bereiche berechnen
             var nMaxFromVoc = (int)Math.Floor(vdcMaxEff / vocTmin);
             var nMinFromMppt = (int)Math.Ceiling(mpptMinEff / vmpTmax);
             var nMaxFromMppt = (int)Math.Floor(mpptMaxEff / vmpTmin);
@@ -605,9 +693,41 @@ public partial class MainWindow : Window
             var sMaxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
             var sUpper = new[] { sMaxIscAllowed, sMaxImppAllowed, sMaxPowerAllowed, sMaxBySpec }
                          .Where(x => x > 0)
-                         .DefaultIfEmpty(0)
+                         .DefaultIfEmpty(1)
                          .Min();
 
+            // Slider-Grenzen aktualisieren
+            if (refs?.NSlider is not null)
+            {
+                if (nLower <= nUpper)
+                {
+                    refs.NSlider.Minimum = nLower;
+                    refs.NSlider.Maximum = nUpper;
+                    if (cfg.ModuleProString < nLower) cfg.ModuleProString = nLower;
+                    if (cfg.ModuleProString > nUpper) cfg.ModuleProString = nUpper;
+                    refs.NSlider.Value = cfg.ModuleProString;
+                    refs.NSlider.IsEnabled = true;
+                }
+                else
+                {
+                    refs.NSlider.Minimum = 1;
+                    refs.NSlider.Maximum = 1;
+                    refs.NSlider.Value = 1;
+                    refs.NSlider.IsEnabled = false;
+                }
+            }
+            if (refs?.SSlider is not null)
+            {
+                var sMax = Math.Max(1, sUpper);
+                refs.SSlider.Minimum = 1;
+                refs.SSlider.Maximum = sMax;
+                if (cfg.ParalleleStrings < 1) cfg.ParalleleStrings = 1;
+                if (cfg.ParalleleStrings > sMax) cfg.ParalleleStrings = sMax;
+                refs.SSlider.Value = cfg.ParalleleStrings;
+                refs.SSlider.IsEnabled = sMax > 0;
+            }
+
+            // Ausgabe
             sb.AppendLine($"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp)");
             sb.AppendLine($"- Einstellungen: Module/String={nModule}, Parallele Strings={nStrings}");
             sb.AppendLine($"- String-Spannung OC: min={vStringVocMin:F1} V, max={vStringVocMax:F1} V");
@@ -626,6 +746,8 @@ public partial class MainWindow : Window
                 foreach (var msg in messages) sb.AppendLine($"  - {msg}");
             }
         }
+
+        _suppressSliderEvents = false;
 
         sb.AppendLine("");
         sb.AppendLine($"Prüfergebnis: {(globalOk ? "Alle Bedingungen erfüllt." : "Einschränkungen/Verstöße vorhanden.")}");
