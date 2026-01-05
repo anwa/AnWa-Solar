@@ -142,16 +142,20 @@ public partial class MainWindow : Window
                 var style = FindResource("MaterialDesignSwitchLightToggleButton") as Style;
                 if (style is not null) toggle.Style = style;
             }
-            catch { /* Style optional */ }
+            catch { }
             toggle.Checked += (s, e) =>
             {
                 cfg.IsEnabled = true;
+                var refs = sp.Tag as MpptUiRefs;
+                UpdateMpptUiState(cfg, refs);
                 PersistLastSelection();
                 Recalculate();
             };
             toggle.Unchecked += (s, e) =>
             {
                 cfg.IsEnabled = false;
+                var refs = sp.Tag as MpptUiRefs;
+                UpdateMpptUiState(cfg, refs);
                 PersistLastSelection();
                 Recalculate();
             };
@@ -161,7 +165,8 @@ public partial class MainWindow : Window
             btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
             rightHeaderPanel.Children.Add(btnSelect);
 
-            var btnRemove = new Button { Content = "Modul entfernen", Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+            // Entfernen-Button: initial nicht angezeigt (kein Modul ausgewählt)
+            var btnRemove = new Button { Content = "Modul entfernen", Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
             btnRemove.Click += (s, e) => OnRemoveModuleForMppt(cfg, sp);
             rightHeaderPanel.Children.Add(btnRemove);
 
@@ -193,7 +198,7 @@ public partial class MainWindow : Window
                 var s = FindResource("MaterialDesign3.MaterialDesignDiscreteSlider") as Style;
                 if (s is not null) nSlider.Style = s;
             }
-            catch { /* Style optional */ }
+            catch { }
             nSlider.Value = cfg.ModuleProString;
             nSlider.ValueChanged += (s, e) =>
             {
@@ -223,7 +228,7 @@ public partial class MainWindow : Window
                 var s2 = FindResource("MaterialDesign3.MaterialDesignDiscreteSlider") as Style;
                 if (s2 is not null) sSlider.Style = s2;
             }
-            catch { /* Style optional */ }
+            catch { }
             sSlider.Value = cfg.ParalleleStrings;
             sSlider.ValueChanged += (ss, ee) =>
             {
@@ -256,6 +261,9 @@ public partial class MainWindow : Window
                 SSlider = sSlider
             };
 
+            // Initialer UI-State
+            UpdateMpptUiState(cfg, sp.Tag as MpptUiRefs);
+
             StringsPanel.Children.Add(card);
         }
 
@@ -273,6 +281,31 @@ public partial class MainWindow : Window
         public Slider SSlider { get; set; } = new Slider();
     }
 
+    // Zentraler UI-State-Update für Buttons und Summary je MPPT
+    private void UpdateMpptUiState(StringConfiguration cfg, MpptUiRefs? refs)
+    {
+        if (refs is null) return;
+
+        // Summary
+        refs.SummaryText.Text = cfg.SelectedModule is null
+            ? "Kein PV-Modul ausgewählt."
+            : $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
+
+        // Button-Texte
+        refs.SelectButton.Content = cfg.SelectedModule is null ? "PV-Modul auswählen" : "PV-Modul ändern";
+
+        // Entfernen-Button nur anzeigen, wenn ein Modul gewählt ist
+        refs.RemoveButton.Visibility = cfg.SelectedModule is null ? Visibility.Collapsed : Visibility.Visible;
+
+        // Enablement abhängig vom Toggle-Status
+        var enabled = cfg.IsEnabled;
+        // Toggle bleibt immer bedienbar, damit eine Reaktivierung möglich ist
+        refs.SelectButton.IsEnabled = enabled;
+        refs.RemoveButton.IsEnabled = enabled && refs.RemoveButton.Visibility == Visibility.Visible;
+    }
+    #endregion
+
+    #region UI-Erstellung Strings
     private void RefreshStringsUiSummaries()
     {
         if (_selectedInverter is null) return;
@@ -286,17 +319,10 @@ public partial class MainWindow : Window
             var refs = sp?.Tag as MpptUiRefs;
             if (cfg is not null && refs is not null)
             {
-                refs.SummaryText.Text = cfg.SelectedModule is null
-                    ? "Kein PV-Modul ausgewählt."
-                    : $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
-
-                // Button-Texte/Enablement anpassen
-                refs.SelectButton.Content = cfg.SelectedModule is null ? "PV-Modul auswählen" : "PV-Modul ändern";
-                refs.RemoveButton.IsEnabled = cfg.SelectedModule is not null;
+                UpdateMpptUiState(cfg, refs);
             }
         }
     }
-
     #endregion
 
     #region Events
@@ -341,12 +367,8 @@ public partial class MainWindow : Window
             {
                 cfg.SelectedModule = win.Selected;
 
-                if (container.Tag is MpptUiRefs refs)
-                {
-                    refs.SummaryText.Text = $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
-                    refs.SelectButton.Content = "PV-Modul ändern";
-                    refs.RemoveButton.IsEnabled = true;
-                }
+                var refs = container.Tag as MpptUiRefs;
+                UpdateMpptUiState(cfg, refs);
 
                 _logger.LogInformation("PV-Modul für MPPT {Mppt} übernommen: {Hersteller} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Hersteller, cfg.SelectedModule.Model);
                 PersistLastSelection();
@@ -367,11 +389,11 @@ public partial class MainWindow : Window
         {
             cfg.SelectedModule = null;
 
-            if (container.Tag is MpptUiRefs refs)
+            var refs = container.Tag as MpptUiRefs;
+            if (refs is not null)
             {
-                refs.SummaryText.Text = "Kein PV-Modul ausgewählt.";
-                refs.SelectButton.Content = "PV-Modul auswählen";
-                refs.RemoveButton.IsEnabled = false;
+                // Entfernen-Button ausblenden, Select-Button-Text anpassen
+                UpdateMpptUiState(cfg, refs);
 
                 // Slider zurücksetzen (Module: 1..30, Markierung aus)
                 _suppressSliderEvents = true;
@@ -380,6 +402,7 @@ public partial class MainWindow : Window
                 refs.NSlider.IsSelectionRangeEnabled = false;
                 refs.NSlider.Value = Math.Max(1, cfg.ModuleProString);
 
+                // Strings-Slider bleibt nach WR-Spezifikation
                 var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? 10;
                 refs.SSlider.Minimum = 1;
                 refs.SSlider.Maximum = Math.Max(1, maxBySpec);
@@ -593,8 +616,8 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            // Toggle-Status auf UI spiegeln
-            if (refs?.Toggle is not null) refs.Toggle.IsChecked = cfg.IsEnabled;
+            // Buttons/Summary-Zustand zuerst aktualisieren
+            UpdateMpptUiState(cfg, refs);
 
             if (!cfg.IsEnabled)
             {
@@ -751,7 +774,7 @@ public partial class MainWindow : Window
             var nLower = Math.Max(1, Math.Max(nMinFromMppt, nMinFromStart));
             var nUpper = Math.Min(nMaxFromVoc, nMaxFromMppt);
 
-            // Slider-Grenzen für Module: fest 1 .. (nUpper + 5)
+            // Slider-Grenzen für Module: fest 1 .. (nUpper + 5), zulässigen Bereich markieren
             if (refs?.NSlider is not null)
             {
                 var sliderMax = nUpper >= 1 ? nUpper + 5 : 30;

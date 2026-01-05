@@ -16,6 +16,9 @@ Unveröffentlich
 - Verbesserung: Der Bericht-Tab nutzt die gesamte verfügbare Fläche dynamisch. Markdown-Quelle und HTML-Vorschau passen sich automatisch an die Größe des Fensters/Tabs an.
 - Änderung: MainWindow wurde in das Verzeichnis Windows verschoben und in den Namespace AnWaSolar.Windows überführt, um die Projektstruktur zu vereinheitlichen.
 - Technisch: App-Start und DI wurden entsprechend angepasst; keine funktionalen Änderungen für Nutzer.
+- Verbesserung: Bei deaktiviertem String werden die Buttons im String-Abschnitt deaktiviert.
+- Neu: „Modul entfernen“ wird nur angezeigt, wenn ein Modul ausgewählt ist (sonst ausgeblendet).
+- Stabilität: UI-Zustände (Sichtbarkeit/Enablement) werden zentral konsistent gepflegt.
 
 v0.1.2
 - Neu: Bericht-Tab mit automatisch erzeugtem Markdown-Bericht, umschaltbar zwischen Markdown-Quelle und HTML-Vorschau.
