@@ -31,8 +31,9 @@ public partial class MainWindow : Window
     private string _reportMarkdown = string.Empty;
     private bool _reportPreviewMode = false;
 
-    // Unterdrückung für Slider-Events bei programmatischen Updates
+    // Unterdrückung für Slider-/Toggle-Events bei programmatischen Updates
     private bool _suppressSliderEvents = false;
+    private bool _suppressToggleEvents = false;
 
     #endregion
 
@@ -134,7 +135,6 @@ public partial class MainWindow : Window
 
             var toggle = new System.Windows.Controls.Primitives.ToggleButton
             {
-                IsChecked = true,
                 ToolTip = "String aktivieren/deaktivieren"
             };
             try
@@ -145,6 +145,7 @@ public partial class MainWindow : Window
             catch { }
             toggle.Checked += (s, e) =>
             {
+                if (_suppressToggleEvents) return;
                 cfg.IsEnabled = true;
                 var refs = sp.Tag as MpptUiRefs;
                 UpdateMpptUiState(cfg, refs);
@@ -153,6 +154,7 @@ public partial class MainWindow : Window
             };
             toggle.Unchecked += (s, e) =>
             {
+                if (_suppressToggleEvents) return;
                 cfg.IsEnabled = false;
                 var refs = sp.Tag as MpptUiRefs;
                 UpdateMpptUiState(cfg, refs);
@@ -261,6 +263,11 @@ public partial class MainWindow : Window
                 SSlider = sSlider
             };
 
+            // Toggle initial nach Konfiguration setzen, ohne Events
+            _suppressToggleEvents = true;
+            toggle.IsChecked = cfg.IsEnabled;
+            _suppressToggleEvents = false;
+
             // Initialer UI-State
             UpdateMpptUiState(cfg, sp.Tag as MpptUiRefs);
 
@@ -286,12 +293,17 @@ public partial class MainWindow : Window
     {
         if (refs is null) return;
 
+        // Toggle-Status synchronisieren (programmgesteuert, Events unterdrücken)
+        _suppressToggleEvents = true;
+        refs.Toggle.IsChecked = cfg.IsEnabled;
+        _suppressToggleEvents = false;
+
         // Summary
         refs.SummaryText.Text = cfg.SelectedModule is null
             ? "Kein PV-Modul ausgewählt."
             : $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
 
-        // Button-Texte
+        // Button-Texte und Sichtbarkeit
         refs.SelectButton.Content = cfg.SelectedModule is null ? "PV-Modul auswählen" : "PV-Modul ändern";
 
         // Entfernen-Button nur anzeigen, wenn ein Modul gewählt ist
@@ -303,6 +315,7 @@ public partial class MainWindow : Window
         refs.SelectButton.IsEnabled = enabled;
         refs.RemoveButton.IsEnabled = enabled && refs.RemoveButton.Visibility == Visibility.Visible;
     }
+
     #endregion
 
     #region UI-Erstellung Strings
