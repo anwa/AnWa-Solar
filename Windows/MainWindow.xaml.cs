@@ -905,6 +905,7 @@ public partial class MainWindow : Window
         md.AppendLine("- Spannungen und Ströme werden temperaturabhängig auf Basis der angegebenen Temperaturkoeffizienten abgeschätzt.");
         md.AppendLine("- Sicherheitsmargen werden auf Grenzwerte angewendet: z. B. Vdc_max reduziert, Startspannung und MPPT-Untergrenze erhöht.");
         md.AppendLine("- Strings in Serie erhöhen die Spannung proportional zur Modulanzahl, der Strom bleibt gleich. Parallelschaltung addiert Ströme.");
+        md.AppendLine("$V_{oc} (T_{STC}) * (1 + ((T_{min} - 25°C) * Temperaturkoeffizient))$");
         md.AppendLine();
 
         // Pro MPPT

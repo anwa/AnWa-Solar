@@ -107,5 +107,19 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - Exportfunktionen (Markdown/HTML/PDF-Bericht).
 - Benutzerbezogene Settings-Datei im User-Profil (optional, produktionsgeeignet).
 
+$$V_{oc} (T_{STC}) * (1 + ((T_{min} - 25°C) * Temperaturkoeffizient))$$
+
+$V_{oc} (T_{STC})= 45,02V$
+$T_{min}= -20°C$
+$Temperaturkoeffizient= -0,22\%/°C$
+
+$V_{oc_{min}} = 45,02V * (1 + ((-20°C - 25°C) * -0,22\%/°C))$
+$V_{oc_{min}} = 45,02V * (1 + ((-45°C) * -0,22\%/°C))$
+$V_{oc_{min}} = 45,02V * (1 + (9,9\%)$
+$V_{oc_{min}} = 45,02V * (1,099)$
+$V_{oc_{min}} = 49,47698V$
+
+
+
 ## Lizenz
 - Siehe LICENSE im Repository.
