@@ -92,7 +92,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - States und Kontraste auf Lesbarkeit geprüft.
 
 ## Architektur
-- `src/AnWaSolar.Core`: models, master data, services and logging without WPF references.
+- `src/AnWaSolar.Core`: models, master data, string calculation (`Calculation/StringCalculator`), results text and Markdown report, services and logging, without WPF references. The live results and the report use the same calculation result.
 - `src/AnWaSolar.App`: WPF application (windows, dependency injection through Microsoft.Extensions.Hosting).
 - `tests/AnWaSolar.Core.Tests`: xUnit tests for Core.
 - The version is defined once in `Directory.Build.props` and shown in the main window title; package versions are pinned in `Directory.Packages.props`.

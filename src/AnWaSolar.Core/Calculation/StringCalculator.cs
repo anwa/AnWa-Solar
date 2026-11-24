@@ -1,0 +1,262 @@
+using System.Globalization;
+
+using AnWaSolar.Core.Models;
+using AnWaSolar.Core.Services;
+
+namespace AnWaSolar.Core.Calculation;
+
+/// <summary>
+/// Checks PV string configurations against the limits of an inverter over the configured temperature range.
+/// This is the only owner of the string calculation; the live results and the report both use its result.
+/// </summary>
+public static class StringCalculator
+{
+    // Tolerance for limit comparisons, so that values exactly at a limit are not reported as violations.
+    private const double Tolerance = 1e-6;
+
+    /// <summary>Calculates all MPPTs of <paramref name="inverter"/>.</summary>
+    /// <param name="inverter">Selected inverter.</param>
+    /// <param name="configurations">String configurations; the item at index i belongs to MPPT i + 1.</param>
+    /// <param name="parameters">Temperature range and safety margin.</param>
+    public static StringCalculationResult Calculate(
+        Wechselrichter inverter,
+        IReadOnlyList<StringConfiguration> configurations,
+        CalculationParameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(inverter);
+        ArgumentNullException.ThrowIfNull(configurations);
+        ArgumentNullException.ThrowIfNull(parameters);
+
+        EffectiveLimits? limits = ComputeLimits(inverter, parameters);
+        if (limits is null)
+        {
+            return new StringCalculationResult { Inverter = inverter, Parameters = parameters };
+        }
+
+        int mpptCount = GetMpptCount(inverter);
+        var mppts = new List<MpptResult>(mpptCount);
+        for (int i = 0; i < mpptCount; i++)
+        {
+            StringConfiguration? configuration = i < configurations.Count ? configurations[i] : null;
+            mppts.Add(CalculateMppt(i + 1, configuration, inverter, limits, parameters));
+        }
+
+        return new StringCalculationResult
+        {
+            Inverter = inverter,
+            Parameters = parameters,
+            Limits = limits,
+            Mppts = mppts,
+        };
+    }
+
+    /// <summary>Number of MPPT sections shown for an inverter (at least one).</summary>
+    public static int GetMpptCount(Wechselrichter inverter) => Math.Max(1, inverter.AnzahlDerMpptTrackers);
+
+    /// <summary>Applies the safety margin to the inverter limits; null when the MPPT range is invalid.</summary>
+    public static EffectiveLimits? ComputeLimits(Wechselrichter inverter, CalculationParameters parameters)
+    {
+        if (!TryParseVoltageRange(inverter.MpptSpannungsbereichV, out double mpptMin, out double mpptMax))
+        {
+            return null;
+        }
+
+        double margin = parameters.SicherheitsmargePct / 100.0;
+        double dcPowerPerMppt = inverter.MaxDcEingangsleistungW / (double)GetMpptCount(inverter);
+
+        return new EffectiveLimits(
+            MpptMinV: mpptMin,
+            MpptMaxV: mpptMax,
+            MaxDcVoltageV: inverter.MaxDcEingangsspannungV * (1 - margin),
+            StartVoltageV: inverter.StartspannungV * (1 + margin),
+            MpptLowerBoundV: mpptMin * (1 + margin),
+            MpptUpperBoundV: mpptMax * (1 - margin),
+            MaxInputCurrentA: inverter.MaxBetriebsPvEingangsstromA * (1 - margin),
+            MaxShortCircuitCurrentA: inverter.MaxEingangsKurzschlussstromA * (1 - margin),
+            DcPowerPerMpptW: dcPowerPerMppt,
+            DcPowerPerMpptLimitW: dcPowerPerMppt * (1 - margin));
+    }
+
+    /// <summary>
+    /// Applies a linear temperature coefficient: x(T) = x(25 °C) · (1 + α[%/°C] · (T − 25 °C) / 100).
+    /// </summary>
+    public static double ApplyTemperatureCoefficient(double valueAt25C, double coefficientPctPerC, double temperatureC)
+        => valueAt25C * (1.0 + (coefficientPctPerC / 100.0 * (temperatureC - 25.0)));
+
+    /// <summary>Parses a voltage range such as "160-650" (hyphen, en dash or em dash, spaces allowed).</summary>
+    public static bool TryParseVoltageRange(string? range, out double minV, out double maxV)
+    {
+        minV = maxV = 0;
+        if (string.IsNullOrWhiteSpace(range))
+        {
+            return false;
+        }
+
+        string[] parts = range.Replace(" ", string.Empty, StringComparison.Ordinal).Split('-', '–', '—');
+        return parts.Length == 2
+            && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out minV)
+            && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out maxV)
+            && minV > 0
+            && maxV > minV;
+    }
+
+    /// <summary>Module values at Tmin and Tmax.</summary>
+    /// <remarks>
+    /// VMPP uses the VOC temperature coefficient as an approximation, because the master data has no separate VMPP
+    /// coefficient. IMPP is derived from PMAX / VMPP at the respective temperature.
+    /// </remarks>
+    public static ModuleTemperatureValues ComputeTemperatureValues(PVModule module, CalculationParameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(parameters);
+
+        double tMin = parameters.MinTempC;
+        double tMax = parameters.MaxTempC;
+
+        double vmppAtTmin = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, module.TemperaturkoeffVocProzentProGradC, tMin);
+        double vmppAtTmax = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, module.TemperaturkoeffVocProzentProGradC, tMax);
+        double pmaxAtTmin = ApplyTemperatureCoefficient(module.NominalleistungPmaxWp, module.TemperaturkoeffPmaxProzentProGradC, tMin);
+        double pmaxAtTmax = ApplyTemperatureCoefficient(module.NominalleistungPmaxWp, module.TemperaturkoeffPmaxProzentProGradC, tMax);
+
+        return new ModuleTemperatureValues(
+            VocAtTminV: ApplyTemperatureCoefficient(module.LeerlaufspannungUocV, module.TemperaturkoeffVocProzentProGradC, tMin),
+            VocAtTmaxV: ApplyTemperatureCoefficient(module.LeerlaufspannungUocV, module.TemperaturkoeffVocProzentProGradC, tMax),
+            VmppAtTminV: vmppAtTmin,
+            VmppAtTmaxV: vmppAtTmax,
+            PmaxAtTminW: pmaxAtTmin,
+            PmaxAtTmaxW: pmaxAtTmax,
+            IscAtTminA: ApplyTemperatureCoefficient(module.KurzschlusstromIscA, module.TemperaturkoeffIscProzentProGradC, tMin),
+            IscAtTmaxA: ApplyTemperatureCoefficient(module.KurzschlusstromIscA, module.TemperaturkoeffIscProzentProGradC, tMax),
+            ImppAtTminA: pmaxAtTmin / Math.Max(0.1, vmppAtTmin),
+            ImppAtTmaxA: pmaxAtTmax / Math.Max(0.1, vmppAtTmax));
+    }
+
+    private static MpptResult CalculateMppt(
+        int mpptIndex,
+        StringConfiguration? configuration,
+        Wechselrichter inverter,
+        EffectiveLimits limits,
+        CalculationParameters parameters)
+    {
+        if (configuration is null)
+        {
+            return new MpptResult { MpptIndex = mpptIndex, Status = MpptStatus.MissingConfiguration };
+        }
+
+        if (!configuration.IsEnabled)
+        {
+            return new MpptResult { MpptIndex = mpptIndex, Status = MpptStatus.Disabled, Configuration = configuration };
+        }
+
+        if (configuration.SelectedModule is null)
+        {
+            return new MpptResult { MpptIndex = mpptIndex, Status = MpptStatus.NoModule, Configuration = configuration };
+        }
+
+        PVModule module = configuration.SelectedModule;
+        int modules = Math.Max(1, configuration.ModuleProString);
+        int strings = Math.Max(1, configuration.ParalleleStrings);
+        ModuleTemperatureValues t = ComputeTemperatureValues(module, parameters);
+
+        double stringIscMax = Math.Max(t.IscAtTminA, t.IscAtTmaxA);
+        double stringImppMax = Math.Max(t.ImppAtTminA, t.ImppAtTmaxA);
+        double stringPowerAtTmin = modules * t.PmaxAtTminW;
+        double arrayPowerAtTmin = strings * stringPowerAtTmin;
+
+        var violations = new List<LimitViolation>();
+
+        // Safety-relevant: the open-circuit voltage is highest at the lowest temperature.
+        double stringVocAtTmin = modules * t.VocAtTminV;
+        if (stringVocAtTmin > limits.MaxDcVoltageV + Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.MaxDcVoltage, stringVocAtTmin, limits.MaxDcVoltageV,
+                Math.Max(0, (int)Math.Floor(limits.MaxDcVoltageV / t.VocAtTminV))));
+        }
+
+        double stringVmppAtTmax = modules * t.VmppAtTmaxV;
+        double stringVmppAtTmin = modules * t.VmppAtTminV;
+        if (stringVmppAtTmax < limits.MpptLowerBoundV - Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.MpptLowerBound, stringVmppAtTmax, limits.MpptLowerBoundV,
+                Math.Max(1, (int)Math.Ceiling(limits.MpptLowerBoundV / t.VmppAtTmaxV))));
+        }
+
+        if (stringVmppAtTmin > limits.MpptUpperBoundV + Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.MpptUpperBound, stringVmppAtTmin, limits.MpptUpperBoundV,
+                Math.Max(0, (int)Math.Floor(limits.MpptUpperBoundV / t.VmppAtTminV))));
+        }
+
+        if (stringVmppAtTmax < limits.StartVoltageV - Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.StartVoltage, stringVmppAtTmax, limits.StartVoltageV,
+                Math.Max(1, (int)Math.Ceiling(limits.StartVoltageV / t.VmppAtTmaxV))));
+        }
+
+        // Currents use the higher value of both temperatures.
+        double arrayIscMax = strings * stringIscMax;
+        if (arrayIscMax > limits.MaxShortCircuitCurrentA + Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.ShortCircuitCurrent, arrayIscMax, limits.MaxShortCircuitCurrentA,
+                Math.Max(0, (int)Math.Floor(limits.MaxShortCircuitCurrentA / Math.Max(0.001, stringIscMax)))));
+        }
+
+        double arrayImppMax = strings * stringImppMax;
+        if (arrayImppMax > limits.MaxInputCurrentA + Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.InputCurrent, arrayImppMax, limits.MaxInputCurrentA,
+                Math.Max(0, (int)Math.Floor(limits.MaxInputCurrentA / Math.Max(0.001, stringImppMax)))));
+        }
+
+        if (inverter.MaxStringsProMppt > 0 && strings > inverter.MaxStringsProMppt)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.MaxStringsPerMppt, strings, inverter.MaxStringsProMppt, inverter.MaxStringsProMppt));
+        }
+
+        if (arrayPowerAtTmin > limits.DcPowerPerMpptLimitW + Tolerance)
+        {
+            violations.Add(new LimitViolation(
+                ViolationKind.DcPower, arrayPowerAtTmin, limits.DcPowerPerMpptLimitW,
+                Math.Max(0, (int)Math.Floor(limits.DcPowerPerMpptLimitW / Math.Max(1.0, stringPowerAtTmin)))));
+        }
+
+        int maxFromVoc = (int)Math.Floor(limits.MaxDcVoltageV / t.VocAtTminV);
+        int minFromMppt = (int)Math.Ceiling(limits.MpptLowerBoundV / t.VmppAtTmaxV);
+        int maxFromMppt = (int)Math.Floor(limits.MpptUpperBoundV / t.VmppAtTminV);
+        int minFromStart = (int)Math.Ceiling(limits.StartVoltageV / t.VmppAtTmaxV);
+
+        return new MpptResult
+        {
+            MpptIndex = mpptIndex,
+            Status = MpptStatus.Calculated,
+            Configuration = configuration,
+            Module = module,
+            ModulesPerString = modules,
+            ParallelStrings = strings,
+            Temperatures = t,
+            StringVocMinV = modules * Math.Min(t.VocAtTminV, t.VocAtTmaxV),
+            StringVocMaxV = modules * Math.Max(t.VocAtTminV, t.VocAtTmaxV),
+            StringVmppMinV = modules * Math.Min(t.VmppAtTminV, t.VmppAtTmaxV),
+            StringVmppMaxV = modules * Math.Max(t.VmppAtTminV, t.VmppAtTmaxV),
+            StringIscMinA = Math.Min(t.IscAtTminA, t.IscAtTmaxA),
+            StringIscMaxA = stringIscMax,
+            StringImppMinA = Math.Min(t.ImppAtTminA, t.ImppAtTmaxA),
+            StringImppMaxA = stringImppMax,
+            ArrayIscMinA = strings * Math.Min(t.IscAtTminA, t.IscAtTmaxA),
+            ArrayIscMaxA = arrayIscMax,
+            ArrayImppMinA = strings * Math.Min(t.ImppAtTminA, t.ImppAtTmaxA),
+            ArrayImppMaxA = arrayImppMax,
+            ArrayPowerAtTminW = arrayPowerAtTmin,
+            MinModulesPerString = Math.Max(1, Math.Max(minFromMppt, minFromStart)),
+            MaxModulesPerString = Math.Min(maxFromVoc, maxFromMppt),
+            Violations = violations,
+        };
+    }
+}
