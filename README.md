@@ -15,11 +15,15 @@ Battery storage, AC-side and cable/fuse calculations are planned (see [Roadmap](
 - Master data of PV modules and inverters in JSON files; invalid entries are skipped and reported.
 - Structured JSONL logging.
 
-## Requirements
+## Requirements for Building
 
 - Windows 11 (x64)
 - .NET 11 SDK (target framework `net11.0-windows`, SDK pinned in `global.json`)
 - Visual Studio 2026 or the `dotnet` CLI
+
+## Installation
+
+Install the MSI `AnWaSolar-Setup-X.Y.Z.msi` (Windows 11, x64). It installs per machine into `C:\Program Files\AnWa-Solar`, adds a Start menu shortcut and needs no separate .NET installation. A newer MSI replaces the installed version; settings and logs in `%LOCALAPPDATA%\AnWa-Solar` are kept. How the MSI is built is described in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Build and Start
 
@@ -86,6 +90,7 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 - `src/AnWaSolar.Core`: models, master data (`JsonDataStore`), string calculation (`Calculation/StringCalculator`), results text and Markdown report, settings (`SettingsService`) and the JSONL logger, without WPF references. The live results and the report use the same calculation result.
 - `src/AnWaSolar.App`: WPF application (windows, dependency injection through Microsoft.Extensions.Hosting).
 - `tests/AnWaSolar.Core.Tests`: xUnit tests for Core.
+- `installer/AnWaSolar.Installer`: WiX 5 MSI project; `tools/Build-Installer.ps1` builds the MSI (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 - The version is defined once in `Directory.Build.props` and shown in the main window title; package versions are pinned in `Directory.Packages.props`.
 
 ## Roadmap

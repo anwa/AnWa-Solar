@@ -1,0 +1,20 @@
+<WixLocalization Culture="en-us" xmlns="http://wixtoolset.org/schemas/v4/wxl">
+  <!-- Show the version that is installed: window titles and the welcome page heading. -->
+  <String Id="WelcomeDlgTitle" Value="{\WixUI_Font_Bigger}Welcome to the [ProductName] [ProductVersion] Setup Wizard" />
+  <String Id="WelcomeDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="WelcomeEulaDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="LicenseAgreementDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="InstallDirDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="BrowseDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="DiskCostDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="VerifyReadyDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="ProgressDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="ExitDialog_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="UserExit_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="FatalError_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="CancelDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="PrepareDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="ResumeDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="MaintenanceWelcomeDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+  <String Id="MaintenanceTypeDlg_Title" Value="[ProductName] [ProductVersion] Setup" />
+</WixLocalization>
