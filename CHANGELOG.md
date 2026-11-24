@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.12.0)
+## v0.12.0 (2026-11-24)
 
 - Changed: The user interface uses the AnWa-Soft design library (`AnWaSoft.Design.Wpf` 0.1.0). The look stays the same; four colours were adjusted to reach the WCAG AA contrast: warning text in light mode (`#B26A00` → `#9C5C00`), error text in dark mode (`#EF9A9A` → `#F2A5A5`), neutral and secondary text in dark mode (`#A9AEB8` → `#B3B8C1`), and the primary colour in dark mode (Indigo 300 `#7986CB` → Indigo 200 `#9FA8DA`).
 - Changed: Message dialogs come from the design library.
