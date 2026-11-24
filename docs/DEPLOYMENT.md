@@ -2,7 +2,7 @@
 
 ## Build Recipe
 
-Release artifacts are built from the tagged commit in a clean, detached worktree outside the repository:
+Release artifacts are built from the tagged commit in a clean, detached worktree outside the repository. The restore needs the package `AnWaSoft.Design.Wpf` in the local feed `D:\Workspace\Claude\Design\packages` in the version named in `Directory.Packages.props`:
 
 ```powershell
 git worktree add --detach <scratch>\release-vX.Y.Z vX.Y.Z

@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 
+using AnWaSoft.Design.Wpf.Controls;
+
 using AnWaSolar.Core.Models;
 
 namespace AnWaSolar.Windows;
@@ -57,7 +59,7 @@ public partial class SelectModuleWindow : ChromeWindow
     {
         if (Selected is null)
         {
-            AppDialog.Show(this, "Please select a manufacturer and a model.", Title);
+            MessageDialog.Show(this, "Please select a manufacturer and a model.", Title);
             return;
         }
         DialogResult = true;
