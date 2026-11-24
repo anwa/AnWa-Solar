@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.10.0)
+## v0.10.0 (2026-11-24)
 
 - New: Dark mode. The theme button in the top bar switches between System (follows Windows), Light and Dark; the choice is saved. All windows, the report preview and the manual follow it.
 - New: User manual (F1 or the book button) with page tree, search, links between pages and formulas.
