@@ -24,7 +24,12 @@
       "Max. input current per MPPT (A)": 36,
       "Max. short-circuit current per MPPT (A)": 54,
       "MPPT count": 2,
-      "Max. strings per MPPT": 2
+      "Max. strings per MPPT": 2,
+      "Rated AC output power (W)": 15000,
+      "Max. AC apparent power (VA)": 16500,
+      "Rated AC output current (A)": 21.8,
+      "Max. AC output current (A)": 24,
+      "AC phases": 3
     },
     {
       "Manufacturer": "Deye",
@@ -37,7 +42,12 @@
       "Max. input current per MPPT (A)": 36,
       "Max. short-circuit current per MPPT (A)": 54,
       "MPPT count": 2,
-      "Max. strings per MPPT": 2
+      "Max. strings per MPPT": 2,
+      "Rated AC output power (W)": 18000,
+      "Max. AC apparent power (VA)": 19800,
+      "Rated AC output current (A)": 26.1,
+      "Max. AC output current (A)": 28.7,
+      "AC phases": 3
     },
     {
       "Manufacturer": "Deye",
@@ -50,7 +60,12 @@
       "Max. input current per MPPT (A)": 36,
       "Max. short-circuit current per MPPT (A)": 54,
       "MPPT count": 2,
-      "Max. strings per MPPT": 2
+      "Max. strings per MPPT": 2,
+      "Rated AC output power (W)": 20000,
+      "Max. AC apparent power (VA)": 22000,
+      "Rated AC output current (A)": 29,
+      "Max. AC output current (A)": 31.9,
+      "AC phases": 3
     }
   ]
 }

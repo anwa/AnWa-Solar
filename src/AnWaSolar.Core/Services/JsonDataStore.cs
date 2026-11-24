@@ -422,6 +422,21 @@ public class JsonDataStore : IDataStore
             return "power, voltage, currents and MPPT count must be greater than 0.";
         }
 
+        if (w.RatedAcPowerW < 0 || w.MaxAcApparentPowerVA < 0 || w.RatedAcCurrentA < 0 || w.MaxAcCurrentA < 0)
+        {
+            return "AC power and currents must not be negative.";
+        }
+
+        if (w.AcPhases is not (0 or 1 or 3))
+        {
+            return "AC phases must be 1 or 3.";
+        }
+
+        if (w.RatedAcCurrentA > 0 && w.MaxAcCurrentA > 0 && w.MaxAcCurrentA < w.RatedAcCurrentA)
+        {
+            return "the max. AC current must be at least the rated AC current.";
+        }
+
         return null;
     }
 }

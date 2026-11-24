@@ -92,9 +92,9 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 
 ## M14 – AC side and grid connection (`feature/ac-side`)
 
-- [ ] Inverter AC datasheet values (rated AC power, max. apparent power, rated and max. AC current, phases, grid voltage) in master data and datasheet import
-- [ ] DC/AC ratio, AC current and grid connection checks with limits set by the user (unbalanced load, system size, feed-in limit)
-- [ ] Result card and report section
+- [x] Inverter AC datasheet values (rated AC power, max. apparent power, rated and max. AC current, phases, grid voltage) in master data and datasheet import
+- [x] DC/AC ratio, AC current and grid connection checks with limits set by the user (unbalanced load, system size, feed-in limit)
+- [x] Result card and report section
 
 ## M15 – Cables and fuses (`feature/cables-fuses`)
 

@@ -47,6 +47,7 @@ public static class StringCalculator
             Parameters = parameters,
             Limits = limits,
             Mppts = mppts,
+            Ac = AcCalculator.Calculate(inverter, mppts, parameters),
         };
     }
 

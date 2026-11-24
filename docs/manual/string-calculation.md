@@ -37,6 +37,20 @@ Below it, every MPPT has a result card with a status (**OK**, **N issues**, **No
 - **Allowed modules per string**: the range that meets all voltage limits.
 - **Notes**: every violated limit with the value, the limit and a recommendation, for example "Max. DC voltage exceeded: N×Voc(Tmin)=791.6 V > 760.0 V. Max. modules per string: 15." A note also tells you when the Pmax coefficient replaces a missing Vmpp coefficient.
 
+The **AC side and grid connection** card checks the inverter against the grid:
+
+| Row | Meaning |
+|---|---|
+| PV peak power (STC) | Sum of the module power of all enabled MPPTs with a module. |
+| Rated AC power | From the datasheet of the inverter. |
+| DC/AC ratio | PV peak power divided by the rated AC power. Below the range the inverter is large for the PV power; above it the inverter limits the power on sunny days (clipping). Both are notes, not errors. |
+| Apparent power | Max. AC apparent power from the datasheet (otherwise the rated AC power), compared with the limit of the simplified grid registration. Above it, ask your grid operator for the procedure. |
+| Unbalanced load (single-phase) | Only for single-phase inverters: above the unbalanced load limit the inverter may not be connected single-phase; this counts as a violated limit. |
+| AC current per phase | Rated and max. AC current from the datasheet; the basis for the AC line and its protection. |
+| Feed-in limit | Only with a feed-in limit below 100 %: the highest power fed into the grid. |
+
+AC values that the master data of the inverter does not contain are shown as "not stated" with a note; they are not estimated. Import the datasheet of the inverter to add them, see [Datasheet Import](datasheet-import.md).
+
 The **Inverter limits** card lists every limit from the datasheet and with the safety margin. **Copy** above the results copies them as text.
 
 The meaning of every check is described in [How the Calculation Works](calculation.md#checks).
@@ -50,5 +64,9 @@ The meaning of every check is described in [How the Calculation Works](calculati
 | Min. cell temperature (°C) | Lowest module temperature. At sunrise in winter it is close to the lowest ambient temperature, for example −20 °C. |
 | Max. cell temperature (°C) | Highest module temperature. In summer cells reach 60–70 °C; the default is 70 °C. |
 | Safety margin (%) | Tightens all inverter limits by this percentage, 0–50 %. |
+| Unbalanced load limit (kVA) | Highest apparent power of a single-phase inverter; default 4.6 kVA (VDE-AR-N 4105). |
+| Simplified registration up to (kVA) | System size of the simplified grid registration; default 30 kVA. |
+| Feed-in limit (%) | Highest feed-in in percent of the PV peak power; 100 % (default) means no limit. |
+| DC/AC ratio from / up to | Recommended range of the DC/AC ratio; default 0.9 to 1.3. |
 
-Tmin must be lower than Tmax. **Save** stores the values; they apply immediately and at the next start.
+The grid limits depend on your grid operator and the current rules; check the defaults before you rely on them. Tmin must be lower than Tmax. **Save** stores the values; they apply immediately and at the next start.

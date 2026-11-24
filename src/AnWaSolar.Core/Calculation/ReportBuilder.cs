@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 using AnWaSolar.Core.Models;
@@ -109,6 +110,32 @@ public static class ReportBuilder
             }
 
             md.AppendLine();
+        }
+
+        if (result.Ac is { } ac)
+        {
+            md.AppendLine("## AC side and grid connection");
+            foreach (string line in CalculationTextFormatter.FormatAcValues(ac))
+            {
+                md.AppendLine($"- {line}");
+            }
+
+            md.AppendLine();
+            md.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"Limits: DC/AC ratio {parameters.DcAcRatioMin:0.##} … {parameters.DcAcRatioMax:0.##}, unbalanced load of single-phase inverters {parameters.UnbalancedLoadLimitVA / 1000:0.##} kVA, simplified grid registration up to {parameters.SimplifiedRegistrationLimitVA / 1000:0.##} kVA, feed-in limit {parameters.FeedInLimitPct:0.##} % of the PV peak power."));
+            md.AppendLine();
+            md.AppendLine("$$\\mathrm{DC/AC} = \\frac{\\sum N_{\\mathrm{modules}} \\cdot P_{\\mathrm{max,STC}}}{P_{\\mathrm{AC,rated}}}$$");
+            md.AppendLine();
+            if (ac.Checks.Count > 0)
+            {
+                md.AppendLine("### Notes");
+                foreach (AcCheck check in ac.Checks)
+                {
+                    md.AppendLine($"- {CalculationTextFormatter.FormatAcCheck(check, ac)}");
+                }
+
+                md.AppendLine();
+            }
         }
 
         return md.ToString();

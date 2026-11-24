@@ -64,6 +64,12 @@ public sealed record MpptView(
     public bool HasRows => Rows.Count > 0;
 }
 
+/// <summary>A value of the AC side with its limit.</summary>
+public sealed record AcRow(string Quantity, string Value, string Limit, ResultState State);
+
+/// <summary>Presentation of the AC side and grid connection.</summary>
+public sealed record AcView(string Subtitle, ResultState State, string StatusText, IReadOnlyList<AcRow> Rows, IReadOnlyList<ResultNote> Notes);
+
 /// <summary>An inverter limit from the datasheet and after applying the safety margin.</summary>
 public sealed record LimitRow(string Name, string Datasheet, string Effective);
 
@@ -74,7 +80,8 @@ public sealed record ResultOverview(
     string Details,
     IReadOnlyList<MpptView> Mppts,
     IReadOnlyList<LimitRow> Limits,
-    string LimitsCaption);
+    string LimitsCaption,
+    AcView? Ac = null);
 
 /// <summary>
 /// Turns a <see cref="StringCalculationResult"/> into texts and states for the results area. It only formats values
@@ -100,7 +107,8 @@ public static class ResultPresenter
         }
 
         List<MpptView> mppts = result.Mppts.Select(m => PresentMppt(m, inv, limits)).ToList();
-        int violations = result.Mppts.Sum(m => m.Violations.Count);
+        AcView? ac = result.Ac is { } acResult ? PresentAc(acResult, inv, result.Parameters) : null;
+        int violations = result.Mppts.Sum(m => m.Violations.Count) + (result.Ac?.Checks.Count(c => c.State == ResultState.Error) ?? 0);
         int[] withoutModule = result.Mppts.Where(m => m.Status == MpptStatus.NoModule).Select(m => m.MpptIndex).ToArray();
         int calculated = result.Mppts.Count(m => m.Status == MpptStatus.Calculated);
 
@@ -111,13 +119,14 @@ public static class ResultPresenter
                 ? $"MPPT {withoutModule[0]} has no PV module"
                 : $"MPPTs {string.Join(", ", withoutModule)} have no PV module"),
             (_, _, 0) => (ResultState.Neutral, "All MPPTs are disabled"),
+            _ when ac?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the AC side"),
             _ => (ResultState.Ok, "All limits are met"),
         };
 
         CalculationParameters p = result.Parameters;
         string details = $"{inv.Manufacturer} {inv.Model} · cell temperature {Number(p.MinTempC, "0.#")} … {Number(p.MaxTempC, "0.#")} °C · safety margin {Number(p.SafetyMarginPct, "0.#")} %";
 
-        return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits),
+        return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits), Ac: ac, LimitsCaption:
             $"Datasheet values and the limits used by the calculation (safety margin {Number(p.SafetyMarginPct, "0.#")} %).");
     }
 
@@ -189,6 +198,44 @@ public static class ResultPresenter
             count == 0 ? ResultState.Ok : ResultState.Error,
             count == 0 ? "OK" : count == 1 ? "1 issue" : $"{count} issues",
             rows, voltage, allowed, notes);
+    }
+
+    private static AcView PresentAc(AcCalculationResult ac, Inverter inv, CalculationParameters p)
+    {
+        ResultState StateOf(params AcCheckKind[] kinds) =>
+            ac.Checks.Where(c => kinds.Contains(c.Kind)).Select(c => c.State).DefaultIfEmpty(ResultState.Ok).Max();
+        string Kilo(double? value, string unit) => value is { } v ? $"{Number(v / 1000, "F1")} {unit}" : "not stated";
+
+        var rows = new List<AcRow>
+        {
+            new("PV peak power (STC)", $"{Number(ac.PvPeakPowerW / 1000, "F2")} kWp", None, ResultState.Neutral),
+            new("Rated AC power", Kilo(ac.RatedAcPowerW, "kW"), None, ac.RatedAcPowerW is null ? ResultState.Warning : ResultState.Neutral),
+            new("DC/AC ratio", ac.DcAcRatio is { } r ? Number(r, "F2") : None,
+                $"{Number(p.DcAcRatioMin, "0.0#")} … {Number(p.DcAcRatioMax, "0.0#")}",
+                ac.DcAcRatio is null ? ResultState.Neutral : StateOf(AcCheckKind.DcAcRatioLow, AcCheckKind.DcAcRatioHigh)),
+            new("Apparent power", Kilo(ac.ApparentPowerVA, "kVA"),
+                $"≤ {Number(p.SimplifiedRegistrationLimitVA / 1000, "0.#")} kVA (simplified registration)",
+                ac.ApparentPowerVA is null ? ResultState.Neutral : StateOf(AcCheckKind.RegistrationLimit)),
+        };
+        if (ac.Phases == 1)
+        {
+            rows.Add(new("Unbalanced load (single-phase)", Kilo(ac.ApparentPowerVA, "kVA"),
+                $"≤ {Number(p.UnbalancedLoadLimitVA / 1000, "0.0#")} kVA", StateOf(AcCheckKind.UnbalancedLoad)));
+        }
+
+        rows.Add(new("AC current per phase",
+            ac.MaxAcCurrentA is { } max ? $"{Number(max, "F1")} A max." + (ac.RatedAcCurrentA is { } rated ? $" ({Number(rated, "F1")} A rated)" : string.Empty) : "not stated",
+            None, ac.MaxAcCurrentA is null ? ResultState.Warning : ResultState.Neutral));
+        if (ac.FeedInCapW is { } cap)
+        {
+            rows.Add(new("Feed-in limit", $"{Number(cap / 1000, "F1")} kW", $"{Number(p.FeedInLimitPct, "0.#")} % of the PV peak power", ResultState.Neutral));
+        }
+
+        var notes = ac.Checks.Select(c => new ResultNote(CalculationTextFormatter.FormatAcCheck(c, ac), c.State)).ToList();
+        ResultState state = ac.Checks.Select(c => c.State).Where(s => s != ResultState.Neutral).DefaultIfEmpty(ResultState.Ok).Max();
+        int issues = ac.Checks.Count(c => c.State is ResultState.Error or ResultState.Warning);
+        string subtitle = $"{inv.Manufacturer} {inv.Model} · " + (ac.Phases is { } phases ? (phases == 1 ? "single-phase" : "three-phase") : "phases not stated");
+        return new AcView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
     }
 
     private static MpptView Empty(MpptResult mppt, string title, ResultState state, string status, string note) =>

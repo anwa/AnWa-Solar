@@ -42,6 +42,26 @@ public class Inverter : IMasterDataEntry
     [JsonPropertyName("Max. strings per MPPT")]
     public int MaxStringsPerMppt { get; set; }
 
+    /// <summary>Rated AC output (active) power; 0 when not stated.</summary>
+    [JsonPropertyName("Rated AC output power (W)")]
+    public double RatedAcPowerW { get; set; }
+
+    /// <summary>Max. AC output apparent power; 0 when not stated.</summary>
+    [JsonPropertyName("Max. AC apparent power (VA)")]
+    public double MaxAcApparentPowerVA { get; set; }
+
+    /// <summary>Rated AC output current per phase at the rated grid voltage; 0 when not stated.</summary>
+    [JsonPropertyName("Rated AC output current (A)")]
+    public double RatedAcCurrentA { get; set; }
+
+    /// <summary>Max. AC output current per phase; 0 when not stated.</summary>
+    [JsonPropertyName("Max. AC output current (A)")]
+    public double MaxAcCurrentA { get; set; }
+
+    /// <summary>Number of AC phases (1 or 3); 0 when not stated.</summary>
+    [JsonPropertyName("AC phases")]
+    public int AcPhases { get; set; }
+
     /// <summary>
     /// Imported datasheet, relative to the user data folder (for example <c>Datasheets/Trina TSM-445.pdf</c>); only own
     /// entries have one.

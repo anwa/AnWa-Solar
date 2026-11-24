@@ -25,6 +25,11 @@ public sealed class StringCalculatorTests
         MaxShortCircuitCurrentA = 54,
         MpptCount = 2,
         MaxStringsPerMppt = 2,
+        RatedAcPowerW = 18000,
+        MaxAcApparentPowerVA = 19800,
+        RatedAcCurrentA = 26.1,
+        MaxAcCurrentA = 28.7,
+        AcPhases = 3,
     };
 
     internal static PVModule AikoA500() => new()

@@ -4,6 +4,8 @@ All user-visible changes of AnWa-Solar.
 
 ## Unreleased (v0.15.0)
 
+- New: AC side and grid connection. A result card and a report section show the PV peak power, the DC/AC ratio against a recommended range (default 0.9–1.3), the apparent power against the limit of the simplified grid registration (default 30 kVA), the unbalanced load limit of single-phase inverters (default 4.6 kVA, a violated limit), the AC current per phase and an optional feed-in limit. The limits are set in the parameter dialog.
+- New: Inverter AC datasheet values (rated AC power, max. apparent power, rated and max. AC current per phase, phases) in the master data and in the datasheet import; values like "27.3/26.1" are read for 230/400 V. The shipped Deye SUN-15K/18K/20K-SG05LP3-EU-SM2 have them from the datasheet; the SUN-10K-G06P3-EU-AM2 has none yet.
 - New master data: inverter Deye SUN-10K-G06P3-EU-AM2, modules Ja-Solar JAM54D40-460/LB and Trina TSM-450-NEG9R.25.
 - Fixed: The temperature coefficient of Isc of all shipped modules (Ja-Solar JAM54D40-460/LB, Trina TSM-455-NEG9R.28 and TSM-450-NEG9R.25, AIKO-A500-MAH60Db) had a wrong minus sign; Isc rises with the temperature, as the datasheets state. With the default cell temperatures (-20 and 70 °C, both 45 K from 25 °C) the highest current was the same; with other temperatures the current when hot was too low. A test now requires a positive Isc coefficient for every shipped module.
 
