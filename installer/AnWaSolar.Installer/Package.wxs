@@ -17,6 +17,9 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of AnWa-Solar is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
+    <Icon Id="AppIcon.ico" SourceFile="$(var.AppIconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="AnWa-Solar" />
     </StandardDirectory>
@@ -39,7 +42,8 @@
                 Name="AnWa-Solar"
                 Description="Design and check PV strings for inverters"
                 Target="[INSTALLFOLDER]AnWa-Solar.exe"
-                WorkingDirectory="INSTALLFOLDER" />
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="AppIcon.ico" />
       <RegistryValue Root="HKCU" Key="Software\AnWa-Solar" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 

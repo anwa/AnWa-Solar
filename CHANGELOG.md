@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.9.0)
+
+- New: AnWa-Solar has its own icon (sun and PV module) for the window, the taskbar, the Start menu and Apps & features.
+
 ## v0.8.0 (2026-11-24)
 
 - New: Windows installer (MSI) that installs AnWa-Solar into `C:\Program Files\AnWa-Solar` with a Start menu shortcut and the license text. It contains everything the application needs, so no separate .NET installation is required.
