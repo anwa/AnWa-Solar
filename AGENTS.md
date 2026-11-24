@@ -64,6 +64,7 @@ dotnet format --verify-no-changes
 - The calculation decides whether a string may be connected to an inverter. The check of the open-circuit voltage at the minimum temperature against the maximum DC input voltage is safety-relevant: never weaken it, its safety margin or its temperature direction as a side effect of another change. Report questionable formulas or limits to the user instead of silently redefining them.
 - Every change to a formula, limit or temperature assumption comes with Core tests that use worked examples with real datasheet values, and is named in `CHANGELOG.md`.
 - The safety margin only tightens limits: maximum values are reduced, minimum values (start voltage, MPPT lower bound) are raised.
+- Tmin and Tmax are module (cell) temperatures. VMPP uses the module's VMPP temperature coefficient; without one, the PMAX coefficient is the conservative approximation. Currents use the higher value of both temperatures.
 - Master data (`Data/PV-Module.json`, `Data/Wechselrichter.json`) contains values from manufacturer datasheets only. Never estimate or invent datasheet values; when a value is missing, ask the user. Property names carry their unit.
 - Master data is shipped with the application and is read-only at runtime. The application never writes into its installation folder.
 - A master data file that cannot be parsed is reported in the GUI, not only in the log; one invalid entry must not discard the whole file.
