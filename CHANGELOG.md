@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.13.0)
+## v0.13.0 (2026-11-24)
 
 - New: Datasheet import. **Import datasheet** in the title bar and **Import…** in the module and inverter selection read a PDF datasheet, recognise the module or inverter values (German and English datasheets, several power classes or models per datasheet) and show them in a dialog to check, correct and complete. **Apply** saves the entry with a copy of the datasheet in your own master data in `%LOCALAPPDATA%\AnWa-Solar\Data`.
 - New: Own master data. Entries in `%LOCALAPPDATA%\AnWa-Solar\Data\Modules.json` and `Inverters.json` are loaded with the shipped data; an own entry replaces a shipped entry with the same manufacturer and model.
