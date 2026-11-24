@@ -74,7 +74,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] `AnWaSoft.Design.Wpf` 0.1.0 from the local package feed `D:\Workspace\Claude\Design\packages` (`nuget.config`)
 - [x] Palette, title bar window, message dialog and theme service from the library; the own copies are removed
 - [x] `Theme.xaml` keeps only AnWa-Solar's window styles and the state bindings of the results
-- [ ] Installer contains `AnWaSoft.Design.Wpf.dll`
+- [x] Installer contains `AnWaSoft.Design.Wpf.dll`
 
 ## Later
 
