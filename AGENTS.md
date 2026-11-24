@@ -23,7 +23,7 @@ AnWa-Solar is a Windows desktop tool for designing photovoltaic systems. It curr
 
 ## Language
 
-- All repository content is English, including GUI text, log messages, identifiers, master data property names, `README.md` and `CHANGELOG.md`. Existing German content is translated as part of the plan; new or changed content is written in English directly.
+- All repository content is English, including GUI text, log messages, identifiers, master data property names, `README.md` and `CHANGELOG.md`. The German property names that `SettingsService` still reads exist only to convert old settings files.
 - Manufacturer and model names in master data keep their original spelling.
 
 ## Stack
@@ -65,7 +65,7 @@ dotnet format --verify-no-changes
 - Every change to a formula, limit or temperature assumption comes with Core tests that use worked examples with real datasheet values, and is named in `CHANGELOG.md`.
 - The safety margin only tightens limits: maximum values are reduced, minimum values (start voltage, MPPT lower bound) are raised.
 - Tmin and Tmax are module (cell) temperatures. VMPP uses the module's VMPP temperature coefficient; without one, the PMAX coefficient is the conservative approximation. Currents use the higher value of both temperatures.
-- Master data (`Data/PV-Module.json`, `Data/Wechselrichter.json`) contains values from manufacturer datasheets only. Never estimate or invent datasheet values; when a value is missing, ask the user. Property names carry their unit.
+- Master data (`Data/Modules.json`, `Data/Inverters.json`) contains values from manufacturer datasheets only. Never estimate or invent datasheet values; when a value is missing, ask the user. Property names carry their unit.
 - Master data is shipped with the application and is read-only at runtime. The application never writes into its installation folder.
 - A master data file that cannot be parsed is reported in the GUI, not only in the log; one invalid entry must not discard the whole file.
 
