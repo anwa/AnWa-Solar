@@ -33,8 +33,8 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 
 ## M5 – Master data robustness (`fix/master-data`)
 
-- [ ] Inverter currents and other datasheet values as decimal numbers
-- [ ] Invalid entries are skipped individually and reported in the GUI
+- [x] Inverter currents and other datasheet values as decimal numbers
+- [x] Invalid entries are skipped individually and reported in the GUI
 
 ## M6 – English translation (`refactor/english`)
 

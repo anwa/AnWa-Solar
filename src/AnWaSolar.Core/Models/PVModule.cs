@@ -11,7 +11,7 @@ public class PVModule
     public string Model { get; set; } = string.Empty;
 
     [JsonPropertyName("Nominalleistung-PMAX (Wp)")]
-    public int NominalleistungPmaxWp { get; set; }
+    public double NominalleistungPmaxWp { get; set; }
 
     [JsonPropertyName("Spannung im MPP-UMPP (V)")]
     public double SpannungImMppUmppV { get; set; }

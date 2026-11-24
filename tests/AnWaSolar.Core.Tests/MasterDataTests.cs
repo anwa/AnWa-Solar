@@ -19,12 +19,13 @@ public sealed class MasterDataTests
     }
 
     [Fact]
-    public void Shipped_files_contain_modules_and_inverters()
+    public void Shipped_files_load_completely()
     {
         JsonDataStore store = LoadShippedData();
 
         Assert.NotEmpty(store.Module);
         Assert.NotEmpty(store.Wechselrichter);
+        Assert.Empty(store.Issues);
     }
 
     [Fact]
