@@ -13,6 +13,9 @@ Battery storage, AC-side and cable/fuse calculations are planned (see [Roadmap](
   - **Parameters**: minimum and maximum cell temperature (Tmin, default −20 °C; Tmax, default 70 °C) and the safety margin.
 - **Report** tab: Markdown report of the current configuration with a preview (Microsoft Edge WebView2) that renders the formulas with KaTeX; the Markdown can be copied or saved. The preview works offline; KaTeX is shipped with the application. WebView2 keeps its data in `%LOCALAPPDATA%\AnWa-Solar\WebView2`. The Microsoft Edge WebView2 Runtime is part of Windows 11; without it the report tab shows the Markdown source.
 - Master data of PV modules and inverters in JSON files; invalid entries are skipped and reported.
+- Light and dark mode: the theme button in the top bar switches System → Light → Dark; System follows the Windows app theme. The choice is saved.
+- User manual (F1 or the book button) with page tree, search and formulas; the pages are in [docs/manual](docs/manual) and embedded into the application.
+- About window with version, build, runtime, installation and data folders, contact (Andreas Wansner, andreas@anwa-soft.de) and license.
 - Structured JSONL logging.
 
 ## Requirements for Building
@@ -70,6 +73,7 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 - User settings are stored in `%LOCALAPPDATA%\AnWa-Solar\settings.json` (schema version 2):
   - `Parameters`: `MinTempC`, `MaxTempC`, `SafetyMarginPct`
   - `LastSelection`: the inverter (`Manufacturer`, `Model`) and per MPPT the module reference, `ModulesPerString`, `ParallelStrings` and `IsEnabled`
+  - `Theme`: `System`, `Light` or `Dark`
 - Changes are saved automatically, at the latest 0.5 s after the last change and when the window closes. The file is written atomically.
 - An unreadable `settings.json` is kept as `settings.json.invalid-<timestamp>` and the defaults are used.
 - Older settings are taken over automatically: `settings.json` of schema version 1 (versions 0.5.0 and 0.6.0) is converted on the first start, and without `settings.json` the values are imported once from the `appsettings.json` next to the executable, where versions up to 0.4.0 stored them.
@@ -88,7 +92,8 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 ## Architecture
 
 - `src/AnWaSolar.Core`: models, master data (`JsonDataStore`), string calculation (`Calculation/StringCalculator`), results text and Markdown report, settings (`SettingsService`) and the JSONL logger, without WPF references. The live results and the report use the same calculation result.
-- `src/AnWaSolar.App`: WPF application (windows, dependency injection through Microsoft.Extensions.Hosting).
+- `src/AnWaSolar.App`: WPF application (windows, theme service, dependency injection through Microsoft.Extensions.Hosting). The report preview and the manual share one WebView2 setup.
+- `docs/manual`: user manual (Markdown and `toc.json`), embedded into the executable; `ManualIndex` in Core builds the page tree and the search.
 - `tests/AnWaSolar.Core.Tests`: xUnit tests for Core.
 - `installer/AnWaSolar.Installer`: WiX 5 MSI project; `tools/Build-Installer.ps1` builds the MSI (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 - The version is defined once in `Directory.Build.props` and shown in the main window title; package versions are pinned in `Directory.Packages.props`.

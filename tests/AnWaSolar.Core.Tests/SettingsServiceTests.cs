@@ -96,6 +96,26 @@ public sealed class SettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void Theme_defaults_to_system_and_is_saved()
+    {
+        Assert.Equal(AppTheme.System, Create().LoadTheme());
+
+        Assert.True(Create().SaveTheme(AppTheme.Dark));
+
+        Assert.Equal(AppTheme.Dark, Create().LoadTheme());
+        Assert.Contains("\"Theme\": \"Dark\"", File.ReadAllText(SettingsPath), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Unknown_theme_value_falls_back_to_system()
+    {
+        Directory.CreateDirectory(UserDirectory);
+        File.WriteAllText(SettingsPath, """{ "SchemaVersion": 2, "Theme": "Purple" }""");
+
+        Assert.Equal(AppTheme.System, Create().LoadTheme());
+    }
+
+    [Fact]
     public void Returned_objects_are_copies()
     {
         SettingsService service = Create();

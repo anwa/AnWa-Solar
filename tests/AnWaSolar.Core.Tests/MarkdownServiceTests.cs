@@ -22,7 +22,7 @@ public sealed class MarkdownServiceTests
     {
         string html = Create(advanced: false).ToHtml("# Report\n\n- item");
 
-        Assert.Contains("<h1>Report</h1>", html, StringComparison.Ordinal);
+        Assert.Contains("<h1 id=\"report\">Report</h1>", html, StringComparison.Ordinal);
         Assert.Contains("<li>item</li>", html, StringComparison.Ordinal);
     }
 

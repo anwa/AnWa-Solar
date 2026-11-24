@@ -37,4 +37,29 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- User manual from docs/manual, embedded into the executable (Manual window). -->
+  <PropertyGroup>
+    <ManualFolder>$(MSBuildThisFileDirectory)..\..\docs\manual\</ManualFolder>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(ManualFolder)**\*.md;$(ManualFolder)toc.json" LogicalName="manual/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Build information for the About window: commit of the application and build date. -->
+  <Target Name="AddBuildInfo" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low" ContinueOnError="true" WorkingDirectory="$(MSBuildThisFileDirectory)">
+      <Output TaskParameter="ConsoleOutput" PropertyName="SourceCommit" />
+    </Exec>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>SourceCommit</_Parameter1>
+        <_Parameter2>$(SourceCommit)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildDate</_Parameter1>
+        <_Parameter2>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
 </Project>

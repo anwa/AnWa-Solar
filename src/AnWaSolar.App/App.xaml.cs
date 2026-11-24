@@ -6,6 +6,7 @@ using System.Windows;
 using AnWaSolar.Core;
 using AnWaSolar.Core.Logging;
 using AnWaSolar.Core.Services;
+using AnWaSolar.Services;
 using AnWaSolar.Windows;
 
 using Microsoft.Extensions.Configuration;
@@ -59,10 +60,16 @@ public partial class App : Application
         builder.Services.AddSingleton<IDataPathProvider, DataPathProvider>();
         builder.Services.AddSingleton<IDataStore, JsonDataStore>();
 
+        // Theme
+        builder.Services.AddSingleton<ThemeService>();
+
         // Windows through dependency injection
         builder.Services.AddTransient<MainWindow>();
 
         _host = builder.Build();
+
+        // Apply the saved theme before the first window is shown
+        _host.Services.GetRequiredService<ThemeService>().Apply(_host.Services.GetRequiredService<ISettingsService>().LoadTheme());
 
         // Load the master data at startup
         var dataStore = _host.Services.GetRequiredService<IDataStore>();

@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Style="{StaticResource AppWindow}"
         Title="AnWa-Solar"
         Height="1200"
         Width="1000"
@@ -13,6 +14,38 @@
                                       DockPanel.Dock="Top"
                                       Padding="16">
                 <DockPanel>
+                    <!-- Theme, manual and about; white icons on the primary colour in light and dark mode. -->
+                    <StackPanel DockPanel.Dock="Right"
+                                Orientation="Horizontal">
+                        <Button x:Name="ThemeButton"
+                                Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                Foreground="White"
+                                Click="OnThemeClick"
+                                AutomationProperties.Name="Theme">
+                            <materialDesign:PackIcon x:Name="ThemeIcon"
+                                                     Kind="ThemeLightDark"
+                                                     Width="22"
+                                                     Height="22" />
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                Foreground="White"
+                                Click="OnManualClick"
+                                ToolTip="Manual (F1)"
+                                AutomationProperties.Name="Manual">
+                            <materialDesign:PackIcon Kind="BookOpenVariant"
+                                                     Width="22"
+                                                     Height="22" />
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                Foreground="White"
+                                Click="OnAboutClick"
+                                ToolTip="About AnWa-Solar"
+                                AutomationProperties.Name="About">
+                            <materialDesign:PackIcon Kind="InformationOutline"
+                                                     Width="22"
+                                                     Height="22" />
+                        </Button>
+                    </StackPanel>
                     <TextBlock Text="AnWa-Solar"
                                Foreground="White"
                                FontSize="18"

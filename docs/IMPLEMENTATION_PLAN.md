@@ -55,6 +55,12 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Report preview with WebView2 and formula rendering through KaTeX shipped with the application
 - [x] All NuGet packages on the newest stable version (checked 2026-11-24; WiX stays on 5 by decision)
 
+## M9 – Dark mode, About window and manual (`feature/theme-about-manual`, v0.10.0)
+
+- [x] Theme System/Light/Dark with a toggle in the top bar, saved in `settings.json`; WebView2 pages follow it
+- [x] About window with version, build, runtime, folders, contact and license
+- [x] User manual in `docs/manual`, embedded into the executable, shown with WebView2 (page tree, search, links, formulas)
+
 ## Later
 
 - Further calculations: battery storage, AC side, cable and fuse sizing
