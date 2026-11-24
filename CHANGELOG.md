@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.7.0)
+## v0.7.0 (2026-11-24)
 
 - Changed: The application, the report, the messages and the log are in English.
 - Changed: The master data files are `Modules.json` and `Inverters.json` with English field names (for example `Manufacturer`, `Pmax (W)`, `Max. input current per MPPT (A)`); the shipped data was converted.

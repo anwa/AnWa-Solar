@@ -36,7 +36,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Inverter currents and other datasheet values as decimal numbers
 - [x] Invalid entries are skipped individually and reported in the GUI
 
-## M6 – English translation (`refactor/english`)
+## M6 – English translation (`refactor/english`, v0.7.0)
 
 - [x] GUI text, log messages, comments and identifiers (for example `Wechselrichter` → `Inverter`)
 - [x] Master data property names in English, with a migration of the existing data files and of saved selections
