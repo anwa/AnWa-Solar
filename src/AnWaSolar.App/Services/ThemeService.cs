@@ -84,6 +84,39 @@ public sealed class ThemeService : IDisposable
         }
     }
 
+    // Light and dark values of the application brushes defined in Resources/Theme.xaml. The title bar keeps the
+    // indigo of the app in both themes (darker in dark mode); the state colours are lighter in dark mode for contrast.
+    private static readonly (string Key, string Light, string Dark)[] s_appBrushes =
+    [
+        ("App.TitleBar", "#3F51B5", "#283593"),
+        ("App.TextMuted", "#5F6368", "#A9AEB8"),
+        ("App.PanelBackground", "#F4F5FA", "#181A20"),
+        ("App.RowAlternate", "#0A3F51B5", "#147986CB"),
+        ("State.Ok", "#2E7D32", "#81C784"),
+        ("State.Warning", "#B26A00", "#FFB74D"),
+        ("State.Error", "#C62828", "#EF9A9A"),
+        ("State.Neutral", "#5F6368", "#A9AEB8"),
+        ("State.OkTint", "#E8F5E9", "#1E3324"),
+        ("State.WarningTint", "#FFF4E0", "#3A2E17"),
+        ("State.ErrorTint", "#FDECEA", "#3D1F22"),
+        ("State.NeutralTint", "#EEEFF3", "#2A2D35"),
+    ];
+
+    private static void ApplyAppBrushes(bool dark)
+    {
+        if (Application.Current is not { } app)
+        {
+            return;
+        }
+
+        foreach ((string key, string light, string darkValue) in s_appBrushes)
+        {
+            var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(dark ? darkValue : light));
+            brush.Freeze();
+            app.Resources[key] = brush;
+        }
+    }
+
     private void ApplyEffective(bool dark)
     {
         var palette = new PaletteHelper();
@@ -91,6 +124,7 @@ public sealed class ThemeService : IDisposable
         theme.SetBaseTheme(dark ? BaseTheme.Dark : BaseTheme.Light);
         theme.SetPrimaryColor(dark ? s_darkPrimary : s_lightPrimary);
         palette.SetTheme(theme);
+        ApplyAppBrushes(dark);
 
         bool changed = IsDark != dark;
         IsDark = dark;

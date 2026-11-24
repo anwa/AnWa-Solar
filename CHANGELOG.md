@@ -2,6 +2,15 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.11.0)
+
+- Changed: New user interface. All windows have their own title bar in the application colours with a thin accent line instead of the Windows title bar.
+- Changed: The main window shows the configuration on the left and the results on the right. The results start with an overall status, followed by one card per MPPT with a voltage window graphic, a table of the lowest and highest values against the limits, the allowed module count and the notes; the inverter limits are listed from the datasheet and with the safety margin. A status bar shows the overall result.
+- Changed: Sliders show their value; the allowed module count is shown below the slider.
+- Changed: Messages appear in dialogs in the application style; copy and save confirmations appear briefly at the bottom of the window.
+- Changed: The report opens in the preview; Preview and Markdown switch the view.
+- New: The results can be copied as text.
+
 ## v0.10.0 (2026-11-24)
 
 - New: Dark mode. The theme button in the top bar switches between System (follows Windows), Light and Dark; the choice is saved. All windows, the report preview and the manual follow it.

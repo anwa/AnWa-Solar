@@ -2,7 +2,7 @@
 
 ## Theme
 
-The theme button in the top bar switches in this order:
+The theme button in the title bar switches in this order:
 
 1. **System**: follows the Windows setting for apps (light or dark) and changes when you change it in Windows.
 2. **Light**

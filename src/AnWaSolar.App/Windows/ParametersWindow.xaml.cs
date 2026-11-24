@@ -6,7 +6,7 @@ using AnWaSolar.Core.Services;
 
 namespace AnWaSolar.Windows;
 
-public partial class ParametersWindow : Window
+public partial class ParametersWindow : ChromeWindow
 {
     public CalculationParameters Parameters { get; private set; }
 
@@ -32,14 +32,12 @@ public partial class ParametersWindow : Window
             !TryParseDouble(MaxTempInput.Text, out var tMax) ||
             tMin >= tMax)
         {
-            MessageBox.Show("Invalid temperature range. Tmin must be lower than Tmax.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Invalid temperature range. Tmin must be lower than Tmax.", Title, DialogKind.Error);
             return;
         }
         if (!TryParseDouble(SafetyMarginInput.Text, out var marginPct) || marginPct < 0 || marginPct > 50)
         {
-            MessageBox.Show("Invalid safety margin. Allowed range: 0–50 %.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Invalid safety margin. Allowed range: 0–50 %.", Title, DialogKind.Error);
             return;
         }
 
