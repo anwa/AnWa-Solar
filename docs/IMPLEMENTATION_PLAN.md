@@ -84,7 +84,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Datasheet viewer (WebView2) from the selection dialogs and the main window
 - [x] Manual page for the import
 
-## M13 – Report export (`feature/report-export`)
+## M13 – Report export (`feature/report-export`, v0.14.0)
 
 - [x] Report as a single HTML file: formulas rendered, KaTeX style and fonts embedded, light colours, no scripts
 - [x] Report as PDF (A4) from the preview with WebView2, header and page numbers

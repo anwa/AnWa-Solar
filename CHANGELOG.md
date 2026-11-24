@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.14.0)
+## v0.14.0 (2026-11-24)
 
 - New: **Export HTML** saves the report as a single HTML file with rendered formulas and embedded fonts; it works offline and without scripts and always uses the light colours.
 - New: **Export PDF** saves the report as an A4 PDF with title, date and page numbers in light colours.
