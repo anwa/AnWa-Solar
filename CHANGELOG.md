@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.9.0)
+## v0.9.0 (2026-11-24)
 
 - New: AnWa-Solar has its own icon (sun and PV module) for the window, the taskbar, the Start menu and Apps & features.
 - New: The report preview uses Microsoft Edge WebView2 and shows formulas properly typeset (KaTeX, shipped with the application, works offline).
