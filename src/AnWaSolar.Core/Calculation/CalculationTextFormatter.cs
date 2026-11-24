@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 using AnWaSolar.Core.Models;
@@ -15,17 +16,17 @@ public static class CalculationTextFormatter
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        Wechselrichter inv = result.Inverter;
+        Inverter inv = result.Inverter;
         if (result.Limits is not { } limits)
         {
-            return $"MPPT-Spannungsbereich des Wechselrichters ist ungültig: '{inv.MpptSpannungsbereichV}'.";
+            return $"The MPPT voltage range of the inverter is invalid: '{inv.MpptVoltageRangeV}'.";
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine("Berechnung basierend auf:");
-        sb.AppendLine($"- WR: {inv.Hersteller} {inv.Model} ({FormatInverterSummary(inv)})");
-        sb.AppendLine($"- Parameter: Zelltemperatur Tmin={result.Parameters.MinTempC} °C, Tmax={result.Parameters.MaxTempC} °C, Sicherheitsmarge={result.Parameters.SicherheitsmargePct} %");
-        sb.AppendLine($"- Effektive Grenzen (mit Sicherheitsmarge): {FormatLimits(limits)}");
+        sb.AppendLine("Calculation based on:");
+        sb.AppendLine($"- Inverter: {inv.Manufacturer} {inv.Model} ({FormatInverterSummary(inv)})");
+        sb.AppendLine($"- Parameters: cell temperature Tmin={result.Parameters.MinTempC} °C, Tmax={result.Parameters.MaxTempC} °C, safety margin={result.Parameters.SafetyMarginPct} %");
+        sb.AppendLine($"- Effective limits (with safety margin): {FormatLimits(limits)}");
 
         foreach (MpptResult mppt in result.Mppts)
         {
@@ -35,33 +36,33 @@ public static class CalculationTextFormatter
             switch (mppt.Status)
             {
                 case MpptStatus.MissingConfiguration:
-                    sb.AppendLine("- Konfiguration fehlt.");
+                    sb.AppendLine("- Configuration missing.");
                     continue;
                 case MpptStatus.Disabled:
-                    sb.AppendLine("- Deaktiviert: MPPT wird in der Berechnung ausgelassen.");
+                    sb.AppendLine("- Disabled: this MPPT is skipped by the calculation.");
                     continue;
                 case MpptStatus.NoModule:
-                    sb.AppendLine("- Kein PV-Modul ausgewählt.");
+                    sb.AppendLine("- No PV module selected.");
                     continue;
                 case MpptStatus.Calculated:
                 default:
                     break;
             }
 
-            PVModule modul = mppt.Module!;
-            sb.AppendLine($"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp)");
-            sb.AppendLine($"- Einstellungen: Module/String={mppt.ModulesPerString}, Parallele Strings={mppt.ParallelStrings}");
-            sb.AppendLine($"- String-Spannung OC: min={mppt.StringVocMinV:F1} V, max={mppt.StringVocMaxV:F1} V");
-            sb.AppendLine($"- String-Spannung MPP: min={mppt.StringVmppMinV:F1} V, max={mppt.StringVmppMaxV:F1} V");
-            sb.AppendLine($"- String-Ströme ISC: min={mppt.StringIscMinA:F2} A, max={mppt.StringIscMaxA:F2} A");
-            sb.AppendLine($"- String-Ströme IMPP: min={mppt.StringImppMinA:F2} A, max={mppt.StringImppMaxA:F2} A");
-            sb.AppendLine($"- PV-Leistung geschätzt (kalt, pro MPPT): {mppt.ArrayPowerAtTminW:F0} W");
-            sb.AppendLine($"- Zulässige Module/String: {FormatModuleRange(mppt)}");
-            sb.AppendLine($"- Zulässige parallele Strings/MPPT (Herstellerangabe): {FormatMaxStrings(inv)}");
+            PVModule module = mppt.Module!;
+            sb.AppendLine($"- Module: {module.Manufacturer} {module.Model} (Pmax={module.PmaxW} W)");
+            sb.AppendLine($"- Settings: modules per string={mppt.ModulesPerString}, parallel strings={mppt.ParallelStrings}");
+            sb.AppendLine($"- String voltage Voc: min={mppt.StringVocMinV:F1} V, max={mppt.StringVocMaxV:F1} V");
+            sb.AppendLine($"- String voltage Vmpp: min={mppt.StringVmppMinV:F1} V, max={mppt.StringVmppMaxV:F1} V");
+            sb.AppendLine($"- String current Isc: min={mppt.StringIscMinA:F2} A, max={mppt.StringIscMaxA:F2} A");
+            sb.AppendLine($"- String current Impp: min={mppt.StringImppMinA:F2} A, max={mppt.StringImppMaxA:F2} A");
+            sb.AppendLine($"- Estimated PV power (cold, per MPPT): {mppt.ArrayPowerAtTminW:F0} W");
+            sb.AppendLine($"- Allowed modules per string: {FormatModuleRange(mppt)}");
+            sb.AppendLine($"- Allowed parallel strings per MPPT (datasheet): {FormatMaxStrings(inv)}");
 
             if (mppt.Violations.Count > 0)
             {
-                sb.AppendLine("Hinweise:");
+                sb.AppendLine("Notes:");
                 foreach (LimitViolation violation in mppt.Violations)
                 {
                     sb.AppendLine($"  - {FormatViolation(violation)}");
@@ -70,12 +71,12 @@ public static class CalculationTextFormatter
         }
 
         sb.AppendLine(string.Empty);
-        sb.AppendLine($"Prüfergebnis: {(result.IsOk ? "Alle Bedingungen erfüllt." : "Einschränkungen/Verstöße vorhanden.")}");
+        sb.AppendLine($"Result: {(result.IsOk ? "All conditions are met." : "Restrictions or violations found.")}");
 
         IReadOnlyList<string> messages = GetMessages(result);
         if (!result.IsOk && messages.Count > 0)
         {
-            sb.AppendLine("Gesamthinweise:");
+            sb.AppendLine("Summary of notes:");
             foreach (string message in messages)
             {
                 sb.AppendLine($"- {message}");
@@ -95,7 +96,7 @@ public static class CalculationTextFormatter
         {
             if (mppt.Status == MpptStatus.NoModule)
             {
-                messages.Add($"MPPT {mppt.MpptIndex}: Bitte PV-Modul auswählen.");
+                messages.Add($"MPPT {mppt.MpptIndex}: Please select a PV module.");
             }
 
             foreach (LimitViolation violation in mppt.Violations)
@@ -108,10 +109,10 @@ public static class CalculationTextFormatter
     }
 
     /// <summary>Inverter datasheet values in one line, as used in the summaries.</summary>
-    public static string FormatInverterSummary(Wechselrichter inv)
+    public static string FormatInverterSummary(Inverter inv)
     {
         ArgumentNullException.ThrowIfNull(inv);
-        return $"Vdc_max={inv.MaxDcEingangsspannungV} V, Start={inv.StartspannungV} V, MPPT={inv.MpptSpannungsbereichV} V, I_in_max={inv.MaxBetriebsPvEingangsstromA} A, I_sc_max={inv.MaxEingangsKurzschlussstromA} A, MPPTs={inv.AnzahlDerMpptTrackers}, Max Strings/MPPT={inv.MaxStringsProMppt}";
+        return $"Vdc_max={inv.MaxDcInputVoltageV} V, Start={inv.StartVoltageV} V, MPPT={inv.MpptVoltageRangeV} V, I_in_max={inv.MaxInputCurrentA} A, I_sc_max={inv.MaxShortCircuitCurrentA} A, MPPTs={inv.MpptCount}, max. strings/MPPT={inv.MaxStringsPerMppt}";
     }
 
     /// <summary>Effective limits in one line.</summary>
@@ -122,10 +123,10 @@ public static class CalculationTextFormatter
     }
 
     internal static string FormatModuleRange(MpptResult mppt)
-        => mppt.HasValidModuleRange ? $"{mppt.MinModulesPerString} … {mppt.MaxModulesPerString}" : "kein gültiger Bereich";
+        => mppt.HasValidModuleRange ? $"{mppt.MinModulesPerString} … {mppt.MaxModulesPerString}" : "no valid range";
 
-    internal static string FormatMaxStrings(Wechselrichter inv)
-        => inv.MaxStringsProMppt > 0 ? inv.MaxStringsProMppt.ToString(System.Globalization.CultureInfo.CurrentCulture) : "n/a";
+    internal static string FormatMaxStrings(Inverter inv)
+        => inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(CultureInfo.CurrentCulture) : "n/a";
 
     /// <summary>Note for a violated limit, with the recommended count.</summary>
     public static string FormatViolation(LimitViolation v)
@@ -133,14 +134,14 @@ public static class CalculationTextFormatter
         ArgumentNullException.ThrowIfNull(v);
         return v.Kind switch
         {
-            ViolationKind.MaxDcVoltage => $"Überschreitung der max. DC-Spannung: N*VOC(Tmin)={v.Actual:F1} V > {v.Limit:F1} V. Max. Module/String: {v.Recommendation}.",
-            ViolationKind.MpptLowerBound => $"Unterschreitung MPPT-Untergrenze bei heiß: N*VMPP(Tmax)={v.Actual:F1} V < {v.Limit:F1} V. Min. Module/String: {v.Recommendation}.",
-            ViolationKind.MpptUpperBound => $"Überschreitung MPPT-Obergrenze bei kalt: N*VMPP(Tmin)={v.Actual:F1} V > {v.Limit:F1} V. Max. Module/String: {v.Recommendation}.",
-            ViolationKind.StartVoltage => $"Startspannung nicht erreicht: N*VMPP(Tmax)={v.Actual:F1} V < {v.Limit:F1} V. Min. Module/String: {v.Recommendation}.",
-            ViolationKind.ShortCircuitCurrent => $"Kurzschlussstrom-Grenze überschritten: {v.Actual:F2} A > {v.Limit:F2} A. Empfehlung: parallele Strings reduzieren (max. {v.Recommendation}).",
-            ViolationKind.InputCurrent => $"Eingangsstrom-Grenze überschritten: {v.Actual:F2} A > {v.Limit:F2} A. Empfehlung: parallele Strings reduzieren (max. {v.Recommendation}).",
-            ViolationKind.MaxStringsPerMppt => $"Max. Strings/MPPT überschritten: {v.Actual:F0} > {v.Limit:F0}. Bitte reduzieren.",
-            ViolationKind.DcPower => $"DC-Leistungsgrenze überschritten: {v.Actual:F0} W > {v.Limit:F0} W pro MPPT. Empfehlung: parallele Strings reduzieren (max. {v.Recommendation}).",
+            ViolationKind.MaxDcVoltage => $"Max. DC voltage exceeded: N×Voc(Tmin)={v.Actual:F1} V > {v.Limit:F1} V. Max. modules per string: {v.Recommendation}.",
+            ViolationKind.MpptLowerBound => $"Below the MPPT lower bound when hot: N×Vmpp(Tmax)={v.Actual:F1} V < {v.Limit:F1} V. Min. modules per string: {v.Recommendation}.",
+            ViolationKind.MpptUpperBound => $"Above the MPPT upper bound when cold: N×Vmpp(Tmin)={v.Actual:F1} V > {v.Limit:F1} V. Max. modules per string: {v.Recommendation}.",
+            ViolationKind.StartVoltage => $"Start voltage not reached: N×Vmpp(Tmax)={v.Actual:F1} V < {v.Limit:F1} V. Min. modules per string: {v.Recommendation}.",
+            ViolationKind.ShortCircuitCurrent => $"Short-circuit current limit exceeded: {v.Actual:F2} A > {v.Limit:F2} A. Reduce parallel strings (max. {v.Recommendation}).",
+            ViolationKind.InputCurrent => $"Input current limit exceeded: {v.Actual:F2} A > {v.Limit:F2} A. Reduce parallel strings (max. {v.Recommendation}).",
+            ViolationKind.MaxStringsPerMppt => $"Max. strings per MPPT exceeded: {v.Actual:F0} > {v.Limit:F0}. Please reduce.",
+            ViolationKind.DcPower => $"DC power limit exceeded: {v.Actual:F0} W > {v.Limit:F0} W per MPPT. Reduce parallel strings (max. {v.Recommendation}).",
             _ => throw new ArgumentOutOfRangeException(nameof(v), v.Kind, "Unknown violation kind."),
         };
     }

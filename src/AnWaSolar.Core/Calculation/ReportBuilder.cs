@@ -19,48 +19,48 @@ public static class ReportBuilder
         ArgumentNullException.ThrowIfNull(parameters);
 
         var md = new StringBuilder();
-        md.AppendLine("# Bericht: PV-String-Auslegung");
-        md.AppendLine($"Erstellt am {createdAt:yyyy-MM-dd HH:mm}");
+        md.AppendLine("# Report: PV string design");
+        md.AppendLine($"Created on {createdAt:yyyy-MM-dd HH:mm}");
         md.AppendLine();
 
         if (result is null)
         {
-            md.AppendLine("Hinweis: Bitte zuerst einen Wechselrichter auswählen, um einen vollständigen Bericht zu erzeugen.");
+            md.AppendLine("Note: Please select an inverter first to create a complete report.");
             return md.ToString();
         }
 
-        Wechselrichter inv = result.Inverter;
+        Inverter inv = result.Inverter;
 
-        md.AppendLine("## Parameter und Rahmenbedingungen");
-        md.AppendLine($"- Zelltemperaturbereich: Tmin={parameters.MinTempC} °C, Tmax={parameters.MaxTempC} °C");
-        md.AppendLine($"- Sicherheitsmarge: {parameters.SicherheitsmargePct} %");
+        md.AppendLine("## Parameters and conditions");
+        md.AppendLine($"- Cell temperature range: Tmin={parameters.MinTempC} °C, Tmax={parameters.MaxTempC} °C");
+        md.AppendLine($"- Safety margin: {parameters.SafetyMarginPct} %");
         md.AppendLine();
 
-        md.AppendLine("## Wechselrichter");
-        md.AppendLine($"- Hersteller/Modell: {inv.Hersteller} {inv.Model}");
-        md.AppendLine($"- MPPT-Spannungsbereich: {inv.MpptSpannungsbereichV} V");
-        md.AppendLine($"- Max. DC-Eingangsspannung: {inv.MaxDcEingangsspannungV} V");
-        md.AppendLine($"- Startspannung: {inv.StartspannungV} V");
-        md.AppendLine($"- Max. Betriebs-PV-Eingangsstrom: {inv.MaxBetriebsPvEingangsstromA} A");
-        md.AppendLine($"- Max. Eingangs-Kurzschlussstrom: {inv.MaxEingangsKurzschlussstromA} A");
-        md.AppendLine($"- Anzahl MPPT: {inv.AnzahlDerMpptTrackers}, Max. Strings pro MPPT: {inv.MaxStringsProMppt}");
+        md.AppendLine("## Inverter");
+        md.AppendLine($"- Manufacturer/model: {inv.Manufacturer} {inv.Model}");
+        md.AppendLine($"- MPPT voltage range: {inv.MpptVoltageRangeV} V");
+        md.AppendLine($"- Max. DC input voltage: {inv.MaxDcInputVoltageV} V");
+        md.AppendLine($"- Start voltage: {inv.StartVoltageV} V");
+        md.AppendLine($"- Max. input current per MPPT: {inv.MaxInputCurrentA} A");
+        md.AppendLine($"- Max. short-circuit current per MPPT: {inv.MaxShortCircuitCurrentA} A");
+        md.AppendLine($"- MPPT count: {inv.MpptCount}, max. strings per MPPT: {inv.MaxStringsPerMppt}");
         md.AppendLine();
 
-        md.AppendLine("### Berechnungshinweise");
-        md.AppendLine("- Spannungen und Ströme werden temperaturabhängig auf Basis der angegebenen Temperaturkoeffizienten abgeschätzt.");
-        md.AppendLine("- Tmin und Tmax sind Zelltemperaturen. VMPP wird mit dem VMPP-Temperaturkoeffizienten des Moduls gerechnet; fehlt er im Datenblatt, näherungsweise mit dem PMAX-Koeffizienten.");
-        md.AppendLine("- Sicherheitsmargen werden auf Grenzwerte angewendet: z. B. Vdc_max reduziert, Startspannung und MPPT-Untergrenze erhöht.");
-        md.AppendLine("- Strings in Serie erhöhen die Spannung proportional zur Modulanzahl, der Strom bleibt gleich. Parallelschaltung addiert Ströme.");
-        md.AppendLine("$V_{oc} (T_{STC}) * (1 + ((T_{min} - 25°C) * Temperaturkoeffizient))$");
+        md.AppendLine("### Calculation notes");
+        md.AppendLine("- Voltages and currents are estimated for the temperature range from the temperature coefficients of the datasheet.");
+        md.AppendLine("- Tmin and Tmax are cell temperatures. Vmpp uses the Vmpp temperature coefficient of the module; when the datasheet does not state it, the Pmax coefficient is used as an approximation.");
+        md.AppendLine("- The safety margin tightens the limits: for example Vdc_max is reduced, the start voltage and the MPPT lower bound are raised.");
+        md.AppendLine("- Modules in series add their voltages while the current stays the same; parallel strings add their currents.");
+        md.AppendLine("- $V_{oc}(T) = V_{oc}(25\\,°C) \\cdot (1 + \\alpha \\cdot (T - 25\\,°C))$");
         md.AppendLine();
 
         if (result.Limits is not { } limits)
         {
-            md.AppendLine("Warnung: MPPT-Spannungsbereich des Wechselrichters ist ungültig. Bericht ggf. unvollständig.");
+            md.AppendLine("Warning: The MPPT voltage range of the inverter is invalid. The report may be incomplete.");
             return md.ToString();
         }
 
-        md.AppendLine("### Effektive Grenzen (mit Sicherheitsmarge)");
+        md.AppendLine("### Effective limits (with safety margin)");
         md.AppendLine($"- {CalculationTextFormatter.FormatLimits(limits)}");
         md.AppendLine();
 
@@ -70,39 +70,39 @@ public static class ReportBuilder
 
             if (mppt.Status == MpptStatus.Disabled)
             {
-                md.AppendLine("- Deaktiviert: MPPT wird in der Berechnung ausgelassen.");
+                md.AppendLine("- Disabled: this MPPT is skipped by the calculation.");
                 md.AppendLine();
                 continue;
             }
 
             if (mppt.Status != MpptStatus.Calculated)
             {
-                md.AppendLine("- Kein PV-Modul ausgewählt.");
+                md.AppendLine("- No PV module selected.");
                 md.AppendLine();
                 continue;
             }
 
-            PVModule modul = mppt.Module!;
-            md.AppendLine($"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp, UMPP={modul.SpannungImMppUmppV:F2} V, IMPP={modul.StromImMppImppA:F2} A, UOC={modul.LeerlaufspannungUocV:F2} V, ISC={modul.KurzschlusstromIscA:F2} A)");
-            md.AppendLine($"- Einstellungen: Module/String={mppt.ModulesPerString}, Parallele Strings={mppt.ParallelStrings}");
+            PVModule module = mppt.Module!;
+            md.AppendLine($"- Module: {module.Manufacturer} {module.Model} (Pmax={module.PmaxW} W, Vmpp={module.VmppV:F2} V, Impp={module.ImppA:F2} A, Voc={module.VocV:F2} V, Isc={module.IscA:F2} A)");
+            md.AppendLine($"- Settings: modules per string={mppt.ModulesPerString}, parallel strings={mppt.ParallelStrings}");
             ModuleTemperatureValues t = mppt.Temperatures!;
-            md.AppendLine($"- VMPP-Temperaturkoeffizient: {t.VmppCoefficientPctPerC} %/°C{(t.VmppCoefficientApproximated ? " (Näherung: PMAX-Koeffizient)" : string.Empty)}");
+            md.AppendLine($"- Vmpp temperature coefficient: {t.VmppCoefficientPctPerC} %/°C{(t.VmppCoefficientApproximated ? " (approximation: Pmax coefficient)" : string.Empty)}");
             md.AppendLine();
 
-            md.AppendLine("### Ergebnisse (kondensiert)");
-            md.AppendLine($"- String-Spannung OC: min={mppt.StringVocMinV:F1} V, max={mppt.StringVocMaxV:F1} V");
-            md.AppendLine($"- String-Spannung MPP: min={mppt.StringVmppMinV:F1} V, max={mppt.StringVmppMaxV:F1} V");
-            md.AppendLine($"- String-Ströme ISC: min={mppt.StringIscMinA:F2} A, max={mppt.StringIscMaxA:F2} A");
-            md.AppendLine($"- String-Ströme IMPP: min={mppt.StringImppMinA:F2} A, max={mppt.StringImppMaxA:F2} A");
-            md.AppendLine($"- Gesamtströme am MPPT: ISC min={mppt.ArrayIscMinA:F2} A / max={mppt.ArrayIscMaxA:F2} A; IMPP min={mppt.ArrayImppMinA:F2} A / max={mppt.ArrayImppMaxA:F2} A");
+            md.AppendLine("### Results");
+            md.AppendLine($"- String voltage Voc: min={mppt.StringVocMinV:F1} V, max={mppt.StringVocMaxV:F1} V");
+            md.AppendLine($"- String voltage Vmpp: min={mppt.StringVmppMinV:F1} V, max={mppt.StringVmppMaxV:F1} V");
+            md.AppendLine($"- String current Isc: min={mppt.StringIscMinA:F2} A, max={mppt.StringIscMaxA:F2} A");
+            md.AppendLine($"- String current Impp: min={mppt.StringImppMinA:F2} A, max={mppt.StringImppMaxA:F2} A");
+            md.AppendLine($"- Total MPPT current: Isc min={mppt.ArrayIscMinA:F2} A / max={mppt.ArrayIscMaxA:F2} A; Impp min={mppt.ArrayImppMinA:F2} A / max={mppt.ArrayImppMaxA:F2} A");
             md.AppendLine();
 
-            md.AppendLine("### Empfehlungen und Grenzprüfung");
-            md.AppendLine($"- Zulässige Module/String: {CalculationTextFormatter.FormatModuleRange(mppt)}");
-            md.AppendLine($"- Zulässige parallele Strings/MPPT (Herstellerangabe): {CalculationTextFormatter.FormatMaxStrings(inv)}");
+            md.AppendLine("### Recommendations and limit checks");
+            md.AppendLine($"- Allowed modules per string: {CalculationTextFormatter.FormatModuleRange(mppt)}");
+            md.AppendLine($"- Allowed parallel strings per MPPT (datasheet): {CalculationTextFormatter.FormatMaxStrings(inv)}");
             md.AppendLine();
 
-            md.AppendLine("### Detail-Hinweise");
+            md.AppendLine("### Details");
             foreach (LimitViolation violation in mppt.Violations)
             {
                 md.AppendLine($"- {FormatViolation(violation)}");
@@ -116,14 +116,14 @@ public static class ReportBuilder
 
     private static string FormatViolation(LimitViolation v) => v.Kind switch
     {
-        ViolationKind.MaxDcVoltage => $"Überschreitung der max. DC-Spannung bei Tmin: {v.Actual:F1} V > {v.Limit:F1} V.",
-        ViolationKind.MpptLowerBound => $"Unterschreitung MPPT-Untergrenze bei Tmax: {v.Actual:F1} V < {v.Limit:F1} V.",
-        ViolationKind.MpptUpperBound => $"Überschreitung MPPT-Obergrenze bei Tmin: {v.Actual:F1} V > {v.Limit:F1} V.",
-        ViolationKind.StartVoltage => $"Startspannung nicht erreicht: {v.Actual:F1} V < {v.Limit:F1} V.",
-        ViolationKind.ShortCircuitCurrent => $"Kurzschlussstrom-Grenze überschritten: {v.Actual:F2} A > {v.Limit:F2} A.",
-        ViolationKind.InputCurrent => $"Eingangsstrom-Grenze überschritten: {v.Actual:F2} A > {v.Limit:F2} A.",
-        ViolationKind.MaxStringsPerMppt => $"Max. Strings/MPPT überschritten: {v.Actual:F0} > {v.Limit:F0}.",
-        ViolationKind.DcPower => $"DC-Leistungsgrenze überschritten: {v.Actual:F0} W > {v.Limit:F0} W pro MPPT.",
+        ViolationKind.MaxDcVoltage => $"Max. DC voltage exceeded at Tmin: {v.Actual:F1} V > {v.Limit:F1} V.",
+        ViolationKind.MpptLowerBound => $"Below the MPPT lower bound at Tmax: {v.Actual:F1} V < {v.Limit:F1} V.",
+        ViolationKind.MpptUpperBound => $"Above the MPPT upper bound at Tmin: {v.Actual:F1} V > {v.Limit:F1} V.",
+        ViolationKind.StartVoltage => $"Start voltage not reached: {v.Actual:F1} V < {v.Limit:F1} V.",
+        ViolationKind.ShortCircuitCurrent => $"Short-circuit current limit exceeded: {v.Actual:F2} A > {v.Limit:F2} A.",
+        ViolationKind.InputCurrent => $"Input current limit exceeded: {v.Actual:F2} A > {v.Limit:F2} A.",
+        ViolationKind.MaxStringsPerMppt => $"Max. strings per MPPT exceeded: {v.Actual:F0} > {v.Limit:F0}.",
+        ViolationKind.DcPower => $"DC power limit exceeded: {v.Actual:F0} W > {v.Limit:F0} W per MPPT.",
         _ => throw new ArgumentOutOfRangeException(nameof(v), v.Kind, "Unknown violation kind."),
     };
 }

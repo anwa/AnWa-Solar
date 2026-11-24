@@ -10,35 +10,35 @@ public sealed class JsonDataStoreTests : IDisposable
 {
     private const string ValidInverter = """
         {
-          "Hersteller": "Deye",
+          "Manufacturer": "Deye",
           "Model": "SUN-18K-SG05LP3-EU-SM2",
-          "Max.DC-Eingangsleistung (W)": 28800,
-          "Max.DC-Eingangsspannung (V)": 800,
-          "Startspannung (V)": 160,
-          "MPPT-Spannungsbereich (V)": "160-650",
-          "Nenn-DC-Eingangsspannung (V)": 550,
-          "Max. Betriebs-PV-Eingangsstrom (A)": 36,
-          "Max. Eingangs-Kurzschlussstrom (A)": 54,
-          "Anzahl der MPP Trackers": 2,
-          "Max. Strings pro MPPT": 2
+          "Max. DC input power (W)": 28800,
+          "Max. DC input voltage (V)": 800,
+          "Start voltage (V)": 160,
+          "MPPT voltage range (V)": "160-650",
+          "Nominal DC input voltage (V)": 550,
+          "Max. input current per MPPT (A)": 36,
+          "Max. short-circuit current per MPPT (A)": 54,
+          "MPPT count": 2,
+          "Max. strings per MPPT": 2
         }
         """;
 
     private const string ValidModule = """
         {
-          "Hersteller": "AIKO",
+          "Manufacturer": "AIKO",
           "Model": "AIKO-A500-MAH60Db",
-          "Nominalleistung-PMAX (Wp)": 500,
-          "Spannung im MPP-UMPP (V)": 37.9,
-          "Strom im MPP-IMPP (A)": 13.21,
-          "Leerlaufspannung-UOC (V)": 45.02,
-          "Kurzschlusstrom-ISC (A)": 14.05,
-          "Modulwirkungsgrad η m (%)": 22.6,
-          "Temperaturkoeffzient von PMAX (%/°C)": -0.26,
-          "Temperaturkoeffzient von VOC (%/°C)": -0.22,
-          "Temperaturkoeffzient von ISC (%/°C)": 0.05,
-          "Betriebstemperatur-Min (°C)": -40,
-          "Betriebstemperatur-Max (°C)": 85
+          "Pmax (W)": 500,
+          "Vmpp (V)": 37.9,
+          "Impp (A)": 13.21,
+          "Voc (V)": 45.02,
+          "Isc (A)": 14.05,
+          "Module efficiency (%)": 22.6,
+          "Temperature coefficient of Pmax (%/°C)": -0.26,
+          "Temperature coefficient of Voc (%/°C)": -0.22,
+          "Temperature coefficient of Isc (%/°C)": 0.05,
+          "Operating temperature min (°C)": -40,
+          "Operating temperature max (°C)": 85
         }
         """;
 
@@ -65,17 +65,17 @@ public sealed class JsonDataStoreTests : IDisposable
         return store;
     }
 
-    private static string Inverters(params string[] entries) => $$"""{ "Wechselrichter": [ {{string.Join(",", entries)}} ] }""";
+    private static string Inverters(params string[] entries) => $$"""{ "Inverters": [ {{string.Join(",", entries)}} ] }""";
 
-    private static string Modules(params string[] entries) => $$"""{ "Module": [ {{string.Join(",", entries)}} ] }""";
+    private static string Modules(params string[] entries) => $$"""{ "Modules": [ {{string.Join(",", entries)}} ] }""";
 
     [Fact]
     public void Valid_files_load_without_issues()
     {
         JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
 
-        Assert.Single(store.Wechselrichter);
-        Assert.Single(store.Module);
+        Assert.Single(store.Inverters);
+        Assert.Single(store.Modules);
         Assert.Empty(store.Issues);
     }
 
@@ -83,13 +83,13 @@ public sealed class JsonDataStoreTests : IDisposable
     public void Decimal_currents_and_voltages_are_accepted()
     {
         string inverter = ValidInverter
-            .Replace("\"Max. Betriebs-PV-Eingangsstrom (A)\": 36", "\"Max. Betriebs-PV-Eingangsstrom (A)\": 12.5", StringComparison.Ordinal)
-            .Replace("\"Startspannung (V)\": 160", "\"Startspannung (V)\": 162.5", StringComparison.Ordinal);
+            .Replace("\"Max. input current per MPPT (A)\": 36", "\"Max. input current per MPPT (A)\": 12.5", StringComparison.Ordinal)
+            .Replace("\"Start voltage (V)\": 160", "\"Start voltage (V)\": 162.5", StringComparison.Ordinal);
 
         JsonDataStore store = Load(Inverters(inverter), Modules(ValidModule));
 
-        Assert.Equal(12.5, Assert.Single(store.Wechselrichter).MaxBetriebsPvEingangsstromA);
-        Assert.Equal(162.5, store.Wechselrichter[0].StartspannungV);
+        Assert.Equal(12.5, Assert.Single(store.Inverters).MaxInputCurrentA);
+        Assert.Equal(162.5, store.Inverters[0].StartVoltageV);
         Assert.Empty(store.Issues);
     }
 
@@ -98,14 +98,14 @@ public sealed class JsonDataStoreTests : IDisposable
     {
         string textValue = ValidInverter
             .Replace("SUN-18K-SG05LP3-EU-SM2", "SUN-20K-SG05LP3-EU-SM2", StringComparison.Ordinal)
-            .Replace("\"Max. Betriebs-PV-Eingangsstrom (A)\": 36", "\"Max. Betriebs-PV-Eingangsstrom (A)\": \"36 A\"", StringComparison.Ordinal);
+            .Replace("\"Max. input current per MPPT (A)\": 36", "\"Max. input current per MPPT (A)\": \"36 A\"", StringComparison.Ordinal);
 
         JsonDataStore store = Load(Inverters(ValidInverter, textValue), Modules(ValidModule));
 
-        Assert.Equal("SUN-18K-SG05LP3-EU-SM2", Assert.Single(store.Wechselrichter).Model);
+        Assert.Equal("SUN-18K-SG05LP3-EU-SM2", Assert.Single(store.Inverters).Model);
         DataLoadIssue issue = Assert.Single(store.Issues);
         Assert.Equal(JsonDataStore.InverterFileName, issue.FileName);
-        Assert.Equal("Eintrag 2 (Deye SUN-20K-SG05LP3-EU-SM2)", issue.Entry);
+        Assert.Equal("Entry 2 (Deye SUN-20K-SG05LP3-EU-SM2)", issue.Entry);
     }
 
     [Fact]
@@ -117,8 +117,8 @@ public sealed class JsonDataStoreTests : IDisposable
 
         JsonDataStore store = Load(Inverters(ValidInverter, invalid), Modules(ValidModule));
 
-        Assert.Single(store.Wechselrichter);
-        Assert.Contains("MPPT-Spannungsbereich", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
+        Assert.Single(store.Inverters);
+        Assert.Contains("MPPT voltage range", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -126,12 +126,12 @@ public sealed class JsonDataStoreTests : IDisposable
     {
         string invalid = ValidModule
             .Replace("AIKO-A500-MAH60Db", "AIKO-A505", StringComparison.Ordinal)
-            .Replace("\"Leerlaufspannung-UOC (V)\": 45.02", "\"Leerlaufspannung-UOC (V)\": 30", StringComparison.Ordinal);
+            .Replace("\"Voc (V)\": 45.02", "\"Voc (V)\": 30", StringComparison.Ordinal);
 
         JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule, invalid));
 
-        Assert.Single(store.Module);
-        Assert.Contains("UOC", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
+        Assert.Single(store.Modules);
+        Assert.Contains("Voc", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -139,28 +139,28 @@ public sealed class JsonDataStoreTests : IDisposable
     {
         JsonDataStore store = Load(Inverters(ValidInverter, ValidInverter.Replace("Deye", "DEYE", StringComparison.Ordinal)), Modules(ValidModule));
 
-        Assert.Single(store.Wechselrichter);
-        Assert.Contains("doppelt", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
+        Assert.Single(store.Inverters);
+        Assert.Contains("duplicate", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Unreadable_file_and_missing_file_are_reported()
     {
-        JsonDataStore store = Load("{ \"Wechselrichter\": [ ", modules: null);
+        JsonDataStore store = Load("{ \"Inverters\": [ ", modules: null);
 
-        Assert.Empty(store.Wechselrichter);
-        Assert.Empty(store.Module);
+        Assert.Empty(store.Inverters);
+        Assert.Empty(store.Modules);
         Assert.Equal(2, store.Issues.Count);
         Assert.All(store.Issues, issue => Assert.Null(issue.Entry));
-        Assert.Contains(store.Issues, issue => issue.FileName == JsonDataStore.ModuleFileName && issue.Message.Contains("nicht gefunden", StringComparison.Ordinal));
+        Assert.Contains(store.Issues, issue => issue.FileName == JsonDataStore.ModuleFileName && issue.Message.Contains("not found", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Missing_list_is_reported()
+    public void File_with_the_old_german_list_name_is_reported()
     {
-        JsonDataStore store = Load("{ \"Inverters\": [] }", Modules(ValidModule));
+        JsonDataStore store = Load("{ \"Wechselrichter\": [] }", Modules(ValidModule));
 
-        Assert.Contains("\"Wechselrichter\" fehlt", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
+        Assert.Contains("\"Inverters\" is missing", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
     }
 
     private sealed class TestPaths(string directory) : IDataPathProvider

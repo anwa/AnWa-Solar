@@ -18,9 +18,9 @@ public sealed record DataLoadIssue(string FileName, string? Entry, string Messag
 
 public interface IDataStore
 {
-    IReadOnlyList<PVModule> Module { get; }
+    IReadOnlyList<PVModule> Modules { get; }
 
-    IReadOnlyList<Wechselrichter> Wechselrichter { get; }
+    IReadOnlyList<Inverter> Inverters { get; }
 
     /// <summary>Problems of the last <see cref="Load"/>; skipped entries are listed individually.</summary>
     IReadOnlyList<DataLoadIssue> Issues { get; }
@@ -52,15 +52,15 @@ public class DataPathProvider : IDataPathProvider
 /// </summary>
 public class JsonDataStore : IDataStore
 {
-    public const string ModuleFileName = "PV-Module.json";
-    public const string InverterFileName = "Wechselrichter.json";
+    public const string ModuleFileName = "Modules.json";
+    public const string InverterFileName = "Inverters.json";
 
     private readonly ILogger<JsonDataStore> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly IDataPathProvider _paths;
 
-    private List<PVModule> _module = [];
-    private List<Wechselrichter> _wechselrichter = [];
+    private List<PVModule> _modules = [];
+    private List<Inverter> _inverters = [];
     private List<DataLoadIssue> _issues = [];
 
     public JsonDataStore(ILogger<JsonDataStore> logger, JsonSerializerOptions jsonOptions, IDataPathProvider paths)
@@ -70,24 +70,24 @@ public class JsonDataStore : IDataStore
         _paths = paths;
     }
 
-    public IReadOnlyList<PVModule> Module => _module;
+    public IReadOnlyList<PVModule> Modules => _modules;
 
-    public IReadOnlyList<Wechselrichter> Wechselrichter => _wechselrichter;
+    public IReadOnlyList<Inverter> Inverters => _inverters;
 
     public IReadOnlyList<DataLoadIssue> Issues => _issues;
 
     public void Load()
     {
         var issues = new List<DataLoadIssue>();
-        _module = LoadEntries<PVModule>(ModuleFileName, "Module", ValidateModule, m => (m.Hersteller, m.Model), issues);
-        _wechselrichter = LoadEntries<Wechselrichter>(InverterFileName, "Wechselrichter", ValidateInverter, w => (w.Hersteller, w.Model), issues);
+        _modules = LoadEntries<PVModule>(ModuleFileName, "Modules", ValidateModule, m => (m.Manufacturer, m.Model), issues);
+        _inverters = LoadEntries<Inverter>(InverterFileName, "Inverters", ValidateInverter, w => (w.Manufacturer, w.Model), issues);
         _issues = issues;
 
-        _logger.LogInformation("Daten geladen: {ModuleCount} PV-Module, {InvCount} Wechselrichter.",
-            _module.Count, _wechselrichter.Count);
+        _logger.LogInformation("Master data loaded: {ModuleCount} PV modules, {InvCount} inverters.",
+            _modules.Count, _inverters.Count);
         foreach (DataLoadIssue issue in issues)
         {
-            _logger.LogWarning("Stammdaten: {Issue}", issue.ToString());
+            _logger.LogWarning("Master data: {Issue}", issue.ToString());
         }
     }
 
@@ -103,7 +103,7 @@ public class JsonDataStore : IDataStore
         string path = _paths.GetFilePath(fileName);
         if (!File.Exists(path))
         {
-            issues.Add(new DataLoadIssue(fileName, null, "Datei nicht gefunden."));
+            issues.Add(new DataLoadIssue(fileName, null, "File not found."));
             return result;
         }
 
@@ -114,8 +114,8 @@ public class JsonDataStore : IDataStore
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            _logger.LogError(ex, "Fehler beim Lesen von {Path}.", path);
-            issues.Add(new DataLoadIssue(fileName, null, $"Datei kann nicht gelesen werden ({ex.Message})."));
+            _logger.LogError(ex, "Error reading {Path}.", path);
+            issues.Add(new DataLoadIssue(fileName, null, $"File cannot be read ({ex.Message})."));
             return result;
         }
 
@@ -125,7 +125,7 @@ public class JsonDataStore : IDataStore
                 || !document.RootElement.TryGetProperty(arrayProperty, out JsonElement array)
                 || array.ValueKind != JsonValueKind.Array)
             {
-                issues.Add(new DataLoadIssue(fileName, null, $"Liste \"{arrayProperty}\" fehlt."));
+                issues.Add(new DataLoadIssue(fileName, null, $"List \"{arrayProperty}\" is missing."));
                 return result;
             }
 
@@ -142,26 +142,26 @@ public class JsonDataStore : IDataStore
                 }
                 catch (JsonException ex)
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, $"Eintrag übersprungen, ungültiger Wert ({ex.Path?.TrimStart('$', '.')})."));
+                    issues.Add(new DataLoadIssue(fileName, entry, $"Entry skipped: invalid value ({ex.Path?.TrimStart('$', '.')})."));
                     continue;
                 }
 
                 if (item is null)
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, "Eintrag übersprungen, kein Objekt."));
+                    issues.Add(new DataLoadIssue(fileName, entry, "Entry skipped: not an object."));
                     continue;
                 }
 
                 if (validate(item) is { } error)
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, $"Eintrag übersprungen, {error}"));
+                    issues.Add(new DataLoadIssue(fileName, entry, $"Entry skipped: {error}"));
                     continue;
                 }
 
                 (string manufacturer, string model) = key(item);
                 if (!seen.Add((manufacturer.ToUpperInvariant(), model.ToUpperInvariant())))
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, "Eintrag übersprungen, Hersteller und Modell sind doppelt."));
+                    issues.Add(new DataLoadIssue(fileName, entry, "Entry skipped: duplicate manufacturer and model."));
                     continue;
                 }
 
@@ -175,54 +175,54 @@ public class JsonDataStore : IDataStore
     private static string DescribeEntry(JsonElement element, int index)
     {
         if (element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty("Hersteller", out JsonElement manufacturer) && manufacturer.ValueKind == JsonValueKind.String
+            && element.TryGetProperty("Manufacturer", out JsonElement manufacturer) && manufacturer.ValueKind == JsonValueKind.String
             && element.TryGetProperty("Model", out JsonElement model) && model.ValueKind == JsonValueKind.String)
         {
-            return $"Eintrag {index} ({manufacturer.GetString()} {model.GetString()})";
+            return $"Entry {index} ({manufacturer.GetString()} {model.GetString()})";
         }
 
-        return $"Eintrag {index}";
+        return $"Entry {index}";
     }
 
     // Returns the reason why a module cannot be used, or null when it is valid.
     internal static string? ValidateModule(PVModule m)
     {
-        if (string.IsNullOrWhiteSpace(m.Hersteller) || string.IsNullOrWhiteSpace(m.Model))
+        if (string.IsNullOrWhiteSpace(m.Manufacturer) || string.IsNullOrWhiteSpace(m.Model))
         {
-            return "Hersteller oder Modell fehlt.";
+            return "manufacturer or model is missing.";
         }
 
-        if (m.NominalleistungPmaxWp <= 0 || m.SpannungImMppUmppV <= 0 || m.StromImMppImppA <= 0
-            || m.LeerlaufspannungUocV <= 0 || m.KurzschlusstromIscA <= 0)
+        if (m.PmaxW <= 0 || m.VmppV <= 0 || m.ImppA <= 0
+            || m.VocV <= 0 || m.IscA <= 0)
         {
-            return "PMAX, UMPP, IMPP, UOC und ISC müssen größer als 0 sein.";
+            return "Pmax, Vmpp, Impp, Voc and Isc must be greater than 0.";
         }
 
-        if (m.LeerlaufspannungUocV <= m.SpannungImMppUmppV || m.KurzschlusstromIscA < m.StromImMppImppA)
+        if (m.VocV <= m.VmppV || m.IscA < m.ImppA)
         {
-            return "UOC muss größer als UMPP und ISC mindestens IMPP sein.";
+            return "Voc must exceed Vmpp, and Isc must be at least Impp.";
         }
 
         return null;
     }
 
     // Returns the reason why an inverter cannot be used, or null when it is valid.
-    internal static string? ValidateInverter(Wechselrichter w)
+    internal static string? ValidateInverter(Inverter w)
     {
-        if (string.IsNullOrWhiteSpace(w.Hersteller) || string.IsNullOrWhiteSpace(w.Model))
+        if (string.IsNullOrWhiteSpace(w.Manufacturer) || string.IsNullOrWhiteSpace(w.Model))
         {
-            return "Hersteller oder Modell fehlt.";
+            return "manufacturer or model is missing.";
         }
 
-        if (!StringCalculator.TryParseVoltageRange(w.MpptSpannungsbereichV, out _, out _))
+        if (!StringCalculator.TryParseVoltageRange(w.MpptVoltageRangeV, out _, out _))
         {
-            return $"MPPT-Spannungsbereich \"{w.MpptSpannungsbereichV}\" ist ungültig (Format z. B. \"160-650\").";
+            return $"MPPT voltage range \"{w.MpptVoltageRangeV}\" is invalid (expected format: \"160-650\").";
         }
 
-        if (w.MaxDcEingangsleistungW <= 0 || w.MaxDcEingangsspannungV <= 0 || w.MaxBetriebsPvEingangsstromA <= 0
-            || w.MaxEingangsKurzschlussstromA <= 0 || w.AnzahlDerMpptTrackers <= 0)
+        if (w.MaxDcInputPowerW <= 0 || w.MaxDcInputVoltageV <= 0 || w.MaxInputCurrentA <= 0
+            || w.MaxShortCircuitCurrentA <= 0 || w.MpptCount <= 0)
         {
-            return "Leistung, Spannung, Ströme und Anzahl der MPP-Tracker müssen größer als 0 sein.";
+            return "power, voltage, currents and MPPT count must be greater than 0.";
         }
 
         return null;

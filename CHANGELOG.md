@@ -1,66 +1,68 @@
-Kurzbeschreibung als Header (bitte ganz oben einfügen)
+# Changelog
 
-# AnWa-Solar – Solaranlagen- und String-Berechnung
-AnWa-Solar ist ein WPF-Tool zur Auslegung und Berechnung von PV-Strings mit Wechselrichtern und Batteriespeicher-Bezug. Die App bietet eine moderne Material Design 3 Oberfläche, sofortige Live-Berechnungen bei Änderungen sowie eine komfortable Markdown-Vorschau für Berichte. Einstellungen und letzte Auswahl werden in appsettings.json gespeichert und beim Start wiederhergestellt.
+All user-visible changes of AnWa-Solar.
 
-v0.6.0 (2026-11-24)
+## Unreleased (v0.7.0)
+
+- Changed: The application, the report, the messages and the log are in English.
+- Changed: The master data files are `Modules.json` and `Inverters.json` with English field names (for example `Manufacturer`, `Pmax (W)`, `Max. input current per MPPT (A)`); the shipped data was converted.
+- Changed: `settings.json` uses English field names (schema version 2). Existing settings are converted automatically on the first start.
+- Changed: The report is saved as `AnWa-Solar-Report.md` by default.
+
+## v0.6.0 (2026-11-24)
+
 - Improved: Datasheet values of inverters and the module power may be decimal numbers, for example 12.5 A.
 - Improved: An invalid master data entry (wrong value type, invalid MPPT range, missing or inconsistent values, duplicate) is skipped on its own instead of discarding the whole file.
 - New: After the start, a message lists master data entries and files that could not be loaded.
 
-v0.5.0 (2026-11-24)
+## v0.5.0 (2026-11-24)
+
 - Changed: Calculation parameters and the last selection are stored per user in `%LOCALAPPDATA%\AnWa-Solar\settings.json` instead of the appsettings.json next to the program. Existing values are taken over automatically on the first start.
 - Improved: While dragging a slider, the settings are saved once the input stops instead of on every step; they are also saved when the window closes.
 - Improved: The settings file is written safely; an unreadable file is kept as a backup and the defaults are used.
 - Fixed: Log lines are no longer lost when several messages are written at the same time.
 
-v0.4.0 (2026-11-24)
+## v0.4.0 (2026-11-24)
+
 - Fixed: Disabled strings are no longer evaluated in the report.
 - Fixed: The report also checks the maximum number of parallel strings per MPPT.
 - Changed: The input current check uses the higher MPP current of both temperatures (Tmin and Tmax), as the report already did; the short-circuit current check also uses the higher value of both temperatures. Configurations close to the current limit may now show a warning.
 - Changed: Tmin and Tmax are cell temperatures; the default Tmax is 70 °C instead of 40 °C. Check Tmax in the parameter dialog.
-- Changed: VMPP is calculated with the PMAX temperature coefficient instead of the VOC coefficient, or with the new optional VMPP coefficient of the module. The MPPT and start voltage checks become stricter; the maximum DC voltage check is unchanged.
+- Changed: Vmpp is calculated with the Pmax temperature coefficient instead of the Voc coefficient, or with the new optional Vmpp coefficient of the module. The MPPT and start voltage checks become stricter; the maximum DC voltage check is unchanged.
 
-v0.3.0 (2026-11-24)
+## v0.3.0 (2026-11-24)
+
 - Changed: AnWa-Solar now requires .NET 11.
 - New: The main window title shows the application version.
 
-v0.2.0
-- Neu: In den String-Abschnitten steuern Slider die Anzahl der Module pro String und die Anzahl paralleler Strings. Grenzen werden dynamisch aus den Berechnungsergebnissen abgeleitet.
-- Neu: ToggleButton pro String zum schnellen Aktivieren/Deaktivieren, ohne die Daten zu verlieren.
-- Verbesserung: Sofortige Aktualisierung der Slider-Bereiche bei jeder Änderung von WR, Modulen und Parametern.
-- Neu: Der Aktivierungsstatus (Toggle) pro MPPT wird in appsettings.json gespeichert und beim Start automatisch wiederhergestellt.
-- Verbesserung: Komfortsteigerung beim Arbeiten mit temporär deaktivierten Strings ohne Datenverlust.
-- Verbesserung: „Anzahl Module“ belegt 3/4 der Breite, „Anzahl paralleler Strings“ 1/4 für bessere Bedienbarkeit.
-- Neu: Slider „Anzahl Module“ mit fester Grenzen 1..(zulässiges Max + 5) und Markierung des zulässigen Bereichs (SelectionStart/End).
-- Neu: Buttontexte passen sich dem Zustand an („PV-Modul auswählen“ → „PV-Modul ändern“), zusätzlich „Modul entfernen“ pro MPPT.
-- Verbesserung: Wechselrichter-Button passt sich nach Auswahl zu „Wechselrichter ändern“ an.
-- Verbesserung: Der Bericht-Tab nutzt die gesamte verfügbare Fläche dynamisch. Markdown-Quelle und HTML-Vorschau passen sich automatisch an die Größe des Fensters/Tabs an.
-- Änderung: MainWindow wurde in das Verzeichnis Windows verschoben und in den Namespace AnWaSolar.Windows überführt, um die Projektstruktur zu vereinheitlichen.
-- Technisch: App-Start und DI wurden entsprechend angepasst; keine funktionalen Änderungen für Nutzer.
-- Verbesserung: Bei deaktiviertem String werden die Buttons im String-Abschnitt deaktiviert.
-- Neu: „Modul entfernen“ wird nur angezeigt, wenn ein Modul ausgewählt ist (sonst ausgeblendet).
-- Stabilität: UI-Zustände (Sichtbarkeit/Enablement) werden zentral konsistent gepflegt.
-- Fehlerbehebung: Der gespeicherte Aktivierungsstatus eines Strings (Toggle) wird beim Start korrekt auf den ToggleButton übertragen. Buttons bleiben konsistent deaktiviert, bis der String wieder aktiviert wird.
+## v0.2.0
 
-v0.1.2
-- Neu: Bericht-Tab mit automatisch erzeugtem Markdown-Bericht, umschaltbar zwischen Markdown-Quelle und HTML-Vorschau.
-- Neu: Buttons zum Kopieren und Speichern des Markdown-Quelltexts.
-- Verbesserung: Bericht enthält strukturierte Berechnungshinweise und pro-MPPT-Auswertung, basierend auf der aktuellen Konfiguration.
-- Fehlerbehebung: Build-Fehler behoben, alte Markdown-Controls entfernt; Berichtsvorschau stabilisiert.
+- New: Sliders in the string sections set the modules per string and the parallel strings. Their limits follow the calculation results.
+- New: A switch per string enables or disables it without losing its values; the state is saved and restored at the next start.
+- New: The modules slider ranges from 1 to the allowed maximum + 5 and marks the allowed range.
+- New: Button texts follow the state ("Select PV module" → "Change PV module", "Select inverter" → "Change inverter"); "Remove module" is shown per MPPT when a module is selected.
+- Improved: Slider ranges are updated immediately when the inverter, a module or the parameters change.
+- Improved: The modules slider takes 3/4 of the width, the parallel strings slider 1/4.
+- Improved: The report tab uses the whole window area.
+- Improved: The buttons of a disabled string are disabled.
+- Fixed: The saved state of a string switch is shown correctly at startup.
 
-v0.1.1
-- Neu: Die zuletzt gewählte Konfiguration (Wechselrichter, PV-Module je MPPT, Module pro String und parallele Strings) wird in appsettings.json gespeichert und beim Start automatisch geladen.
-- Verbesserung: Komfortsteigerung durch automatische Wiederherstellung des Arbeitsstands.
-- Hinweis: Schreiben in appsettings.json erfordert Schreibrechte im Ausgabeverzeichnis; für produktive Umgebungen kann ein benutzerspezifischer Speicherort verwendet werden.
+## v0.1.2
 
-v0.1.0
-- Fehlerbehebung: Build-Probleme durch falsche MaterialDesign-Namespace-Verwendung in MainWindow.xaml.cs korrigiert.
-- Fehlerbehebung: Warnung CS8633 im JsonFileLogger durch Hinzufügen des notnull-Constraints behoben.
-- Verbesserung: Fensterkonstruktoren vereinfacht, Logging zentralisiert im MainWindow.
-- Neu: Tab „String-Berechnung“ in vier klar getrennte Abschnitte strukturiert (Wechselrichter, Strings, Ergebnisse, Parameter).
-- Neu: Auswahlfenster für Wechselrichter und PV-Module mit Hersteller-/Modell-Filter und Detailprüfung.
-- Neu: Parameter-Dialog mit Persistenz in appsettings.json; Parameter werden beim Start geladen.
-- Neu: Dynamische Anzeige je MPPT gemäß „Anzahl der MPP Trackers“; sofortige Berechnung bei Änderungen.
-- Hinweis: „Max. Strings pro MPPT“ wird berücksichtigt und begrenzt parallele Strings entsprechend.
-- Design: Material Design 3, konsistente Abstände und Dark/Light-Mode Unterstützung entsprechend dem bestehenden Theme.
+- New: Report tab with an automatically created Markdown report, switchable between Markdown source and HTML preview.
+- New: Buttons to copy and save the Markdown source.
+- Improved: The report contains calculation notes and an evaluation per MPPT.
+- Fixed: Build errors and an unstable report preview.
+
+## v0.1.1
+
+- New: The last configuration (inverter, PV module per MPPT, modules per string and parallel strings) is saved and restored at startup.
+
+## v0.1.0
+
+- New: "String calculation" tab with the sections inverter, strings, results and parameters.
+- New: Selection dialogs for inverters and PV modules with manufacturer and model filter and the datasheet values.
+- New: Parameter dialog; the parameters are saved and loaded at startup.
+- New: One section per MPPT of the inverter; the results are recalculated on every change.
+- New: The maximum number of strings per MPPT limits the parallel strings.
+- Design: Material Design 3 with light and dark mode.

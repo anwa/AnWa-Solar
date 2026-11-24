@@ -1,18 +1,17 @@
-using System;
-
 namespace AnWaSolar.Core.Models;
 
+/// <summary>String configuration of one MPPT input.</summary>
 public class StringConfiguration
 {
-    // Konfiguration eines MPPT-Strings (ein MPPT-Eingang)
+    /// <summary>MPPT number, starting at 1.</summary>
     public int MpptIndex { get; set; }
 
     public PVModule? SelectedModule { get; set; }
 
-    public int ModuleProString { get; set; } = 10;
+    public int ModulesPerString { get; set; } = 10;
 
-    public int ParalleleStrings { get; set; } = 1;
+    public int ParallelStrings { get; set; } = 1;
 
-    // Aktivierungszustand des Strings; bei false wird der String in der Berechnung übersprungen
+    /// <summary>A disabled string keeps its values but is skipped by the calculation.</summary>
     public bool IsEnabled { get; set; } = true;
 }

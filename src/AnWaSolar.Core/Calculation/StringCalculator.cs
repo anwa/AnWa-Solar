@@ -19,7 +19,7 @@ public static class StringCalculator
     /// <param name="configurations">String configurations; the item at index i belongs to MPPT i + 1.</param>
     /// <param name="parameters">Temperature range and safety margin.</param>
     public static StringCalculationResult Calculate(
-        Wechselrichter inverter,
+        Inverter inverter,
         IReadOnlyList<StringConfiguration> configurations,
         CalculationParameters parameters)
     {
@@ -51,28 +51,28 @@ public static class StringCalculator
     }
 
     /// <summary>Number of MPPT sections shown for an inverter (at least one).</summary>
-    public static int GetMpptCount(Wechselrichter inverter) => Math.Max(1, inverter.AnzahlDerMpptTrackers);
+    public static int GetMpptCount(Inverter inverter) => Math.Max(1, inverter.MpptCount);
 
     /// <summary>Applies the safety margin to the inverter limits; null when the MPPT range is invalid.</summary>
-    public static EffectiveLimits? ComputeLimits(Wechselrichter inverter, CalculationParameters parameters)
+    public static EffectiveLimits? ComputeLimits(Inverter inverter, CalculationParameters parameters)
     {
-        if (!TryParseVoltageRange(inverter.MpptSpannungsbereichV, out double mpptMin, out double mpptMax))
+        if (!TryParseVoltageRange(inverter.MpptVoltageRangeV, out double mpptMin, out double mpptMax))
         {
             return null;
         }
 
-        double margin = parameters.SicherheitsmargePct / 100.0;
-        double dcPowerPerMppt = inverter.MaxDcEingangsleistungW / (double)GetMpptCount(inverter);
+        double margin = parameters.SafetyMarginPct / 100.0;
+        double dcPowerPerMppt = inverter.MaxDcInputPowerW / (double)GetMpptCount(inverter);
 
         return new EffectiveLimits(
             MpptMinV: mpptMin,
             MpptMaxV: mpptMax,
-            MaxDcVoltageV: inverter.MaxDcEingangsspannungV * (1 - margin),
-            StartVoltageV: inverter.StartspannungV * (1 + margin),
+            MaxDcVoltageV: inverter.MaxDcInputVoltageV * (1 - margin),
+            StartVoltageV: inverter.StartVoltageV * (1 + margin),
             MpptLowerBoundV: mpptMin * (1 + margin),
             MpptUpperBoundV: mpptMax * (1 - margin),
-            MaxInputCurrentA: inverter.MaxBetriebsPvEingangsstromA * (1 - margin),
-            MaxShortCircuitCurrentA: inverter.MaxEingangsKurzschlussstromA * (1 - margin),
+            MaxInputCurrentA: inverter.MaxInputCurrentA * (1 - margin),
+            MaxShortCircuitCurrentA: inverter.MaxShortCircuitCurrentA * (1 - margin),
             DcPowerPerMpptW: dcPowerPerMppt,
             DcPowerPerMpptLimitW: dcPowerPerMppt * (1 - margin));
     }
@@ -114,22 +114,22 @@ public static class StringCalculator
         double tMin = parameters.MinTempC;
         double tMax = parameters.MaxTempC;
 
-        bool vmppApproximated = module.TemperaturkoeffVmppProzentProGradC is null;
-        double vmppCoefficient = module.TemperaturkoeffVmppProzentProGradC ?? module.TemperaturkoeffPmaxProzentProGradC;
-        double vmppAtTmin = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, vmppCoefficient, tMin);
-        double vmppAtTmax = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, vmppCoefficient, tMax);
-        double pmaxAtTmin = ApplyTemperatureCoefficient(module.NominalleistungPmaxWp, module.TemperaturkoeffPmaxProzentProGradC, tMin);
-        double pmaxAtTmax = ApplyTemperatureCoefficient(module.NominalleistungPmaxWp, module.TemperaturkoeffPmaxProzentProGradC, tMax);
+        bool vmppApproximated = module.VmppTempCoeffPctPerC is null;
+        double vmppCoefficient = module.VmppTempCoeffPctPerC ?? module.PmaxTempCoeffPctPerC;
+        double vmppAtTmin = ApplyTemperatureCoefficient(module.VmppV, vmppCoefficient, tMin);
+        double vmppAtTmax = ApplyTemperatureCoefficient(module.VmppV, vmppCoefficient, tMax);
+        double pmaxAtTmin = ApplyTemperatureCoefficient(module.PmaxW, module.PmaxTempCoeffPctPerC, tMin);
+        double pmaxAtTmax = ApplyTemperatureCoefficient(module.PmaxW, module.PmaxTempCoeffPctPerC, tMax);
 
         return new ModuleTemperatureValues(
-            VocAtTminV: ApplyTemperatureCoefficient(module.LeerlaufspannungUocV, module.TemperaturkoeffVocProzentProGradC, tMin),
-            VocAtTmaxV: ApplyTemperatureCoefficient(module.LeerlaufspannungUocV, module.TemperaturkoeffVocProzentProGradC, tMax),
+            VocAtTminV: ApplyTemperatureCoefficient(module.VocV, module.VocTempCoeffPctPerC, tMin),
+            VocAtTmaxV: ApplyTemperatureCoefficient(module.VocV, module.VocTempCoeffPctPerC, tMax),
             VmppAtTminV: vmppAtTmin,
             VmppAtTmaxV: vmppAtTmax,
             PmaxAtTminW: pmaxAtTmin,
             PmaxAtTmaxW: pmaxAtTmax,
-            IscAtTminA: ApplyTemperatureCoefficient(module.KurzschlusstromIscA, module.TemperaturkoeffIscProzentProGradC, tMin),
-            IscAtTmaxA: ApplyTemperatureCoefficient(module.KurzschlusstromIscA, module.TemperaturkoeffIscProzentProGradC, tMax),
+            IscAtTminA: ApplyTemperatureCoefficient(module.IscA, module.IscTempCoeffPctPerC, tMin),
+            IscAtTmaxA: ApplyTemperatureCoefficient(module.IscA, module.IscTempCoeffPctPerC, tMax),
             ImppAtTminA: pmaxAtTmin / Math.Max(0.1, vmppAtTmin),
             ImppAtTmaxA: pmaxAtTmax / Math.Max(0.1, vmppAtTmax),
             VmppCoefficientPctPerC: vmppCoefficient,
@@ -139,7 +139,7 @@ public static class StringCalculator
     private static MpptResult CalculateMppt(
         int mpptIndex,
         StringConfiguration? configuration,
-        Wechselrichter inverter,
+        Inverter inverter,
         EffectiveLimits limits,
         CalculationParameters parameters)
     {
@@ -159,8 +159,8 @@ public static class StringCalculator
         }
 
         PVModule module = configuration.SelectedModule;
-        int modules = Math.Max(1, configuration.ModuleProString);
-        int strings = Math.Max(1, configuration.ParalleleStrings);
+        int modules = Math.Max(1, configuration.ModulesPerString);
+        int strings = Math.Max(1, configuration.ParallelStrings);
         ModuleTemperatureValues t = ComputeTemperatureValues(module, parameters);
 
         double stringIscMax = Math.Max(t.IscAtTminA, t.IscAtTmaxA);
@@ -219,10 +219,10 @@ public static class StringCalculator
                 Math.Max(0, (int)Math.Floor(limits.MaxInputCurrentA / Math.Max(0.001, stringImppMax)))));
         }
 
-        if (inverter.MaxStringsProMppt > 0 && strings > inverter.MaxStringsProMppt)
+        if (inverter.MaxStringsPerMppt > 0 && strings > inverter.MaxStringsPerMppt)
         {
             violations.Add(new LimitViolation(
-                ViolationKind.MaxStringsPerMppt, strings, inverter.MaxStringsProMppt, inverter.MaxStringsProMppt));
+                ViolationKind.MaxStringsPerMppt, strings, inverter.MaxStringsPerMppt, inverter.MaxStringsPerMppt));
         }
 
         if (arrayPowerAtTmin > limits.DcPowerPerMpptLimitW + Tolerance)

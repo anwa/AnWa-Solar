@@ -168,7 +168,7 @@ public sealed class MpptResult
 /// <summary>Calculation result of all MPPTs of an inverter.</summary>
 public sealed class StringCalculationResult
 {
-    public required Wechselrichter Inverter { get; init; }
+    public required Inverter Inverter { get; init; }
 
     public required CalculationParameters Parameters { get; init; }
 

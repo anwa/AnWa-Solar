@@ -9,30 +9,30 @@ namespace AnWaSolar.Windows;
 
 public partial class SelectInverterWindow : Window
 {
-    private readonly Wechselrichter[] _all;
+    private readonly Inverter[] _all;
 
-    public Wechselrichter? Selected { get; private set; }
+    public Inverter? Selected { get; private set; }
 
-    #region Konstruktor
+    #region Constructor
 
-    public SelectInverterWindow(System.Collections.Generic.IEnumerable<Wechselrichter> inverterList)
+    public SelectInverterWindow(System.Collections.Generic.IEnumerable<Inverter> inverterList)
     {
         InitializeComponent();
-        _all = inverterList?.ToArray() ?? Array.Empty<Wechselrichter>();
+        _all = inverterList?.ToArray() ?? Array.Empty<Inverter>();
 
-        var hersteller = _all.Select(x => x.Hersteller).Distinct().OrderBy(x => x).ToArray();
-        HerstellerCombo.ItemsSource = hersteller;
-        if (hersteller.Length > 0) HerstellerCombo.SelectedItem = hersteller[0];
+        var manufacturers = _all.Select(x => x.Manufacturer).Distinct().OrderBy(x => x).ToArray();
+        ManufacturerCombo.ItemsSource = manufacturers;
+        if (manufacturers.Length > 0) ManufacturerCombo.SelectedItem = manufacturers[0];
     }
 
     #endregion
 
     #region Events
 
-    private void OnHerstellerSelectionChanged(object sender, RoutedEventArgs e)
+    private void OnManufacturerSelectionChanged(object sender, RoutedEventArgs e)
     {
-        var h = HerstellerCombo.SelectedItem as string;
-        var models = _all.Where(x => string.Equals(x.Hersteller, h, StringComparison.OrdinalIgnoreCase))
+        var h = ManufacturerCombo.SelectedItem as string;
+        var models = _all.Where(x => string.Equals(x.Manufacturer, h, StringComparison.OrdinalIgnoreCase))
                          .Select(x => x.Model)
                          .Distinct()
                          .OrderBy(x => x)
@@ -43,10 +43,10 @@ public partial class SelectInverterWindow : Window
 
     private void OnModelSelectionChanged(object sender, RoutedEventArgs e)
     {
-        var h = HerstellerCombo.SelectedItem as string;
+        var h = ManufacturerCombo.SelectedItem as string;
         var m = ModelCombo.SelectedItem as string;
         var wr = _all.FirstOrDefault(x =>
-            string.Equals(x.Hersteller, h, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Manufacturer, h, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(x.Model, m, StringComparison.OrdinalIgnoreCase));
 
         Selected = wr;
@@ -57,7 +57,7 @@ public partial class SelectInverterWindow : Window
     {
         if (Selected is null)
         {
-            MessageBox.Show("Bitte Hersteller und Modell wählen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select a manufacturer and a model.", "Note", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         DialogResult = true;
@@ -66,13 +66,13 @@ public partial class SelectInverterWindow : Window
 
     #endregion
 
-    #region Hilfsmethoden
+    #region Helpers
 
-    private void UpdateDetails(Wechselrichter? wr)
+    private void UpdateDetails(Inverter? wr)
     {
         if (wr is null)
         {
-            DetailHersteller.Text = "-";
+            DetailManufacturer.Text = "-";
             DetailModel.Text = "-";
             DetailMppt.Text = "-";
             DetailVdcMax.Text = "-";
@@ -81,13 +81,13 @@ public partial class SelectInverterWindow : Window
             DetailMpptCount.Text = "-";
             return;
         }
-        DetailHersteller.Text = wr.Hersteller;
+        DetailManufacturer.Text = wr.Manufacturer;
         DetailModel.Text = wr.Model;
-        DetailMppt.Text = wr.MpptSpannungsbereichV;
-        DetailVdcMax.Text = wr.MaxDcEingangsspannungV.ToString(CultureInfo.CurrentCulture);
-        DetailStart.Text = wr.StartspannungV.ToString(CultureInfo.CurrentCulture);
-        DetailCurrents.Text = $"{wr.MaxBetriebsPvEingangsstromA} / {wr.MaxEingangsKurzschlussstromA}";
-        DetailMpptCount.Text = $"{wr.AnzahlDerMpptTrackers} / {wr.MaxStringsProMppt}";
+        DetailMppt.Text = wr.MpptVoltageRangeV;
+        DetailVdcMax.Text = wr.MaxDcInputVoltageV.ToString(CultureInfo.CurrentCulture);
+        DetailStart.Text = wr.StartVoltageV.ToString(CultureInfo.CurrentCulture);
+        DetailCurrents.Text = $"{wr.MaxInputCurrentA} / {wr.MaxShortCircuitCurrentA}";
+        DetailMpptCount.Text = $"{wr.MpptCount} / {wr.MaxStringsPerMppt}";
     }
 
     #endregion

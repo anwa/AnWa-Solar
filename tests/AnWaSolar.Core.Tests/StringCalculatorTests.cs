@@ -12,51 +12,51 @@ public sealed class StringCalculatorTests
 {
     private const double Precision = 1e-3;
 
-    internal static Wechselrichter Deye18K() => new()
+    internal static Inverter Deye18K() => new()
     {
-        Hersteller = "Deye",
+        Manufacturer = "Deye",
         Model = "SUN-18K-SG05LP3-EU-SM2",
-        MaxDcEingangsleistungW = 28800,
-        MaxDcEingangsspannungV = 800,
-        StartspannungV = 160,
-        MpptSpannungsbereichV = "160-650",
-        NennDcEingangsspannungV = 550,
-        MaxBetriebsPvEingangsstromA = 36,
-        MaxEingangsKurzschlussstromA = 54,
-        AnzahlDerMpptTrackers = 2,
-        MaxStringsProMppt = 2,
+        MaxDcInputPowerW = 28800,
+        MaxDcInputVoltageV = 800,
+        StartVoltageV = 160,
+        MpptVoltageRangeV = "160-650",
+        NominalDcInputVoltageV = 550,
+        MaxInputCurrentA = 36,
+        MaxShortCircuitCurrentA = 54,
+        MpptCount = 2,
+        MaxStringsPerMppt = 2,
     };
 
     internal static PVModule AikoA500() => new()
     {
-        Hersteller = "AIKO",
+        Manufacturer = "AIKO",
         Model = "AIKO-A500-MAH60Db",
-        NominalleistungPmaxWp = 500,
-        SpannungImMppUmppV = 37.9,
-        StromImMppImppA = 13.21,
-        LeerlaufspannungUocV = 45.02,
-        KurzschlusstromIscA = 14.05,
-        ModulwirkungsgradEtaMProzent = 22.6,
-        TemperaturkoeffPmaxProzentProGradC = -0.26,
-        TemperaturkoeffVocProzentProGradC = -0.22,
-        TemperaturkoeffIscProzentProGradC = -0.05,
-        BetriebstemperaturMinC = -40,
-        BetriebstemperaturMaxC = 85,
+        PmaxW = 500,
+        VmppV = 37.9,
+        ImppA = 13.21,
+        VocV = 45.02,
+        IscA = 14.05,
+        EfficiencyPct = 22.6,
+        PmaxTempCoeffPctPerC = -0.26,
+        VocTempCoeffPctPerC = -0.22,
+        IscTempCoeffPctPerC = -0.05,
+        OperatingTempMinC = -40,
+        OperatingTempMaxC = 85,
     };
 
     internal static CalculationParameters Parameters(double marginPct = 5) => new()
     {
         MinTempC = -20,
         MaxTempC = 70,
-        SicherheitsmargePct = marginPct,
+        SafetyMarginPct = marginPct,
     };
 
     internal static StringConfiguration Aiko(int mppt, int modules, int strings = 1) => new()
     {
         MpptIndex = mppt,
         SelectedModule = AikoA500(),
-        ModuleProString = modules,
-        ParalleleStrings = strings,
+        ModulesPerString = modules,
+        ParallelStrings = strings,
     };
 
     private static MpptResult CalculateSingle(int modules, int strings = 1)
@@ -122,7 +122,7 @@ public sealed class StringCalculatorTests
     public void Datasheet_vmpp_coefficient_is_used_when_present()
     {
         PVModule module = AikoA500();
-        module.TemperaturkoeffVmppProzentProGradC = -0.30;
+        module.VmppTempCoeffPctPerC = -0.30;
 
         ModuleTemperatureValues t = StringCalculator.ComputeTemperatureValues(module, Parameters());
 
@@ -135,8 +135,8 @@ public sealed class StringCalculatorTests
     public void Open_circuit_voltage_check_does_not_depend_on_the_vmpp_coefficient()
     {
         PVModule module = AikoA500();
-        module.TemperaturkoeffVmppProzentProGradC = -0.10;
-        var configuration = new StringConfiguration { MpptIndex = 1, SelectedModule = module, ModuleProString = 16 };
+        module.VmppTempCoeffPctPerC = -0.10;
+        var configuration = new StringConfiguration { MpptIndex = 1, SelectedModule = module, ModulesPerString = 16 };
 
         MpptResult mppt = StringCalculator.Calculate(Deye18K(), [configuration], Parameters()).Mppts[0];
 
@@ -252,7 +252,7 @@ public sealed class StringCalculatorTests
 
         Assert.Equal(MpptStatus.NoModule, result.Mppts[1].Status);
         Assert.False(result.IsOk);
-        Assert.Contains("MPPT 2: Bitte PV-Modul auswählen.", CalculationTextFormatter.GetMessages(result));
+        Assert.Contains("MPPT 2: Please select a PV module.", CalculationTextFormatter.GetMessages(result));
     }
 
     [Fact]
@@ -267,8 +267,8 @@ public sealed class StringCalculatorTests
     [Fact]
     public void Invalid_mppt_range_stops_the_calculation()
     {
-        Wechselrichter inverter = Deye18K();
-        inverter.MpptSpannungsbereichV = "650-160";
+        Inverter inverter = Deye18K();
+        inverter.MpptVoltageRangeV = "650-160";
 
         StringCalculationResult result = StringCalculator.Calculate(inverter, [Aiko(1, 11)], Parameters());
 

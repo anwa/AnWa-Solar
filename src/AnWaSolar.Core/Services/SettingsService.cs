@@ -20,25 +20,25 @@ public class CalculationParameters
     public double MaxTempC { get; set; } = 70.0;
 
     /// <summary>Safety margin in percent that tightens all inverter limits.</summary>
-    public double SicherheitsmargePct { get; set; } = 10.0;
+    public double SafetyMarginPct { get; set; } = 10.0;
 
     /// <summary>True when Tmin &lt; Tmax and the margin is within 0–50 %, as the parameter dialog requires.</summary>
     public bool IsValid()
         => double.IsFinite(MinTempC) && double.IsFinite(MaxTempC) && MinTempC < MaxTempC
-           && SicherheitsmargePct is >= 0 and <= 50;
+           && SafetyMarginPct is >= 0 and <= 50;
 
     public CalculationParameters Clone() => new()
     {
         MinTempC = MinTempC,
         MaxTempC = MaxTempC,
-        SicherheitsmargePct = SicherheitsmargePct,
+        SafetyMarginPct = SafetyMarginPct,
     };
 }
 
 /// <summary>Reference to a master data entry by manufacturer and model.</summary>
 public class SelectedRef
 {
-    public string Hersteller { get; set; } = string.Empty;
+    public string Manufacturer { get; set; } = string.Empty;
 
     public string Model { get; set; } = string.Empty;
 }
@@ -50,9 +50,9 @@ public class MpptStringSelection
 
     public SelectedRef? Module { get; set; }
 
-    public int ModuleProString { get; set; } = 10;
+    public int ModulesPerString { get; set; } = 10;
 
-    public int ParalleleStrings { get; set; } = 1;
+    public int ParallelStrings { get; set; } = 1;
 
     public bool IsEnabled { get; set; } = true;
 }
@@ -68,7 +68,8 @@ public class LastSelection
 /// <summary>Content of the user settings file.</summary>
 public sealed class UserSettings
 {
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>Version 2 uses English property names; version 1 (0.5.0–0.6.0) used German ones.</summary>
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -107,8 +108,9 @@ public sealed class UserDataLocation : IUserDataLocation
 
 /// <summary>
 /// Stores calculation parameters and the last selection in <c>settings.json</c> in the per-user data folder.
-/// The file is written atomically. When it does not exist yet, the values are imported once from the
-/// <c>appsettings.json</c> next to the executable, where versions before 0.5.0 stored them.
+/// The file is written atomically. Files of schema version 1 are migrated to the current version. When no file
+/// exists yet, the values are imported once from the <c>appsettings.json</c> next to the executable, where versions
+/// up to 0.4.0 stored them.
 /// </summary>
 public sealed class SettingsService : ISettingsService
 {
@@ -146,8 +148,8 @@ public sealed class SettingsService : ISettingsService
         lock (_lock)
         {
             CalculationParameters p = EnsureLoaded().Parameters.Clone();
-            _logger.LogInformation("Berechnungsparameter geladen: Tmin={Tmin} °C, Tmax={Tmax} °C, Sicherheitsmarge={Margin} %.",
-                p.MinTempC, p.MaxTempC, p.SicherheitsmargePct);
+            _logger.LogInformation("Calculation parameters loaded: Tmin={Tmin} °C, Tmax={Tmax} °C, safety margin={Margin} %.",
+                p.MinTempC, p.MaxTempC, p.SafetyMarginPct);
             return p;
         }
     }
@@ -161,7 +163,7 @@ public sealed class SettingsService : ISettingsService
             bool ok = TryWrite();
             if (ok)
             {
-                _logger.LogInformation("Berechnungsparameter gespeichert in {Path}.", SettingsFilePath);
+                _logger.LogInformation("Calculation parameters saved to {Path}.", SettingsFilePath);
             }
 
             return ok;
@@ -173,8 +175,8 @@ public sealed class SettingsService : ISettingsService
         lock (_lock)
         {
             LastSelection result = Clone(EnsureLoaded().LastSelection);
-            _logger.LogInformation("Letzte Auswahl geladen: WR={Wr}, Strings={Count}.",
-                result.Inverter is null ? "(none)" : $"{result.Inverter.Hersteller} {result.Inverter.Model}",
+            _logger.LogInformation("Last selection loaded: inverter={Inverter}, strings={Count}.",
+                result.Inverter is null ? "(none)" : $"{result.Inverter.Manufacturer} {result.Inverter.Model}",
                 result.Strings.Count);
             return result;
         }
@@ -189,7 +191,7 @@ public sealed class SettingsService : ISettingsService
             bool ok = TryWrite();
             if (ok)
             {
-                _logger.LogInformation("Letzte Auswahl gespeichert in {Path}.", SettingsFilePath);
+                _logger.LogInformation("Last selection saved to {Path}.", SettingsFilePath);
             }
 
             return ok;
@@ -212,7 +214,7 @@ public sealed class SettingsService : ISettingsService
             _settings = imported;
             if (TryWrite())
             {
-                _logger.LogInformation("Einstellungen aus {Legacy} nach {Path} übernommen.", _legacyAppSettingsPath, SettingsFilePath);
+                _logger.LogInformation("Settings imported from {Legacy} to {Path}.", _legacyAppSettingsPath, SettingsFilePath);
             }
         }
         else
@@ -222,30 +224,38 @@ public sealed class SettingsService : ISettingsService
 
         if (!_settings.Parameters.IsValid())
         {
-            _logger.LogWarning("Ungültige Berechnungsparameter in {Path}, es werden Standardwerte verwendet.", SettingsFilePath);
+            _logger.LogWarning("Invalid calculation parameters in {Path}; the defaults are used.", SettingsFilePath);
             _settings.Parameters = new CalculationParameters();
         }
 
         return _settings;
     }
 
-    // Reads settings.json; an unreadable file is kept as a backup and replaced by defaults.
+    // Reads settings.json and migrates older schema versions; an unreadable file is kept as a backup.
     private UserSettings? ReadSettingsFile()
     {
         try
         {
-            string json = File.ReadAllText(SettingsFilePath);
-            UserSettings? settings = JsonSerializer.Deserialize<UserSettings>(json, s_jsonOptions);
-            if (settings is not null)
+            if (JsonNode.Parse(File.ReadAllText(SettingsFilePath)) is not JsonObject root)
             {
-                settings.Parameters ??= new CalculationParameters();
-                settings.LastSelection ??= new LastSelection();
-                settings.LastSelection.Strings ??= [];
+                throw new JsonException("The settings file does not contain a JSON object.");
+            }
+
+            int version = root["SchemaVersion"]?.GetValue<int>() ?? 1;
+            UserSettings settings = ReadSettings(root["Parameters"] as JsonObject, root["LastSelection"] as JsonObject);
+            if (version < UserSettings.CurrentSchemaVersion)
+            {
+                _settings = settings;
+                if (TryWrite())
+                {
+                    _logger.LogInformation("Settings in {Path} migrated from schema version {Old} to {New}.",
+                        SettingsFilePath, version, UserSettings.CurrentSchemaVersion);
+                }
             }
 
             return settings;
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or IOException or UnauthorizedAccessException)
         {
             string backup = $"{SettingsFilePath}.invalid-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}";
             try
@@ -254,10 +264,10 @@ public sealed class SettingsService : ISettingsService
             }
             catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException)
             {
-                backup = "(keine Sicherung möglich)";
+                backup = "(no backup possible)";
             }
 
-            _logger.LogError(ex, "Einstellungen in {Path} konnten nicht gelesen werden. Standardwerte werden verwendet, Sicherung: {Backup}.",
+            _logger.LogError(ex, "Settings in {Path} could not be read. The defaults are used; backup: {Backup}.",
                 SettingsFilePath, backup);
             return null;
         }
@@ -276,21 +286,21 @@ public sealed class SettingsService : ISettingsService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogError(ex, "Einstellungen konnten nicht in {Path} gespeichert werden.", SettingsFilePath);
+            _logger.LogError(ex, "Settings could not be saved to {Path}.", SettingsFilePath);
             try
             {
                 File.Delete(tempPath);
             }
             catch (Exception deleteEx) when (deleteEx is IOException or UnauthorizedAccessException)
             {
-                _logger.LogWarning(deleteEx, "Temporäre Datei {Path} konnte nicht gelöscht werden.", tempPath);
+                _logger.LogWarning(deleteEx, "Temporary file {Path} could not be deleted.", tempPath);
             }
 
             return false;
         }
     }
 
-    // Reads parameters and last selection from the appsettings.json of versions before 0.5.0.
+    // Reads parameters and last selection from the appsettings.json of versions up to 0.4.0.
     private UserSettings? TryImportLegacy()
     {
         try
@@ -307,36 +317,89 @@ public sealed class SettingsService : ISettingsService
 
             var parameterNode = anWa["Parameters"] as JsonObject;
             var lastNode = anWa["LastSelection"] as JsonObject;
-            if (parameterNode is null && lastNode is null)
-            {
-                return null;
-            }
-
-            var settings = new UserSettings();
-            if (parameterNode is not null)
-            {
-                var defaults = new CalculationParameters();
-                settings.Parameters = new CalculationParameters
-                {
-                    MinTempC = parameterNode["MinTempC"]?.GetValue<double>() ?? defaults.MinTempC,
-                    MaxTempC = parameterNode["MaxTempC"]?.GetValue<double>() ?? defaults.MaxTempC,
-                    SicherheitsmargePct = parameterNode["SicherheitsmargePct"]?.GetValue<double>() ?? defaults.SicherheitsmargePct,
-                };
-            }
-
-            if (lastNode is not null)
-            {
-                settings.LastSelection = lastNode.Deserialize<LastSelection>(s_jsonOptions) ?? new LastSelection();
-                settings.LastSelection.Strings ??= [];
-            }
-
-            return settings;
+            return parameterNode is null && lastNode is null ? null : ReadSettings(parameterNode, lastNode);
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or IOException or UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, "Alte Einstellungen in {Path} konnten nicht übernommen werden.", _legacyAppSettingsPath);
+            _logger.LogWarning(ex, "Old settings in {Path} could not be imported.", _legacyAppSettingsPath);
             return null;
         }
+    }
+
+    // Reads both the current English property names and the German names of schema version 1 and of the
+    // appsettings.json of versions up to 0.4.0.
+    private static UserSettings ReadSettings(JsonObject? parameters, JsonObject? lastSelection)
+    {
+        var defaults = new CalculationParameters();
+        var settings = new UserSettings
+        {
+            Parameters = new CalculationParameters
+            {
+                MinTempC = Value<double>(parameters, "MinTempC") ?? defaults.MinTempC,
+                MaxTempC = Value<double>(parameters, "MaxTempC") ?? defaults.MaxTempC,
+                SafetyMarginPct = Value<double>(parameters, "SafetyMarginPct", "SicherheitsmargePct") ?? defaults.SafetyMarginPct,
+            },
+            LastSelection = new LastSelection { Inverter = ReadRef(lastSelection?["Inverter"] as JsonObject) },
+        };
+
+        if (lastSelection?["Strings"] is JsonArray strings)
+        {
+            foreach (JsonObject item in strings.OfType<JsonObject>())
+            {
+                settings.LastSelection.Strings.Add(new MpptStringSelection
+                {
+                    MpptIndex = Value<int>(item, "MpptIndex") ?? 0,
+                    Module = ReadRef(item["Module"] as JsonObject),
+                    ModulesPerString = Value<int>(item, "ModulesPerString", "ModuleProString") ?? 10,
+                    ParallelStrings = Value<int>(item, "ParallelStrings", "ParalleleStrings") ?? 1,
+                    IsEnabled = Value<bool>(item, "IsEnabled") ?? true,
+                });
+            }
+        }
+
+        return settings;
+    }
+
+    private static SelectedRef? ReadRef(JsonObject? node)
+    {
+        if (node is null)
+        {
+            return null;
+        }
+
+        return new SelectedRef
+        {
+            Manufacturer = Text(node, "Manufacturer", "Hersteller") ?? string.Empty,
+            Model = Text(node, "Model") ?? string.Empty,
+        };
+    }
+
+    // Value of the first property that exists; null when none exists.
+    private static T? Value<T>(JsonObject? node, params string[] names)
+        where T : struct
+    {
+        foreach (string name in names)
+        {
+            if (node?[name] is JsonValue value)
+            {
+                return value.GetValue<T>();
+            }
+        }
+
+        return null;
+    }
+
+    private static string? Text(JsonObject? node, params string[] names)
+    {
+        foreach (string name in names)
+        {
+            if (node?[name] is JsonValue value)
+            {
+                return value.GetValue<string>();
+            }
+        }
+
+        return null;
     }
 
     private static LastSelection Clone(LastSelection selection)

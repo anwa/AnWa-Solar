@@ -25,14 +25,14 @@ public partial class App : Application
 
         var builder = Host.CreateApplicationBuilder();
 
-        // Konfiguration laden (appsettings.json + Umgebungsvarianten)
+        // Configuration: appsettings.json and environment-specific variants
         builder.Configuration
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables();
 
-        // Globale JsonSerializerOptions (System.Text.Json)
+        // Shared JsonSerializerOptions (System.Text.Json)
         var jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -55,26 +55,26 @@ public partial class App : Application
         builder.Services.AddSingleton<IUserDataLocation, UserDataLocation>();
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
-        // Data-Services registrieren
+        // Master data
         builder.Services.AddSingleton<IDataPathProvider, DataPathProvider>();
         builder.Services.AddSingleton<IDataStore, JsonDataStore>();
 
-        // Windows über DI
+        // Windows through dependency injection
         builder.Services.AddTransient<MainWindow>();
 
         _host = builder.Build();
 
-        // Daten beim Start laden
+        // Load the master data at startup
         var dataStore = _host.Services.GetRequiredService<IDataStore>();
         dataStore.Load();
 
-        // Hauptfenster manuell erzeugen, damit DI greift
+        // Create the main window through dependency injection
         var main = _host.Services.GetRequiredService<MainWindow>();
         MainWindow = main;
         main.Show();
 
         var logger = _host.Services.GetRequiredService<ILogger<App>>();
-        logger.LogInformation("AnWa-Solar gestartet. Daten geladen. Version {Version}", AppVersion.Current);
+        logger.LogInformation("AnWa-Solar started. Master data loaded. Version {Version}", AppVersion.Current);
     }
 
     protected override void OnExit(ExitEventArgs e)

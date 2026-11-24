@@ -38,9 +38,9 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 
 ## M6 – English translation (`refactor/english`)
 
-- [ ] GUI text, log messages, comments and identifiers (for example `Wechselrichter` → `Inverter`)
-- [ ] Master data property names in English, with a migration of the existing data files and of saved selections
-- [ ] `README.md` and `CHANGELOG.md` in English; remove the formula experiment from the README
+- [x] GUI text, log messages, comments and identifiers (for example `Wechselrichter` → `Inverter`)
+- [x] Master data property names in English, with a migration of the existing data files and of saved selections
+- [x] `README.md` and `CHANGELOG.md` in English; remove the formula experiment from the README
 
 ## M7 – Installer and release (`feature/installer`)
 
