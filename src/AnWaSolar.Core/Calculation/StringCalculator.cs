@@ -102,8 +102,9 @@ public static class StringCalculator
 
     /// <summary>Module values at Tmin and Tmax.</summary>
     /// <remarks>
-    /// VMPP uses the VOC temperature coefficient as an approximation, because the master data has no separate VMPP
-    /// coefficient. IMPP is derived from PMAX / VMPP at the respective temperature.
+    /// Temperatures are module (cell) temperatures. VMPP uses the module's VMPP coefficient; without one, the PMAX
+    /// coefficient is used as a conservative approximation (VMPP changes more strongly than VOC). IMPP is derived from
+    /// PMAX / VMPP at the respective temperature.
     /// </remarks>
     public static ModuleTemperatureValues ComputeTemperatureValues(PVModule module, CalculationParameters parameters)
     {
@@ -113,8 +114,10 @@ public static class StringCalculator
         double tMin = parameters.MinTempC;
         double tMax = parameters.MaxTempC;
 
-        double vmppAtTmin = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, module.TemperaturkoeffVocProzentProGradC, tMin);
-        double vmppAtTmax = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, module.TemperaturkoeffVocProzentProGradC, tMax);
+        bool vmppApproximated = module.TemperaturkoeffVmppProzentProGradC is null;
+        double vmppCoefficient = module.TemperaturkoeffVmppProzentProGradC ?? module.TemperaturkoeffPmaxProzentProGradC;
+        double vmppAtTmin = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, vmppCoefficient, tMin);
+        double vmppAtTmax = ApplyTemperatureCoefficient(module.SpannungImMppUmppV, vmppCoefficient, tMax);
         double pmaxAtTmin = ApplyTemperatureCoefficient(module.NominalleistungPmaxWp, module.TemperaturkoeffPmaxProzentProGradC, tMin);
         double pmaxAtTmax = ApplyTemperatureCoefficient(module.NominalleistungPmaxWp, module.TemperaturkoeffPmaxProzentProGradC, tMax);
 
@@ -128,7 +131,9 @@ public static class StringCalculator
             IscAtTminA: ApplyTemperatureCoefficient(module.KurzschlusstromIscA, module.TemperaturkoeffIscProzentProGradC, tMin),
             IscAtTmaxA: ApplyTemperatureCoefficient(module.KurzschlusstromIscA, module.TemperaturkoeffIscProzentProGradC, tMax),
             ImppAtTminA: pmaxAtTmin / Math.Max(0.1, vmppAtTmin),
-            ImppAtTmaxA: pmaxAtTmax / Math.Max(0.1, vmppAtTmax));
+            ImppAtTmaxA: pmaxAtTmax / Math.Max(0.1, vmppAtTmax),
+            VmppCoefficientPctPerC: vmppCoefficient,
+            VmppCoefficientApproximated: vmppApproximated);
     }
 
     private static MpptResult CalculateMppt(

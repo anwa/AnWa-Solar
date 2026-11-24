@@ -31,9 +31,15 @@ public class PVModule
     [JsonPropertyName("Temperaturkoeffzient von PMAX (%/°C)")]
     public double TemperaturkoeffPmaxProzentProGradC { get; set; }
 
-    // Wird als Näherung für UMPP-Änderung genutzt, sofern kein separater UMPP-Koeffizient vorliegt
     [JsonPropertyName("Temperaturkoeffzient von VOC (%/°C)")]
     public double TemperaturkoeffVocProzentProGradC { get; set; }
+
+    /// <summary>
+    /// Optional VMPP temperature coefficient. Most datasheets do not state it; the calculation then uses the PMAX
+    /// coefficient as a conservative approximation.
+    /// </summary>
+    [JsonPropertyName("Temperaturkoeffzient von VMPP (%/°C)")]
+    public double? TemperaturkoeffVmppProzentProGradC { get; set; }
 
     [JsonPropertyName("Temperaturkoeffzient von ISC (%/°C)")]
     public double TemperaturkoeffIscProzentProGradC { get; set; }

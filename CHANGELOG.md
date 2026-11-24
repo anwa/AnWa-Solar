@@ -7,6 +7,8 @@ Unreleased (v0.4.0)
 - Fixed: Disabled strings are no longer evaluated in the report.
 - Fixed: The report also checks the maximum number of parallel strings per MPPT.
 - Changed: The input current check uses the higher MPP current of both temperatures (Tmin and Tmax), as the report already did; the short-circuit current check also uses the higher value of both temperatures. Configurations close to the current limit may now show a warning.
+- Changed: Tmin and Tmax are cell temperatures; the default Tmax is 70 °C instead of 40 °C. Check Tmax in the parameter dialog.
+- Changed: VMPP is calculated with the PMAX temperature coefficient instead of the VOC coefficient, or with the new optional VMPP coefficient of the module. The MPPT and start voltage checks become stricter; the maximum DC voltage check is unchanged.
 
 v0.3.0 (2026-11-24)
 - Changed: AnWa-Solar now requires .NET 11.

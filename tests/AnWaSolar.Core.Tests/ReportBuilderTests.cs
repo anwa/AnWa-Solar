@@ -57,4 +57,15 @@ public sealed class ReportBuilderTests
             Assert.Contains(marker, report, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void Report_names_the_vmpp_coefficient_and_its_approximation()
+    {
+        StringCalculationResult result = StringCalculator.Calculate(Deye18K(), [Aiko(1, 11), Aiko(2, 11)], Parameters());
+
+        string report = ReportBuilder.Build(result, Parameters(), s_createdAt);
+
+        Assert.Contains("(Näherung: PMAX-Koeffizient)", report, StringComparison.Ordinal);
+        Assert.Contains("Zelltemperaturbereich", report, StringComparison.Ordinal);
+    }
 }

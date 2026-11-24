@@ -446,7 +446,7 @@ public partial class MainWindow : Window
 
     private void UpdateParametersSummary()
     {
-        ParametersSummaryText.Text = $"Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, Sicherheitsmarge={_parameters.SicherheitsmargePct} %";
+        ParametersSummaryText.Text = $"Zelltemperatur Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, Sicherheitsmarge={_parameters.SicherheitsmargePct} %";
     }
 
     private void TryRestoreLastSelection()

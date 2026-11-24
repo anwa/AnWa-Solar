@@ -12,8 +12,10 @@ namespace AnWaSolar.Core.Services;
 
 public class CalculationParameters
 {
+    /// <summary>Lowest module (cell) temperature in °C; at sunrise it is close to the ambient temperature.</summary>
     public double MinTempC { get; set; } = -20.0;
-    public double MaxTempC { get; set; } = 40.0;
+    /// <summary>Highest module (cell) temperature in °C; in summer cells reach 60–70 °C.</summary>
+    public double MaxTempC { get; set; } = 70.0;
     public double SicherheitsmargePct { get; set; } = 10.0;
 }
 
@@ -71,7 +73,7 @@ public class SettingsService : ISettingsService
             var p = new CalculationParameters
             {
                 MinTempC = TryParseDouble(_cfg["AnWaSolar:Parameters:MinTempC"], -20.0),
-                MaxTempC = TryParseDouble(_cfg["AnWaSolar:Parameters:MaxTempC"], 40.0),
+                MaxTempC = TryParseDouble(_cfg["AnWaSolar:Parameters:MaxTempC"], 70.0),
                 SicherheitsmargePct = TryParseDouble(_cfg["AnWaSolar:Parameters:SicherheitsmargePct"], 10.0)
             };
             _logger.LogInformation("Berechnungsparameter geladen: Tmin={Tmin} °C, Tmax={Tmax} °C, Sicherheitsmarge={Margin} %.",

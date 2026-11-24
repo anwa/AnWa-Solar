@@ -22,7 +22,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Disabled MPPTs are skipped in the report as in the live results
 - [x] The report also checks the maximum number of strings per MPPT
 - [x] Tests with worked examples from real datasheets for every check
-- [ ] Decide with the user: cell temperature model for `Tmax` (ambient vs. cell temperature) and a separate VMPP temperature coefficient instead of the VOC coefficient as approximation
+- [x] Tmin and Tmax are cell temperatures (default Tmax 70 °C); optional VMPP temperature coefficient with the PMAX coefficient as fallback
 
 ## M4 – Settings and logging (`feature/user-settings`)
 

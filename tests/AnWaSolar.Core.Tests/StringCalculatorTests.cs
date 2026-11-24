@@ -6,7 +6,7 @@ namespace AnWaSolar.Core.Tests;
 
 /// <summary>
 /// Worked examples with the datasheet values of the Deye SUN-18K-SG05LP3-EU-SM2 and the AIKO-A500-MAH60Db
-/// (as in the shipped master data), Tmin = −20 °C, Tmax = 40 °C, safety margin 5 %.
+/// (as in the shipped master data), Tmin = −20 °C, Tmax = 70 °C (cell temperatures), safety margin 5 %.
 /// </summary>
 public sealed class StringCalculatorTests
 {
@@ -47,7 +47,7 @@ public sealed class StringCalculatorTests
     internal static CalculationParameters Parameters(double marginPct = 5) => new()
     {
         MinTempC = -20,
-        MaxTempC = 40,
+        MaxTempC = 70,
         SicherheitsmargePct = marginPct,
     };
 
@@ -100,15 +100,47 @@ public sealed class StringCalculatorTests
 
         // VOC(Tmin) = 45.02 V · (1 + (−0.22 %/°C) · (−20 °C − 25 °C)) = 45.02 V · 1.099
         Assert.Equal(49.47698, t.VocAtTminV, Precision);
-        Assert.Equal(45.02 * 0.967, t.VocAtTmaxV, Precision);
-        Assert.Equal(37.9 * 1.099, t.VmppAtTminV, Precision);
-        Assert.Equal(37.9 * 0.967, t.VmppAtTmaxV, Precision);
+        Assert.Equal(45.02 * 0.901, t.VocAtTmaxV, Precision);
+
+        // No VMPP coefficient in the datasheet: the PMAX coefficient (−0.26 %/°C) is used.
+        Assert.True(t.VmppCoefficientApproximated);
+        Assert.Equal(-0.26, t.VmppCoefficientPctPerC);
+        Assert.Equal(37.9 * 1.117, t.VmppAtTminV, Precision);
+        Assert.Equal(37.9 * 0.883, t.VmppAtTmaxV, Precision);
+
         Assert.Equal(558.5, t.PmaxAtTminW, Precision);
-        Assert.Equal(480.5, t.PmaxAtTmaxW, Precision);
+        Assert.Equal(441.5, t.PmaxAtTmaxW, Precision);
         Assert.Equal(14.05 * 1.0225, t.IscAtTminA, Precision);
-        Assert.Equal(14.05 * 0.9925, t.IscAtTmaxA, Precision);
-        Assert.Equal(558.5 / (37.9 * 1.099), t.ImppAtTminA, Precision);
-        Assert.Equal(480.5 / (37.9 * 0.967), t.ImppAtTmaxA, Precision);
+        Assert.Equal(14.05 * 0.9775, t.IscAtTmaxA, Precision);
+
+        // With equal PMAX and VMPP coefficients IMPP stays at PMAX / VMPP at 25 °C.
+        Assert.Equal(500 / 37.9, t.ImppAtTminA, Precision);
+        Assert.Equal(500 / 37.9, t.ImppAtTmaxA, Precision);
+    }
+
+    [Fact]
+    public void Datasheet_vmpp_coefficient_is_used_when_present()
+    {
+        PVModule module = AikoA500();
+        module.TemperaturkoeffVmppProzentProGradC = -0.30;
+
+        ModuleTemperatureValues t = StringCalculator.ComputeTemperatureValues(module, Parameters());
+
+        Assert.False(t.VmppCoefficientApproximated);
+        Assert.Equal(37.9 * 1.135, t.VmppAtTminV, Precision);
+        Assert.Equal(37.9 * 0.865, t.VmppAtTmaxV, Precision);
+    }
+
+    [Fact]
+    public void Open_circuit_voltage_check_does_not_depend_on_the_vmpp_coefficient()
+    {
+        PVModule module = AikoA500();
+        module.TemperaturkoeffVmppProzentProGradC = -0.10;
+        var configuration = new StringConfiguration { MpptIndex = 1, SelectedModule = module, ModuleProString = 16 };
+
+        MpptResult mppt = StringCalculator.Calculate(Deye18K(), [configuration], Parameters()).Mppts[0];
+
+        Assert.Equal(16 * 49.47698, Assert.Single(mppt.Violations, v => v.Kind == ViolationKind.MaxDcVoltage).Actual, Precision);
     }
 
     [Fact]
@@ -116,8 +148,8 @@ public sealed class StringCalculatorTests
     {
         MpptResult mppt = CalculateSingle(modules: 11);
 
-        // Min: ceil(168 V / 36.649 V) = 5. Max: min(floor(760 V / 49.477 V) = 15, floor(617.5 V / 41.652 V) = 14) = 14.
-        Assert.Equal(5, mppt.MinModulesPerString);
+        // Min: ceil(168 V / 33.466 V) = 6. Max: min(floor(760 V / 49.477 V) = 15, floor(617.5 V / 42.334 V) = 14) = 14.
+        Assert.Equal(6, mppt.MinModulesPerString);
         Assert.Equal(14, mppt.MaxModulesPerString);
         Assert.True(mppt.HasValidModuleRange);
     }
@@ -165,9 +197,9 @@ public sealed class StringCalculatorTests
         MpptResult mppt = CalculateSingle(modules: 4);
 
         LimitViolation lower = Assert.Single(mppt.Violations, v => v.Kind == ViolationKind.MpptLowerBound);
-        Assert.Equal(4 * 37.9 * 0.967, lower.Actual, Precision);
-        Assert.Equal(5, lower.Recommendation);
-        Assert.Equal(5, Assert.Single(mppt.Violations, v => v.Kind == ViolationKind.StartVoltage).Recommendation);
+        Assert.Equal(4 * 37.9 * 0.883, lower.Actual, Precision);
+        Assert.Equal(6, lower.Recommendation);
+        Assert.Equal(6, Assert.Single(mppt.Violations, v => v.Kind == ViolationKind.StartVoltage).Recommendation);
     }
 
     [Fact]
@@ -179,9 +211,9 @@ public sealed class StringCalculatorTests
         Assert.Equal(3, strings.Actual);
         Assert.Equal(2, strings.Limit);
 
-        // The higher IMPP of both temperatures is used: 558.5 W / 41.652 V = 13.409 A per string.
+        // IMPP per string: 500 W / 37.9 V = 13.193 A (equal at both temperatures).
         LimitViolation current = Assert.Single(mppt.Violations, v => v.Kind == ViolationKind.InputCurrent);
-        Assert.Equal(3 * 558.5 / (37.9 * 1.099), current.Actual, Precision);
+        Assert.Equal(3 * 500 / 37.9, current.Actual, Precision);
         Assert.Equal(2, current.Recommendation);
 
         Assert.DoesNotContain(mppt.Violations, v => v.Kind == ViolationKind.ShortCircuitCurrent);

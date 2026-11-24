@@ -24,7 +24,7 @@ public static class CalculationTextFormatter
         var sb = new StringBuilder();
         sb.AppendLine("Berechnung basierend auf:");
         sb.AppendLine($"- WR: {inv.Hersteller} {inv.Model} ({FormatInverterSummary(inv)})");
-        sb.AppendLine($"- Parameter: Tmin={result.Parameters.MinTempC} °C, Tmax={result.Parameters.MaxTempC} °C, Sicherheitsmarge={result.Parameters.SicherheitsmargePct} %");
+        sb.AppendLine($"- Parameter: Zelltemperatur Tmin={result.Parameters.MinTempC} °C, Tmax={result.Parameters.MaxTempC} °C, Sicherheitsmarge={result.Parameters.SicherheitsmargePct} %");
         sb.AppendLine($"- Effektive Grenzen (mit Sicherheitsmarge): {FormatLimits(limits)}");
 
         foreach (MpptResult mppt in result.Mppts)

@@ -32,7 +32,7 @@ public static class ReportBuilder
         Wechselrichter inv = result.Inverter;
 
         md.AppendLine("## Parameter und Rahmenbedingungen");
-        md.AppendLine($"- Temperaturbereich: Tmin={parameters.MinTempC} °C, Tmax={parameters.MaxTempC} °C");
+        md.AppendLine($"- Zelltemperaturbereich: Tmin={parameters.MinTempC} °C, Tmax={parameters.MaxTempC} °C");
         md.AppendLine($"- Sicherheitsmarge: {parameters.SicherheitsmargePct} %");
         md.AppendLine();
 
@@ -48,6 +48,7 @@ public static class ReportBuilder
 
         md.AppendLine("### Berechnungshinweise");
         md.AppendLine("- Spannungen und Ströme werden temperaturabhängig auf Basis der angegebenen Temperaturkoeffizienten abgeschätzt.");
+        md.AppendLine("- Tmin und Tmax sind Zelltemperaturen. VMPP wird mit dem VMPP-Temperaturkoeffizienten des Moduls gerechnet; fehlt er im Datenblatt, näherungsweise mit dem PMAX-Koeffizienten.");
         md.AppendLine("- Sicherheitsmargen werden auf Grenzwerte angewendet: z. B. Vdc_max reduziert, Startspannung und MPPT-Untergrenze erhöht.");
         md.AppendLine("- Strings in Serie erhöhen die Spannung proportional zur Modulanzahl, der Strom bleibt gleich. Parallelschaltung addiert Ströme.");
         md.AppendLine("$V_{oc} (T_{STC}) * (1 + ((T_{min} - 25°C) * Temperaturkoeffizient))$");
@@ -84,6 +85,8 @@ public static class ReportBuilder
             PVModule modul = mppt.Module!;
             md.AppendLine($"- Modul: {modul.Hersteller} {modul.Model} (Pmax={modul.NominalleistungPmaxWp} Wp, UMPP={modul.SpannungImMppUmppV:F2} V, IMPP={modul.StromImMppImppA:F2} A, UOC={modul.LeerlaufspannungUocV:F2} V, ISC={modul.KurzschlusstromIscA:F2} A)");
             md.AppendLine($"- Einstellungen: Module/String={mppt.ModulesPerString}, Parallele Strings={mppt.ParallelStrings}");
+            ModuleTemperatureValues t = mppt.Temperatures!;
+            md.AppendLine($"- VMPP-Temperaturkoeffizient: {t.VmppCoefficientPctPerC} %/°C{(t.VmppCoefficientApproximated ? " (Näherung: PMAX-Koeffizient)" : string.Empty)}");
             md.AppendLine();
 
             md.AppendLine("### Ergebnisse (kondensiert)");

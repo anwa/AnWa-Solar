@@ -24,7 +24,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
   - Wechselrichter: Auswahl per Dialog mit Hersteller-/Modell-Filter und Detailprüfung.
   - Strings: Dynamische Anzeige pro MPPT, Modulwahl pro MPPT, Anzahl Module pro String und parallele Strings mit Grenzprüfung.
   - Ergebnisse: Sofortige Live-Berechnung mit klaren Hinweisen und empfohlenen Bereichen.
-  - Parameter: Dialog für Tmin, Tmax und Sicherheitsmarge; Speicherung in appsettings.json.
+  - Parameters: dialog for the minimum and maximum cell temperature (Tmin, default −20 °C; Tmax, default 70 °C) and the safety margin; stored in appsettings.json.
 - Markdown-Vorschau: Markdown zu HTML-Konvertierung für Berichte.
 - Persistenz:
   - Berechnungsparameter werden gespeichert und beim App-Start geladen.
@@ -49,7 +49,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 
 ## Datenquellen
 - Folder `src/AnWaSolar.Core/Data/`, copied into the `Data` folder next to the executable
-  - PV-Module.json: Stammdaten zu PV-Modulen (Leistung, UMPP/IMPP, UOC/ISC, Temperaturkoeffizienten, Betriebstemperatur).
+  - PV-Module.json: PV module datasheet values (power, UMPP/IMPP, UOC/ISC, temperature coefficients, operating temperature). The VMPP temperature coefficient (`Temperaturkoeffzient von VMPP (%/°C)`) is optional; without it the PMAX coefficient is used as a conservative approximation.
   - Wechselrichter.json: Stammdaten zu Wechselrichtern (DC-Spannungen, MPPT-Bereich, Ströme, Anzahl MPPT, max. Strings/MPPT).
 - Beide Dateien werden beim Start geladen. Bei Fehlern oder fehlenden Dateien wird dies geloggt und robust behandelt.
 
@@ -66,7 +66,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
   - Live-Berechnung und Anzeige von Spannungen (OC/MPP), Strömen (ISC/IMPP), sowie Leistungsabschätzungen.
   - Prüfergebnisse zeigen Grenzverletzungen und Empfehlungen (Module pro String, parallele Strings).
 - Parameter:
-  - „Parameter ändern“ öffnet den Dialog zum Setzen von Tmin, Tmax und Sicherheitsmarge.
+  - „Parameter ändern“ opens the dialog for Tmin, Tmax (cell temperatures) and the safety margin.
   - Werte werden gespeichert und gelten beim nächsten Start.
 
 ## Einstellungen und Persistenz

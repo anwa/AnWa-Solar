@@ -28,7 +28,9 @@ public sealed record EffectiveLimits(
     double DcPowerPerMpptW,
     double DcPowerPerMpptLimitW);
 
-/// <summary>Module values at the minimum and maximum temperature.</summary>
+/// <summary>Module values at the minimum and maximum cell temperature.</summary>
+/// <param name="VmppCoefficientPctPerC">VMPP temperature coefficient used for the calculation.</param>
+/// <param name="VmppCoefficientApproximated">True when the module has no VMPP coefficient and the PMAX coefficient was used.</param>
 public sealed record ModuleTemperatureValues(
     double VocAtTminV,
     double VocAtTmaxV,
@@ -39,7 +41,9 @@ public sealed record ModuleTemperatureValues(
     double IscAtTminA,
     double IscAtTmaxA,
     double ImppAtTminA,
-    double ImppAtTmaxA);
+    double ImppAtTmaxA,
+    double VmppCoefficientPctPerC,
+    bool VmppCoefficientApproximated);
 
 /// <summary>Kind of a violated inverter limit.</summary>
 public enum ViolationKind
