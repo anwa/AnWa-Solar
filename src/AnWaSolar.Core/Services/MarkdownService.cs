@@ -1,4 +1,5 @@
 using Markdig;
+using Markdig.Extensions.AutoIdentifiers;
 
 using Microsoft.Extensions.Configuration;
 
@@ -18,7 +19,8 @@ public class MarkdownService : IMarkdownService
         var advanced = bool.TryParse(cfg["AnWaSolar:Markdown:UseAdvancedExtensions"], out var useAdv) && useAdv;
 
         // Raw HTML is never passed through: names from the master data end up in the report.
-        var builder = new MarkdownPipelineBuilder().DisableHtml();
+        // GitHub-style heading anchors, so that links such as "page.md#safety-margin" work in the manual.
+        var builder = new MarkdownPipelineBuilder().DisableHtml().UseAutoIdentifiers(AutoIdentifierOptions.GitHub);
         if (advanced)
         {
             // Includes the mathematics extension, which writes $…$ as \( … \) and $$…$$ as \[ … \] for KaTeX.

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -76,10 +77,29 @@ public sealed class UserSettings
     public CalculationParameters Parameters { get; set; } = new();
 
     public LastSelection LastSelection { get; set; } = new();
+
+    /// <summary>Colour theme; optional, files without it use <see cref="AppTheme.System"/>.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
+    public AppTheme Theme { get; set; } = AppTheme.System;
+}
+
+/// <summary>Colour theme of the application.</summary>
+public enum AppTheme
+{
+    /// <summary>Follows the Windows app theme, also when it changes while the application runs.</summary>
+    System,
+
+    Light,
+
+    Dark,
 }
 
 public interface ISettingsService
 {
+    AppTheme LoadTheme();
+
+    bool SaveTheme(AppTheme theme);
+
     CalculationParameters LoadParameters();
 
     bool SaveParameters(CalculationParameters parameters);
@@ -198,6 +218,29 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public AppTheme LoadTheme()
+    {
+        lock (_lock)
+        {
+            return EnsureLoaded().Theme;
+        }
+    }
+
+    public bool SaveTheme(AppTheme theme)
+    {
+        lock (_lock)
+        {
+            EnsureLoaded().Theme = theme;
+            bool ok = TryWrite();
+            if (ok)
+            {
+                _logger.LogInformation("Theme {Theme} saved to {Path}.", theme, SettingsFilePath);
+            }
+
+            return ok;
+        }
+    }
+
     private UserSettings EnsureLoaded()
     {
         if (_settings is not null)
@@ -243,6 +286,11 @@ public sealed class SettingsService : ISettingsService
 
             int version = root["SchemaVersion"]?.GetValue<int>() ?? 1;
             UserSettings settings = ReadSettings(root["Parameters"] as JsonObject, root["LastSelection"] as JsonObject);
+            if (Enum.TryParse(Text(root, "Theme"), ignoreCase: true, out AppTheme theme) && Enum.IsDefined(theme))
+            {
+                settings.Theme = theme;
+            }
+
             if (version < UserSettings.CurrentSchemaVersion)
             {
                 _settings = settings;

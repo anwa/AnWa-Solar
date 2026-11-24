@@ -19,4 +19,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The user manual, embedded as in the application, to check its links. -->
+    <EmbeddedResource Include="..\..\docs\manual\**\*.md;..\..\docs\manual\toc.json" LogicalName="manual/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

@@ -6,12 +6,15 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 using AnWaSolar.Core;
 using AnWaSolar.Core.Calculation;
+using AnWaSolar.Core.Logging;
 using AnWaSolar.Core.Models;
 using AnWaSolar.Core.Services;
+using AnWaSolar.Services;
 
 using MaterialDesignThemes.Wpf;
 
@@ -30,6 +33,9 @@ public partial class MainWindow : Window
     private readonly IDataStore _dataStore;
     private readonly ISettingsService _settings;
     private readonly IUserDataLocation _userData;
+    private readonly ILogFilePathProvider _logPaths;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly ThemeService _theme;
 
     private Inverter? _selectedInverter;
     private readonly List<StringConfiguration> _stringConfigs = new();
@@ -41,6 +47,7 @@ public partial class MainWindow : Window
     private bool _reportPreviewMode = false;
     private string _previewHtml = string.Empty;
     private Task? _previewInit;
+    private ManualWindow? _manualWindow;
 
     // Local host name of the report preview; requests to it are answered by OnPreviewResourceRequested.
     private const string PreviewHost = "report.anwasolar.invalid";
@@ -59,7 +66,15 @@ public partial class MainWindow : Window
 
     #region Constructor
 
-    public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings, IUserDataLocation userData)
+    public MainWindow(
+        ILogger<MainWindow> logger,
+        ILoggerFactory loggerFactory,
+        IMarkdownService markdown,
+        IDataStore dataStore,
+        ISettingsService settings,
+        IUserDataLocation userData,
+        ILogFilePathProvider logPaths,
+        ThemeService theme)
     {
         _persistTimer = new DispatcherTimer { Interval = s_persistDelay };
         _persistTimer.Tick += (_, _) =>
@@ -77,6 +92,13 @@ public partial class MainWindow : Window
         _dataStore = dataStore;
         _settings = settings;
         _userData = userData;
+        _logPaths = logPaths;
+        _loggerFactory = loggerFactory;
+        _theme = theme;
+        _theme.EffectiveThemeChanged += OnEffectiveThemeChanged;
+        Closed += (_, _) => _theme.EffectiveThemeChanged -= OnEffectiveThemeChanged;
+        UpdateThemeButton();
+        InputBindings.Add(new KeyBinding(new ActionCommand(OpenManual), Key.F1, ModifierKeys.None));
 
         _logger.LogInformation("Main window initialized.");
 
@@ -337,6 +359,81 @@ public partial class MainWindow : Window
             }
         }
     }
+    #endregion
+
+    #region Top bar
+
+    // Switches System → Light → Dark → System and saves the choice.
+    private void OnThemeClick(object sender, RoutedEventArgs e)
+    {
+        AppTheme next = ThemeService.Next(_theme.Mode);
+        _theme.Apply(next);
+        if (!_settings.SaveTheme(next))
+        {
+            _logger.LogWarning("The theme could not be saved.");
+        }
+
+        UpdateThemeButton();
+    }
+
+    private void OnEffectiveThemeChanged(object? sender, bool dark)
+    {
+        WebViewSupport.ApplyColorScheme(ReportPreviewBrowser.CoreWebView2, dark);
+        UpdateThemeButton();
+    }
+
+    private void UpdateThemeButton()
+    {
+        ThemeIcon.Kind = _theme.Mode switch
+        {
+            AppTheme.Light => PackIconKind.WhiteBalanceSunny,
+            AppTheme.Dark => PackIconKind.WeatherNight,
+            _ => PackIconKind.ThemeLightDark,
+        };
+        ThemeButton.ToolTip = _theme.Mode switch
+        {
+            AppTheme.Light => "Theme: light (click for dark)",
+            AppTheme.Dark => "Theme: dark (click for system)",
+            _ => $"Theme: system, currently {(_theme.IsDark ? "dark" : "light")} (click for light)",
+        };
+    }
+
+    private void OnManualClick(object sender, RoutedEventArgs e) => OpenManual();
+
+    // Opens the manual, or brings an open manual window to the front.
+    private void OpenManual()
+    {
+        if (_manualWindow is { IsLoaded: true })
+        {
+            _manualWindow.Activate();
+            return;
+        }
+
+        _manualWindow = new ManualWindow(_markdown, _userData, _theme, _loggerFactory.CreateLogger<ManualWindow>());
+        _manualWindow.Closed += (_, _) => _manualWindow = null;
+        _manualWindow.Show();
+    }
+
+    private void OnAboutClick(object sender, RoutedEventArgs e)
+    {
+        var about = new AboutWindow(_userData, _logPaths) { Owner = this };
+        about.ShowDialog();
+    }
+
+    /// <summary>Minimal ICommand for key bindings.</summary>
+    private sealed class ActionCommand(Action action) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => action();
+    }
+
     #endregion
 
     #region Events
@@ -743,7 +840,7 @@ public partial class MainWindow : Window
         try
         {
             string body = _markdown.ToHtml(_reportMarkdown);
-            _previewHtml = ReportHtmlDocument.Create(body);
+            _previewHtml = HtmlDocument.Create(body, "Report");
             if (!await EnsurePreviewAsync())
             {
                 return;
@@ -778,6 +875,7 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is WebView2RuntimeNotFoundException or COMException or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
             _previewInit = null;
+            WebViewSupport.ResetEnvironment();
             _logger.LogError(ex, "The report preview (WebView2) could not be started.");
             _reportPreviewMode = false;
             UpdateReportView();
@@ -789,11 +887,11 @@ public partial class MainWindow : Window
 
     private async Task InitializePreviewAsync()
     {
-        string dataFolder = Path.Combine(_userData.DirectoryPath, "WebView2");
-        CoreWebView2Environment environment = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+        CoreWebView2Environment environment = await WebViewSupport.GetEnvironmentAsync(_userData);
         await ReportPreviewBrowser.EnsureCoreWebView2Async(environment);
 
         CoreWebView2 core = ReportPreviewBrowser.CoreWebView2;
+        WebViewSupport.ApplyColorScheme(core, _theme.IsDark);
         core.Settings.AreDevToolsEnabled = false;
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.AreDefaultContextMenusEnabled = false;
@@ -818,7 +916,7 @@ public partial class MainWindow : Window
             var page = new MemoryStream(Encoding.UTF8.GetBytes(_previewHtml));
             e.Response = environment.CreateWebResourceResponse(page, 200, "OK", "Content-Type: text/html; charset=utf-8");
         }
-        else if (ReportHtmlDocument.TryResolveAsset(s_katexDirectory, path, out string file, out string contentType))
+        else if (HtmlDocument.TryResolveAsset(s_katexDirectory, path, out string file, out string contentType))
         {
             e.Response = environment.CreateWebResourceResponse(File.OpenRead(file), 200, "OK", $"Content-Type: {contentType}");
         }

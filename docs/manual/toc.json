@@ -1,0 +1,14 @@
+{
+  "title": "AnWa-Solar Manual",
+  "start": "README.md",
+  "pages": [
+    { "path": "README.md", "title": "Start" },
+    { "path": "getting-started.md", "title": "Getting Started" },
+    { "path": "string-calculation.md", "title": "String Calculation" },
+    { "path": "calculation.md", "title": "How the Calculation Works" },
+    { "path": "report.md", "title": "Report" },
+    { "path": "master-data.md", "title": "Master Data" },
+    { "path": "settings.md", "title": "Settings, Theme and Files" },
+    { "path": "troubleshooting.md", "title": "Troubleshooting" }
+  ]
+}

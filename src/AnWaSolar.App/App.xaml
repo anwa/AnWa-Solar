@@ -6,11 +6,12 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <!-- Material Design 3 aktivieren -->
-        <materialDesign:BundledTheme BaseTheme="Inherit"
+        <!-- Material Design 3; ThemeService switches between light and dark at runtime. -->
+        <materialDesign:BundledTheme BaseTheme="Light"
                                      PrimaryColor="Indigo"
                                      SecondaryColor="Amber" />
         <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+        <ResourceDictionary Source="/Resources/Theme.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

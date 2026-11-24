@@ -1,12 +1,12 @@
-using AnWaSolar.Core.Calculation;
+
 
 namespace AnWaSolar.Core.Tests;
 
-public sealed class ReportHtmlDocumentTests : IDisposable
+public sealed class HtmlDocumentTests : IDisposable
 {
     private readonly string _katex = Path.Combine(Path.GetTempPath(), "AnWaSolar.Tests", Guid.NewGuid().ToString("N"), "katex");
 
-    public ReportHtmlDocumentTests()
+    public HtmlDocumentTests()
     {
         Directory.CreateDirectory(Path.Combine(_katex, "fonts"));
         File.WriteAllText(Path.Combine(_katex, "katex.min.css"), "/* css */");
@@ -21,12 +21,13 @@ public sealed class ReportHtmlDocumentTests : IDisposable
     [Fact]
     public void Document_loads_katex_and_renders_both_delimiters()
     {
-        string html = ReportHtmlDocument.Create("<p>body</p>");
+        string html = HtmlDocument.Create("<p>body</p>", "Report & <test>");
 
         Assert.Contains("<p>body</p>", html, StringComparison.Ordinal);
-        Assert.Contains("href=\"katex/katex.min.css\"", html, StringComparison.Ordinal);
-        Assert.Contains("src=\"katex/katex.min.js\"", html, StringComparison.Ordinal);
-        Assert.Contains("src=\"katex/auto-render.min.js\"", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"/katex/katex.min.css\"", html, StringComparison.Ordinal);
+        Assert.Contains("src=\"/katex/katex.min.js\"", html, StringComparison.Ordinal);
+        Assert.Contains("src=\"/katex/auto-render.min.js\"", html, StringComparison.Ordinal);
+        Assert.Contains("<title>Report &amp; &lt;test&gt;</title>", html, StringComparison.Ordinal);
         Assert.Contains("left: '\\\\[', right: '\\\\]', display: true", html, StringComparison.Ordinal);
         Assert.Contains("left: '\\\\(', right: '\\\\)', display: false", html, StringComparison.Ordinal);
         Assert.Contains("content=\"light dark\"", html, StringComparison.Ordinal);
@@ -38,7 +39,7 @@ public sealed class ReportHtmlDocumentTests : IDisposable
     [InlineData("/katex/fonts/KaTeX_Main-Regular.woff2", "font/woff2")]
     public void Katex_files_are_resolved(string requestPath, string expectedType)
     {
-        Assert.True(ReportHtmlDocument.TryResolveAsset(_katex, requestPath, out string file, out string type));
+        Assert.True(HtmlDocument.TryResolveAsset(_katex, requestPath, out string file, out string type));
         Assert.Equal(expectedType, type);
         Assert.StartsWith(Path.GetFullPath(_katex), file, StringComparison.OrdinalIgnoreCase);
     }
@@ -52,6 +53,6 @@ public sealed class ReportHtmlDocumentTests : IDisposable
     [InlineData("")]
     public void Other_paths_are_rejected(string requestPath)
     {
-        Assert.False(ReportHtmlDocument.TryResolveAsset(_katex, requestPath, out _, out _));
+        Assert.False(HtmlDocument.TryResolveAsset(_katex, requestPath, out _, out _));
     }
 }
