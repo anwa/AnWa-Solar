@@ -7,7 +7,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] `AGENTS.md`, `CLAUDE.md` and this plan
 - [x] Remove the prompt tooling of the former chat workflow (`prePrompt.md`, `CreatePrompt.py`, its `.gitignore` entries)
 
-## M2 – Project structure and build (`refactor/project-structure`)
+## M2 – Project structure and build (`refactor/project-structure`, v0.3.0)
 
 - [x] Target `net11.0-windows`; `global.json` pins the SDK
 - [x] `Directory.Build.props` with `<Version>` as the single version source, `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild`; version shown in the main window title and logged at startup
