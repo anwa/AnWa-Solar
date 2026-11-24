@@ -11,7 +11,7 @@ Battery storage, AC-side and cable/fuse calculations are planned (see [Roadmap](
   - **Strings**: one section per MPPT with module selection, sliders for modules per string and parallel strings, and a switch that disables a string without losing its values. The module slider marks the allowed range.
   - **Results**: recalculated on every change, with violated limits and recommended module and string counts.
   - **Parameters**: minimum and maximum cell temperature (Tmin, default −20 °C; Tmax, default 70 °C) and the safety margin.
-- **Report** tab: Markdown report of the current configuration with an HTML preview; the Markdown can be copied or saved.
+- **Report** tab: Markdown report of the current configuration with a preview (Microsoft Edge WebView2) that renders the formulas with KaTeX; the Markdown can be copied or saved. The preview works offline; KaTeX is shipped with the application. WebView2 keeps its data in `%LOCALAPPDATA%\AnWa-Solar\WebView2`. The Microsoft Edge WebView2 Runtime is part of Windows 11; without it the report tab shows the Markdown source.
 - Master data of PV modules and inverters in JSON files; invalid entries are skipped and reported.
 - Structured JSONL logging.
 
@@ -73,7 +73,7 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 - Changes are saved automatically, at the latest 0.5 s after the last change and when the window closes. The file is written atomically.
 - An unreadable `settings.json` is kept as `settings.json.invalid-<timestamp>` and the defaults are used.
 - Older settings are taken over automatically: `settings.json` of schema version 1 (versions 0.5.0 and 0.6.0) is converted on the first start, and without `settings.json` the values are imported once from the `appsettings.json` next to the executable, where versions up to 0.4.0 stored them.
-- `appsettings.json` next to the executable only holds application defaults and is never written: `AnWaSolar:Markdown:UseAdvancedExtensions` and, optionally, `AnWaSolar:LogDirectory`.
+- `appsettings.json` next to the executable only holds application defaults and is never written: `AnWaSolar:Markdown:UseAdvancedExtensions` (enables tables and formulas in the report, default `true`) and, optionally, `AnWaSolar:LogDirectory`.
 
 ## Logging
 
@@ -102,3 +102,5 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 ## License
 
 GNU General Public License v3.0, see [LICENSE](LICENSE).
+
+Third-party software: the report preview uses [KaTeX](https://katex.org/) 0.19.1 (MIT License), shipped in `src/AnWaSolar.App/Assets/katex` with its license.

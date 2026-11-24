@@ -17,11 +17,14 @@ public class MarkdownService : IMarkdownService
     {
         var advanced = bool.TryParse(cfg["AnWaSolar:Markdown:UseAdvancedExtensions"], out var useAdv) && useAdv;
 
-        var builder = new MarkdownPipelineBuilder();
+        // Raw HTML is never passed through: names from the master data end up in the report.
+        var builder = new MarkdownPipelineBuilder().DisableHtml();
         if (advanced)
         {
+            // Includes the mathematics extension, which writes $…$ as \( … \) and $$…$$ as \[ … \] for KaTeX.
             builder.UseAdvancedExtensions();
         }
+
         _pipeline = builder.Build();
     }
 

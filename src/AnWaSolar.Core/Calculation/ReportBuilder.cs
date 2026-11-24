@@ -51,7 +51,7 @@ public static class ReportBuilder
         md.AppendLine("- Tmin and Tmax are cell temperatures. Vmpp uses the Vmpp temperature coefficient of the module; when the datasheet does not state it, the Pmax coefficient is used as an approximation.");
         md.AppendLine("- The safety margin tightens the limits: for example Vdc_max is reduced, the start voltage and the MPPT lower bound are raised.");
         md.AppendLine("- Modules in series add their voltages while the current stays the same; parallel strings add their currents.");
-        md.AppendLine("- $V_{oc}(T) = V_{oc}(25\\,°C) \\cdot (1 + \\alpha \\cdot (T - 25\\,°C))$");
+        md.AppendLine("- $V_{oc}(T) = V_{oc}(25\\,^{\\circ}\\mathrm{C}) \\cdot (1 + \\alpha \\cdot (T - 25\\,^{\\circ}\\mathrm{C}))$");
         md.AppendLine();
 
         if (result.Limits is not { } limits)

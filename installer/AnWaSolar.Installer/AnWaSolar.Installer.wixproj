@@ -8,7 +8,7 @@
     <Platform>x64</Platform>
     <InstallerPlatform>x64</InstallerPlatform>
     <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\dist\publish\</PublishDir>
-    <DefineConstants>ProductVersion=$(Version);PublishDir=$(PublishDir);AssetsDir=$(MSBuildThisFileDirectory)Assets;LicenseFile=$(MSBuildThisFileDirectory)..\..\LICENSE</DefineConstants>
+    <DefineConstants>ProductVersion=$(Version);PublishDir=$(PublishDir);AssetsDir=$(MSBuildThisFileDirectory)Assets;AppIconPath=$(MSBuildThisFileDirectory)..\..\src\AnWaSolar.App\Resources\AppIcon.ico;LicenseFile=$(MSBuildThisFileDirectory)..\..\LICENSE</DefineConstants>
     <SuppressValidation>false</SuppressValidation>
     <Cultures>en-US</Cultures>
   </PropertyGroup>

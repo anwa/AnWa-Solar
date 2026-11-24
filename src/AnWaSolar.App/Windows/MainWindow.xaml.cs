@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,6 +16,7 @@ using AnWaSolar.Core.Services;
 using MaterialDesignThemes.Wpf;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
 
 namespace AnWaSolar.Windows;
@@ -27,6 +29,7 @@ public partial class MainWindow : Window
     private readonly IMarkdownService _markdown;
     private readonly IDataStore _dataStore;
     private readonly ISettingsService _settings;
+    private readonly IUserDataLocation _userData;
 
     private Inverter? _selectedInverter;
     private readonly List<StringConfiguration> _stringConfigs = new();
@@ -36,6 +39,13 @@ public partial class MainWindow : Window
     // Report
     private string _reportMarkdown = string.Empty;
     private bool _reportPreviewMode = false;
+    private string _previewHtml = string.Empty;
+    private Task? _previewInit;
+
+    // Local host name of the report preview; requests to it are answered by OnPreviewResourceRequested.
+    private const string PreviewHost = "report.anwasolar.invalid";
+    private const string PreviewPageUrl = "https://" + PreviewHost + "/report.html";
+    private static readonly string s_katexDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "katex");
 
     // Suppress slider and toggle events while values are set programmatically
     private bool _suppressSliderEvents = false;
@@ -49,7 +59,7 @@ public partial class MainWindow : Window
 
     #region Constructor
 
-    public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings)
+    public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings, IUserDataLocation userData)
     {
         _persistTimer = new DispatcherTimer { Interval = s_persistDelay };
         _persistTimer.Tick += (_, _) =>
@@ -66,6 +76,7 @@ public partial class MainWindow : Window
         _markdown = markdown;
         _dataStore = dataStore;
         _settings = settings;
+        _userData = userData;
 
         _logger.LogInformation("Main window initialized.");
 
@@ -709,37 +720,111 @@ public partial class MainWindow : Window
         ReportMarkdownTextBox.Text = _reportMarkdown;
     }
 
-    // Shows the Markdown source or the HTML preview
+    // Shows the Markdown source or the HTML preview.
     private void UpdateReportView()
     {
         if (_reportPreviewMode)
         {
             ReportMarkdownTextBox.Visibility = Visibility.Collapsed;
             ReportPreviewContainer.Visibility = Visibility.Visible;
-
-            var htmlBody = _markdown.ToHtml(_reportMarkdown);
-            var htmlDoc = new StringBuilder();
-            htmlDoc.AppendLine("<!DOCTYPE html>");
-            htmlDoc.AppendLine("<html><head><meta charset=" + (char)34 + "utf-8" + (char)34 + "><title>Report</title></head><body>");
-            htmlDoc.AppendLine(htmlBody);
-            htmlDoc.AppendLine("</body></html>");
-
-            try
-            {
-                ReportPreviewBrowser.NavigateToString(htmlDoc.ToString());
-                _logger.LogInformation("Report preview updated. Length={Length}.", htmlBody.Length);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating the report preview.");
-                MessageBox.Show("Error updating the report preview. See the log for details.", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            _ = ShowPreviewAsync();
         }
         else
         {
             ReportPreviewContainer.Visibility = Visibility.Collapsed;
             ReportMarkdownTextBox.Visibility = Visibility.Visible;
+        }
+    }
+
+    // Renders the current report into the WebView2 preview. The page and the KaTeX files are served from a local
+    // host name that never reaches the network.
+    private async Task ShowPreviewAsync()
+    {
+        try
+        {
+            string body = _markdown.ToHtml(_reportMarkdown);
+            _previewHtml = ReportHtmlDocument.Create(body);
+            if (!await EnsurePreviewAsync())
+            {
+                return;
+            }
+
+            ReportPreviewBrowser.CoreWebView2.Navigate(PreviewPageUrl);
+            _logger.LogInformation("Report preview updated. Length={Length}.", body.Length);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating the report preview.");
+            MessageBox.Show("Error updating the report preview. See the log for details.", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // Creates the WebView2 environment once. Its data folder lives in the per-user data folder, because the
+    // installation folder is read-only. Returns false and switches back to Markdown when WebView2 is missing.
+    private async Task<bool> EnsurePreviewAsync()
+    {
+        if (ReportPreviewBrowser.CoreWebView2 is not null)
+        {
+            return true;
+        }
+
+        try
+        {
+            _previewInit ??= InitializePreviewAsync();
+            await _previewInit;
+            return true;
+        }
+        catch (Exception ex) when (ex is WebView2RuntimeNotFoundException or COMException or InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            _previewInit = null;
+            _logger.LogError(ex, "The report preview (WebView2) could not be started.");
+            _reportPreviewMode = false;
+            UpdateReportView();
+            MessageBox.Show("The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details.",
+                "Report preview", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+    }
+
+    private async Task InitializePreviewAsync()
+    {
+        string dataFolder = Path.Combine(_userData.DirectoryPath, "WebView2");
+        CoreWebView2Environment environment = await CoreWebView2Environment.CreateAsync(null, dataFolder);
+        await ReportPreviewBrowser.EnsureCoreWebView2Async(environment);
+
+        CoreWebView2 core = ReportPreviewBrowser.CoreWebView2;
+        core.Settings.AreDevToolsEnabled = false;
+        core.Settings.IsStatusBarEnabled = false;
+        core.Settings.AreDefaultContextMenusEnabled = false;
+        core.AddWebResourceRequestedFilter($"https://{PreviewHost}/*", CoreWebView2WebResourceContext.All);
+        core.WebResourceRequested += OnPreviewResourceRequested;
+        core.NavigationStarting += (_, e) =>
+        {
+            // The preview only shows the report; links do not navigate away.
+            if (!e.Uri.StartsWith($"https://{PreviewHost}/", StringComparison.Ordinal))
+            {
+                e.Cancel = true;
+            }
+        };
+    }
+
+    private void OnPreviewResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
+    {
+        CoreWebView2Environment environment = ReportPreviewBrowser.CoreWebView2.Environment;
+        string path = new Uri(e.Request.Uri).AbsolutePath;
+        if (path == "/report.html")
+        {
+            var page = new MemoryStream(Encoding.UTF8.GetBytes(_previewHtml));
+            e.Response = environment.CreateWebResourceResponse(page, 200, "OK", "Content-Type: text/html; charset=utf-8");
+        }
+        else if (ReportHtmlDocument.TryResolveAsset(s_katexDirectory, path, out string file, out string contentType))
+        {
+            e.Response = environment.CreateWebResourceResponse(File.OpenRead(file), 200, "OK", $"Content-Type: {contentType}");
+        }
+        else
+        {
+            e.Response = environment.CreateWebResourceResponse(null, 404, "Not Found", string.Empty);
         }
     }
 
