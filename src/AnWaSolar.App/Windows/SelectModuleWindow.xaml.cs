@@ -13,26 +13,26 @@ public partial class SelectModuleWindow : Window
 
     public PVModule? Selected { get; private set; }
 
-    #region Konstruktor
+    #region Constructor
 
     public SelectModuleWindow(System.Collections.Generic.IEnumerable<PVModule> modules)
     {
         InitializeComponent();
         _all = modules?.ToArray() ?? Array.Empty<PVModule>();
 
-        var hersteller = _all.Select(x => x.Hersteller).Distinct().OrderBy(x => x).ToArray();
-        HerstellerCombo.ItemsSource = hersteller;
-        if (hersteller.Length > 0) HerstellerCombo.SelectedItem = hersteller[0];
+        var manufacturers = _all.Select(x => x.Manufacturer).Distinct().OrderBy(x => x).ToArray();
+        ManufacturerCombo.ItemsSource = manufacturers;
+        if (manufacturers.Length > 0) ManufacturerCombo.SelectedItem = manufacturers[0];
     }
 
     #endregion
 
     #region Events
 
-    private void OnHerstellerSelectionChanged(object sender, RoutedEventArgs e)
+    private void OnManufacturerSelectionChanged(object sender, RoutedEventArgs e)
     {
-        var h = HerstellerCombo.SelectedItem as string;
-        var models = _all.Where(x => string.Equals(x.Hersteller, h, StringComparison.OrdinalIgnoreCase))
+        var h = ManufacturerCombo.SelectedItem as string;
+        var models = _all.Where(x => string.Equals(x.Manufacturer, h, StringComparison.OrdinalIgnoreCase))
                          .Select(x => x.Model)
                          .Distinct()
                          .OrderBy(x => x)
@@ -43,10 +43,10 @@ public partial class SelectModuleWindow : Window
 
     private void OnModelSelectionChanged(object sender, RoutedEventArgs e)
     {
-        var h = HerstellerCombo.SelectedItem as string;
+        var h = ManufacturerCombo.SelectedItem as string;
         var m = ModelCombo.SelectedItem as string;
         var mod = _all.FirstOrDefault(x =>
-            string.Equals(x.Hersteller, h, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Manufacturer, h, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(x.Model, m, StringComparison.OrdinalIgnoreCase));
 
         Selected = mod;
@@ -57,7 +57,7 @@ public partial class SelectModuleWindow : Window
     {
         if (Selected is null)
         {
-            MessageBox.Show("Bitte Hersteller und Modell wählen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Please select a manufacturer and a model.", "Note", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         DialogResult = true;
@@ -66,13 +66,13 @@ public partial class SelectModuleWindow : Window
 
     #endregion
 
-    #region Hilfsmethoden
+    #region Helpers
 
     private void UpdateDetails(PVModule? mod)
     {
         if (mod is null)
         {
-            DetailHersteller.Text = "-";
+            DetailManufacturer.Text = "-";
             DetailModel.Text = "-";
             DetailPmax.Text = "-";
             DetailMpp.Text = "-";
@@ -82,13 +82,13 @@ public partial class SelectModuleWindow : Window
             return;
         }
 
-        DetailHersteller.Text = mod.Hersteller;
+        DetailManufacturer.Text = mod.Manufacturer;
         DetailModel.Text = mod.Model;
-        DetailPmax.Text = mod.NominalleistungPmaxWp.ToString(CultureInfo.CurrentCulture);
-        DetailMpp.Text = $"{mod.SpannungImMppUmppV:F2} / {mod.StromImMppImppA:F2}";
-        DetailOcSc.Text = $"{mod.LeerlaufspannungUocV:F2} / {mod.KurzschlusstromIscA:F2}";
-        DetailCoeffs.Text = $"{mod.TemperaturkoeffPmaxProzentProGradC:F2} / {mod.TemperaturkoeffVocProzentProGradC:F2} / {mod.TemperaturkoeffIscProzentProGradC:F2}";
-        DetailTempRange.Text = $"{mod.BetriebstemperaturMinC:F0} … {mod.BetriebstemperaturMaxC:F0}";
+        DetailPmax.Text = mod.PmaxW.ToString(CultureInfo.CurrentCulture);
+        DetailMpp.Text = $"{mod.VmppV:F2} / {mod.ImppA:F2}";
+        DetailOcSc.Text = $"{mod.VocV:F2} / {mod.IscA:F2}";
+        DetailCoeffs.Text = $"{mod.PmaxTempCoeffPctPerC:F2} / {mod.VocTempCoeffPctPerC:F2} / {mod.IscTempCoeffPctPerC:F2}";
+        DetailTempRange.Text = $"{mod.OperatingTempMinC:F0} … {mod.OperatingTempMaxC:F0}";
     }
 
     #endregion

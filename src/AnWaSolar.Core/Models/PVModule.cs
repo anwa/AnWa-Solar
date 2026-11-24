@@ -2,60 +2,55 @@ using System.Text.Json.Serialization;
 
 namespace AnWaSolar.Core.Models;
 
+/// <summary>PV module datasheet values (STC, 25 °C) from <c>Data/Modules.json</c>.</summary>
 public class PVModule
 {
-    [JsonPropertyName("Hersteller")]
-    public string Hersteller { get; set; } = string.Empty;
+    [JsonPropertyName("Manufacturer")]
+    public string Manufacturer { get; set; } = string.Empty;
 
     [JsonPropertyName("Model")]
     public string Model { get; set; } = string.Empty;
 
-    [JsonPropertyName("Nominalleistung-PMAX (Wp)")]
-    public double NominalleistungPmaxWp { get; set; }
+    [JsonPropertyName("Pmax (W)")]
+    public double PmaxW { get; set; }
 
-    [JsonPropertyName("Spannung im MPP-UMPP (V)")]
-    public double SpannungImMppUmppV { get; set; }
+    [JsonPropertyName("Vmpp (V)")]
+    public double VmppV { get; set; }
 
-    [JsonPropertyName("Strom im MPP-IMPP (A)")]
-    public double StromImMppImppA { get; set; }
+    [JsonPropertyName("Impp (A)")]
+    public double ImppA { get; set; }
 
-    [JsonPropertyName("Leerlaufspannung-UOC (V)")]
-    public double LeerlaufspannungUocV { get; set; }
+    [JsonPropertyName("Voc (V)")]
+    public double VocV { get; set; }
 
-    [JsonPropertyName("Kurzschlusstrom-ISC (A)")]
-    public double KurzschlusstromIscA { get; set; }
+    [JsonPropertyName("Isc (A)")]
+    public double IscA { get; set; }
 
-    [JsonPropertyName("Modulwirkungsgrad η m (%)")]
-    public double ModulwirkungsgradEtaMProzent { get; set; }
+    [JsonPropertyName("Module efficiency (%)")]
+    public double EfficiencyPct { get; set; }
 
-    [JsonPropertyName("Temperaturkoeffzient von PMAX (%/°C)")]
-    public double TemperaturkoeffPmaxProzentProGradC { get; set; }
+    [JsonPropertyName("Temperature coefficient of Pmax (%/°C)")]
+    public double PmaxTempCoeffPctPerC { get; set; }
 
-    [JsonPropertyName("Temperaturkoeffzient von VOC (%/°C)")]
-    public double TemperaturkoeffVocProzentProGradC { get; set; }
+    [JsonPropertyName("Temperature coefficient of Voc (%/°C)")]
+    public double VocTempCoeffPctPerC { get; set; }
 
     /// <summary>
-    /// Optional VMPP temperature coefficient. Most datasheets do not state it; the calculation then uses the PMAX
+    /// Optional Vmpp temperature coefficient. Most datasheets do not state it; the calculation then uses the Pmax
     /// coefficient as a conservative approximation.
     /// </summary>
-    [JsonPropertyName("Temperaturkoeffzient von VMPP (%/°C)")]
-    public double? TemperaturkoeffVmppProzentProGradC { get; set; }
+    [JsonPropertyName("Temperature coefficient of Vmpp (%/°C)")]
+    public double? VmppTempCoeffPctPerC { get; set; }
 
-    [JsonPropertyName("Temperaturkoeffzient von ISC (%/°C)")]
-    public double TemperaturkoeffIscProzentProGradC { get; set; }
+    [JsonPropertyName("Temperature coefficient of Isc (%/°C)")]
+    public double IscTempCoeffPctPerC { get; set; }
 
-    [JsonPropertyName("Betriebstemperatur-Min (°C)")]
-    public double BetriebstemperaturMinC { get; set; }
+    [JsonPropertyName("Operating temperature min (°C)")]
+    public double OperatingTempMinC { get; set; }
 
-    [JsonPropertyName("Betriebstemperatur-Max (°C)")]
-    public double BetriebstemperaturMaxC { get; set; }
+    [JsonPropertyName("Operating temperature max (°C)")]
+    public double OperatingTempMaxC { get; set; }
 
     [JsonIgnore]
-    public string DisplayName => $"{Hersteller} {Model} ({NominalleistungPmaxWp} Wp)";
-}
-
-public class PVModuleList
-{
-    [JsonPropertyName("Module")]
-    public List<PVModule> Module { get; set; } = new();
+    public string DisplayName => $"{Manufacturer} {Model} ({PmaxW} W)";
 }

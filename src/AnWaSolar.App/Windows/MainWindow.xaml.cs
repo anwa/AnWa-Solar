@@ -21,23 +21,23 @@ namespace AnWaSolar.Windows;
 
 public partial class MainWindow : Window
 {
-    #region Felder
+    #region Fields
 
     private readonly ILogger<MainWindow> _logger;
     private readonly IMarkdownService _markdown;
     private readonly IDataStore _dataStore;
     private readonly ISettingsService _settings;
 
-    private Wechselrichter? _selectedInverter;
+    private Inverter? _selectedInverter;
     private readonly List<StringConfiguration> _stringConfigs = new();
 
     private CalculationParameters _parameters;
 
-    // Bericht
+    // Report
     private string _reportMarkdown = string.Empty;
     private bool _reportPreviewMode = false;
 
-    // Unterdrückung für Slider-/Toggle-Events bei programmatischen Updates
+    // Suppress slider and toggle events while values are set programmatically
     private bool _suppressSliderEvents = false;
     private bool _suppressToggleEvents = false;
 
@@ -47,7 +47,7 @@ public partial class MainWindow : Window
 
     #endregion
 
-    #region Konstruktor
+    #region Constructor
 
     public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings)
     {
@@ -67,34 +67,34 @@ public partial class MainWindow : Window
         _dataStore = dataStore;
         _settings = settings;
 
-        _logger.LogInformation("Hauptfenster initialisiert.");
+        _logger.LogInformation("Main window initialized.");
 
-        // Parameter laden und anzeigen
+        // Load and show the parameters
         _parameters = _settings.LoadParameters();
         UpdateParametersSummary();
 
-        // Letzte Auswahl wiederherstellen
+        // Restore the last selection
         TryRestoreLastSelection();
 
-        // Falls kein WR geladen werden konnte:
+        // No inverter could be restored
         if (_selectedInverter is null)
         {
-            InverterSummaryText.Text = "Kein Wechselrichter ausgewählt.";
-            SelectInverterButton.Content = "Wechselrichter auswählen";
+            InverterSummaryText.Text = "No inverter selected.";
+            SelectInverterButton.Content = "Select inverter";
             StringsCard.Visibility = System.Windows.Visibility.Collapsed;
-            ResultsOutput.Text = "Keine Berechnung vorhanden.";
+            ResultsOutput.Text = "No calculation yet.";
         }
 
-        // Initialen Bericht erzeugen
+        // Create the initial report
         BuildMarkdownReport();
         UpdateReportView();
     }
 
     #endregion
 
-    #region UI-Erstellung Strings
+    #region String sections
 
-    // Erstellt die String-Abschnitte dynamisch basierend auf _selectedInverter
+    // Creates one section per MPPT of _selectedInverter
     private void BuildStringsUi()
     {
         StringsPanel.Children.Clear();
@@ -102,18 +102,18 @@ public partial class MainWindow : Window
 
         if (_selectedInverter is null) return;
 
-        var mpptCount = Math.Max(1, _selectedInverter.AnzahlDerMpptTrackers);
+        var mpptCount = Math.Max(1, _selectedInverter.MpptCount);
 
         for (int i = 0; i < mpptCount; i++)
         {
-            var cfg = new StringConfiguration { MpptIndex = i + 1, ModuleProString = 10, ParalleleStrings = 1, IsEnabled = true };
+            var cfg = new StringConfiguration { MpptIndex = i + 1, ModulesPerString = 10, ParallelStrings = 1, IsEnabled = true };
             _stringConfigs.Add(cfg);
 
             var card = new Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
             var sp = new StackPanel { Orientation = Orientation.Vertical };
             card.Content = sp;
 
-            // Kopfzeile: Titel links, Toggle + Modul-Auswahl rechts
+            // Header: title on the left, toggle and module buttons on the right
             var header = new DockPanel();
 
             var title = new TextBlock { Text = $"MPPT {cfg.MpptIndex}", FontWeight = FontWeights.Bold, FontSize = 14 };
@@ -125,7 +125,7 @@ public partial class MainWindow : Window
 
             var toggle = new System.Windows.Controls.Primitives.ToggleButton
             {
-                ToolTip = "String aktivieren/deaktivieren"
+                ToolTip = "Enable or disable the string"
             };
             try
             {
@@ -153,34 +153,34 @@ public partial class MainWindow : Window
             };
             rightHeaderPanel.Children.Add(toggle);
 
-            var btnSelect = new Button { Content = "PV-Modul auswählen", Margin = new Thickness(8, 0, 0, 0) };
+            var btnSelect = new Button { Content = "Select PV module", Margin = new Thickness(8, 0, 0, 0) };
             btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
             rightHeaderPanel.Children.Add(btnSelect);
 
-            // Entfernen-Button: initial nicht angezeigt (kein Modul ausgewählt)
-            var btnRemove = new Button { Content = "Modul entfernen", Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
+            // Remove button: hidden until a module is selected
+            var btnRemove = new Button { Content = "Remove module", Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
             btnRemove.Click += (s, e) => OnRemoveModuleForMppt(cfg, sp);
             rightHeaderPanel.Children.Add(btnRemove);
 
             header.Children.Add(rightHeaderPanel);
             sp.Children.Add(header);
 
-            // Zusammenfassungstext
-            var summary = new TextBlock { Text = "Kein PV-Modul ausgewählt.", Margin = new Thickness(0, 6, 0, 8) };
+            // Summary text
+            var summary = new TextBlock { Text = "No PV module selected.", Margin = new Thickness(0, 6, 0, 8) };
             sp.Children.Add(summary);
 
-            // Raster für Slider (3/4 links, 1/4 rechts)
+            // Slider grid (3/4 left, 1/4 right)
             var grid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Linke Spalte: Slider für Module pro String
+            // Left column: modules per string
             var leftPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 8, 0) };
-            var lblN = new TextBlock { Text = "Anzahl Module pro String" };
+            var lblN = new TextBlock { Text = "Modules per string" };
             var nSlider = new Slider
             {
                 Minimum = 1,
-                Maximum = 30, // initial, wird nach Berechnung gesetzt
+                Maximum = 30, // initial value; set by the calculation
                 TickFrequency = 1,
                 IsSnapToTickEnabled = true,
                 IsSelectionRangeEnabled = false
@@ -191,23 +191,23 @@ public partial class MainWindow : Window
                 if (s is not null) nSlider.Style = s;
             }
             catch { }
-            nSlider.Value = cfg.ModuleProString;
+            nSlider.Value = cfg.ModulesPerString;
             nSlider.ValueChanged += (s, e) =>
             {
                 if (_suppressSliderEvents) return;
                 var val = (int)Math.Round(nSlider.Value);
                 if (val < 1) val = 1;
-                cfg.ModuleProString = val;
+                cfg.ModulesPerString = val;
                 PersistLastSelection();
                 Recalculate();
             };
             leftPanel.Children.Add(lblN);
             leftPanel.Children.Add(nSlider);
 
-            // Rechte Spalte: Slider für parallele Strings
+            // Right column: parallel strings
             var rightPanel2 = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 0, 0) };
-            var lblS = new TextBlock { Text = "Anzahl paralleler Strings" };
-            var specMaxStrings = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10;
+            var lblS = new TextBlock { Text = "Parallel strings" };
+            var specMaxStrings = _selectedInverter.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
             var sSlider = new Slider
             {
                 Minimum = 1,
@@ -221,15 +221,15 @@ public partial class MainWindow : Window
                 if (s2 is not null) sSlider.Style = s2;
             }
             catch { }
-            sSlider.Value = cfg.ParalleleStrings;
+            sSlider.Value = cfg.ParallelStrings;
             sSlider.ValueChanged += (ss, ee) =>
             {
                 if (_suppressSliderEvents) return;
                 var val = (int)Math.Round(sSlider.Value);
                 if (val < 1) val = 1;
-                var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? int.MaxValue;
+                var maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? int.MaxValue;
                 if (maxBySpec > 0 && val > maxBySpec) val = maxBySpec;
-                cfg.ParalleleStrings = val;
+                cfg.ParallelStrings = val;
                 PersistLastSelection();
                 Recalculate();
             };
@@ -242,7 +242,7 @@ public partial class MainWindow : Window
             Grid.SetColumn(rightPanel2, 1);
             sp.Children.Add(grid);
 
-            // UI-Referenzen speichern
+            // Keep references to the controls
             sp.Tag = new MpptUiRefs
             {
                 SummaryText = summary,
@@ -253,12 +253,12 @@ public partial class MainWindow : Window
                 SSlider = sSlider
             };
 
-            // Toggle initial nach Konfiguration setzen, ohne Events
+            // Set the toggle from the configuration without raising events
             _suppressToggleEvents = true;
             toggle.IsChecked = cfg.IsEnabled;
             _suppressToggleEvents = false;
 
-            // Initialer UI-State
+            // Initial control state
             UpdateMpptUiState(cfg, sp.Tag as MpptUiRefs);
 
             StringsPanel.Children.Add(card);
@@ -267,7 +267,7 @@ public partial class MainWindow : Window
         StringsCard.Visibility = Visibility.Visible;
     }
 
-    // UI-Referenzen pro MPPT, um Slider/Toggle dynamisch aktualisieren zu können
+    // Controls of one MPPT section, so that sliders and toggle can be updated
     private sealed class MpptUiRefs
     {
         public TextBlock SummaryText { get; set; } = new TextBlock();
@@ -278,41 +278,41 @@ public partial class MainWindow : Window
         public Slider SSlider { get; set; } = new Slider();
     }
 
-    // Zentraler UI-State-Update für Buttons und Summary je MPPT
+    // Updates buttons and summary of one MPPT section
     private void UpdateMpptUiState(StringConfiguration cfg, MpptUiRefs? refs)
     {
         if (refs is null) return;
 
-        // Toggle-Status synchronisieren (programmgesteuert, Events unterdrücken)
+        // Sync the toggle without raising events
         _suppressToggleEvents = true;
         refs.Toggle.IsChecked = cfg.IsEnabled;
         _suppressToggleEvents = false;
 
         // Summary
         refs.SummaryText.Text = cfg.SelectedModule is null
-            ? "Kein PV-Modul ausgewählt."
-            : $"{cfg.SelectedModule.Hersteller} {cfg.SelectedModule.Model} ({cfg.SelectedModule.NominalleistungPmaxWp} Wp, UMPP={cfg.SelectedModule.SpannungImMppUmppV:F2} V, IMPP={cfg.SelectedModule.StromImMppImppA:F2} A)";
+            ? "No PV module selected."
+            : $"{cfg.SelectedModule.Manufacturer} {cfg.SelectedModule.Model} ({cfg.SelectedModule.PmaxW} W, Vmpp={cfg.SelectedModule.VmppV:F2} V, Impp={cfg.SelectedModule.ImppA:F2} A)";
 
-        // Button-Texte und Sichtbarkeit
-        refs.SelectButton.Content = cfg.SelectedModule is null ? "PV-Modul auswählen" : "PV-Modul ändern";
+        // Button texts and visibility
+        refs.SelectButton.Content = cfg.SelectedModule is null ? "Select PV module" : "Change PV module";
 
-        // Entfernen-Button nur anzeigen, wenn ein Modul gewählt ist
+        // The remove button is only visible when a module is selected
         refs.RemoveButton.Visibility = cfg.SelectedModule is null ? Visibility.Collapsed : Visibility.Visible;
 
-        // Enablement abhängig vom Toggle-Status
+        // Buttons follow the toggle state
         var enabled = cfg.IsEnabled;
-        // Toggle bleibt immer bedienbar, damit eine Reaktivierung möglich ist
+        // The toggle itself stays enabled so the string can be enabled again
         refs.SelectButton.IsEnabled = enabled;
         refs.RemoveButton.IsEnabled = enabled && refs.RemoveButton.Visibility == Visibility.Visible;
     }
 
     #endregion
 
-    #region UI-Erstellung Strings
+    #region String sections
     private void RefreshStringsUiSummaries()
     {
         if (_selectedInverter is null) return;
-        var mpptCount = Math.Max(1, _selectedInverter.AnzahlDerMpptTrackers);
+        var mpptCount = Math.Max(1, _selectedInverter.MpptCount);
 
         for (int i = 0; i < mpptCount; i++)
         {
@@ -338,7 +338,7 @@ public partial class MainWindow : Window
 
         const int MaxShown = 10;
         var text = new StringBuilder();
-        text.AppendLine("Einige Stammdaten konnten nicht geladen werden:");
+        text.AppendLine("Some master data could not be loaded:");
         text.AppendLine();
         foreach (DataLoadIssue issue in issues.Take(MaxShown))
         {
@@ -347,27 +347,27 @@ public partial class MainWindow : Window
 
         if (issues.Count > MaxShown)
         {
-            text.AppendLine($"• … und {issues.Count - MaxShown} weitere (siehe Log).");
+            text.AppendLine($"• … and {issues.Count - MaxShown} more (see log).");
         }
 
-        MessageBox.Show(this, text.ToString(), "Stammdaten", MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageBox.Show(this, text.ToString(), "Master data", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void OnSelectInverterClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            var win = new SelectInverterWindow(_dataStore.Wechselrichter);
+            var win = new SelectInverterWindow(_dataStore.Inverters);
             win.Owner = this;
             var res = win.ShowDialog();
             if (res == true && win.Selected is not null)
             {
                 _selectedInverter = win.Selected;
                 InverterSummaryText.Text =
-                    $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | {CalculationTextFormatter.FormatInverterSummary(_selectedInverter)}";
-                SelectInverterButton.Content = "Wechselrichter ändern";
+                    $"{_selectedInverter.Manufacturer} {_selectedInverter.Model} | {CalculationTextFormatter.FormatInverterSummary(_selectedInverter)}";
+                SelectInverterButton.Content = "Change inverter";
 
-                _logger.LogInformation("Wechselrichter übernommen: {Hersteller} {Model}.", _selectedInverter.Hersteller, _selectedInverter.Model);
+                _logger.LogInformation("Inverter selected: {Manufacturer} {Model}.", _selectedInverter.Manufacturer, _selectedInverter.Model);
 
                 BuildStringsUi();
                 PersistLastSelection();
@@ -376,8 +376,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Öffnen der Wechselrichter-Auswahl.");
-            MessageBox.Show("Fehler bei der Wechselrichter-Auswahl. Details siehe Log.", "Fehler",
+            _logger.LogError(ex, "Error in the inverter selection.");
+            MessageBox.Show("Error in the inverter selection. See the log for details.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -386,7 +386,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var win = new SelectModuleWindow(_dataStore.Module);
+            var win = new SelectModuleWindow(_dataStore.Modules);
             win.Owner = this;
             var res = win.ShowDialog();
             if (res == true && win.Selected is not null)
@@ -396,15 +396,15 @@ public partial class MainWindow : Window
                 var refs = container.Tag as MpptUiRefs;
                 UpdateMpptUiState(cfg, refs);
 
-                _logger.LogInformation("PV-Modul für MPPT {Mppt} übernommen: {Hersteller} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Hersteller, cfg.SelectedModule.Model);
+                _logger.LogInformation("PV module selected for MPPT {Mppt}: {Manufacturer} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Manufacturer, cfg.SelectedModule.Model);
                 PersistLastSelection();
                 Recalculate();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Öffnen der Modul-Auswahl.");
-            MessageBox.Show("Fehler bei der Modul-Auswahl. Details siehe Log.", "Fehler",
+            _logger.LogError(ex, "Error in the module selection.");
+            MessageBox.Show("Error in the module selection. See the log for details.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -418,21 +418,21 @@ public partial class MainWindow : Window
             var refs = container.Tag as MpptUiRefs;
             if (refs is not null)
             {
-                // Entfernen-Button ausblenden, Select-Button-Text anpassen
+                // Hide the remove button and update the select button
                 UpdateMpptUiState(cfg, refs);
 
-                // Slider zurücksetzen (Module: 1..30, Markierung aus)
+                // Reset the sliders (modules 1..30, no allowed range)
                 _suppressSliderEvents = true;
                 refs.NSlider.Minimum = 1;
                 refs.NSlider.Maximum = 30;
                 refs.NSlider.IsSelectionRangeEnabled = false;
-                refs.NSlider.Value = Math.Max(1, cfg.ModuleProString);
+                refs.NSlider.Value = Math.Max(1, cfg.ModulesPerString);
 
-                // Strings-Slider bleibt nach WR-Spezifikation
-                var maxBySpec = _selectedInverter?.MaxStringsProMppt ?? 10;
+                // The string slider keeps the inverter specification
+                var maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? 10;
                 refs.SSlider.Minimum = 1;
                 refs.SSlider.Maximum = Math.Max(1, maxBySpec);
-                refs.SSlider.Value = Math.Max(1, Math.Min(cfg.ParalleleStrings, (int)refs.SSlider.Maximum));
+                refs.SSlider.Value = Math.Max(1, Math.Min(cfg.ParallelStrings, (int)refs.SSlider.Maximum));
                 _suppressSliderEvents = false;
             }
 
@@ -441,8 +441,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Entfernen des Moduls.");
-            MessageBox.Show("Fehler beim Entfernen des Moduls. Details siehe Log.", "Fehler",
+            _logger.LogError(ex, "Error removing the module.");
+            MessageBox.Show("Error removing the module. See the log for details.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -459,31 +459,31 @@ public partial class MainWindow : Window
                 var saved = _settings.SaveParameters(win.Parameters);
                 if (!saved)
                 {
-                    MessageBox.Show("Parameter konnten nicht gespeichert werden. Sie bleiben nur temporär gültig.", "Fehler",
+                    MessageBox.Show("The parameters could not be saved. They apply until the application is closed.", "Error",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 _parameters = win.Parameters;
-                _logger.LogInformation("Berechnungsparameter übernommen: Tmin={Tmin}, Tmax={Tmax}, Sicherheitsmarge={Margin} %.",
-                    _parameters.MinTempC, _parameters.MaxTempC, _parameters.SicherheitsmargePct);
+                _logger.LogInformation("Calculation parameters applied: Tmin={Tmin}, Tmax={Tmax}, safety margin={Margin} %.",
+                    _parameters.MinTempC, _parameters.MaxTempC, _parameters.SafetyMarginPct);
                 UpdateParametersSummary();
                 Recalculate();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Öffnen des Parameter-Dialogs.");
-            MessageBox.Show("Fehler beim Parameter-Dialog. Details siehe Log.", "Fehler",
+            _logger.LogError(ex, "Error in the parameter dialog.");
+            MessageBox.Show("Error in the parameter dialog. See the log for details.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     #endregion
 
-    #region Berechnung
+    #region Calculation
 
     private void UpdateParametersSummary()
     {
-        ParametersSummaryText.Text = $"Zelltemperatur Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, Sicherheitsmarge={_parameters.SicherheitsmargePct} %";
+        ParametersSummaryText.Text = $"Cell temperature Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, safety margin={_parameters.SafetyMarginPct} %";
     }
 
     private void TryRestoreLastSelection()
@@ -493,15 +493,15 @@ public partial class MainWindow : Window
             var last = _settings.LoadLastSelection();
             if (last.Inverter is null) return;
 
-            var wr = _dataStore.Wechselrichter.FirstOrDefault(x =>
-                string.Equals(x.Hersteller, last.Inverter.Hersteller, StringComparison.OrdinalIgnoreCase) &&
+            var wr = _dataStore.Inverters.FirstOrDefault(x =>
+                string.Equals(x.Manufacturer, last.Inverter.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(x.Model, last.Inverter.Model, StringComparison.OrdinalIgnoreCase));
             if (wr is null) return;
 
             _selectedInverter = wr;
             InverterSummaryText.Text =
-                $"{_selectedInverter.Hersteller} {_selectedInverter.Model} | {CalculationTextFormatter.FormatInverterSummary(_selectedInverter)}";
-            SelectInverterButton.Content = "Wechselrichter ändern";
+                $"{_selectedInverter.Manufacturer} {_selectedInverter.Model} | {CalculationTextFormatter.FormatInverterSummary(_selectedInverter)}";
+            SelectInverterButton.Content = "Change inverter";
 
             BuildStringsUi();
 
@@ -510,19 +510,19 @@ public partial class MainWindow : Window
                 var cfg = _stringConfigs.FirstOrDefault(c => c.MpptIndex == sel.MpptIndex);
                 if (cfg is null) continue;
 
-                // Aktivierungsstatus übernehmen
+                // Enabled state
                 cfg.IsEnabled = sel.IsEnabled;
 
-                // Mengen übernehmen und begrenzen
-                cfg.ModuleProString = Math.Max(1, sel.ModuleProString);
-                var maxBySpec = _selectedInverter.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : int.MaxValue;
-                cfg.ParalleleStrings = Math.Max(1, Math.Min(sel.ParalleleStrings, maxBySpec));
+                // Counts, limited to the inverter specification
+                cfg.ModulesPerString = Math.Max(1, sel.ModulesPerString);
+                var maxBySpec = _selectedInverter.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : int.MaxValue;
+                cfg.ParallelStrings = Math.Max(1, Math.Min(sel.ParallelStrings, maxBySpec));
 
-                // Modulreferenz übernehmen
+                // Module reference
                 if (sel.Module is not null)
                 {
-                    var mod = _dataStore.Module.FirstOrDefault(x =>
-                        string.Equals(x.Hersteller, sel.Module.Hersteller, StringComparison.OrdinalIgnoreCase) &&
+                    var mod = _dataStore.Modules.FirstOrDefault(x =>
+                        string.Equals(x.Manufacturer, sel.Module.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(x.Model, sel.Module.Model, StringComparison.OrdinalIgnoreCase));
                     cfg.SelectedModule = mod;
                 }
@@ -533,7 +533,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler bei der Wiederherstellung der letzten Auswahl.");
+            _logger.LogError(ex, "Error restoring the last selection.");
         }
     }
 
@@ -565,18 +565,18 @@ public partial class MainWindow : Window
             {
                 Inverter = new SelectedRef
                 {
-                    Hersteller = _selectedInverter.Hersteller,
+                    Manufacturer = _selectedInverter.Manufacturer,
                     Model = _selectedInverter.Model
                 },
                 Strings = _stringConfigs.Select(c => new MpptStringSelection
                 {
                     MpptIndex = c.MpptIndex,
-                    ModuleProString = c.ModuleProString,
-                    ParalleleStrings = c.ParalleleStrings,
+                    ModulesPerString = c.ModulesPerString,
+                    ParallelStrings = c.ParallelStrings,
                     IsEnabled = c.IsEnabled,
                     Module = c.SelectedModule is null ? null : new SelectedRef
                     {
-                        Hersteller = c.SelectedModule.Hersteller,
+                        Manufacturer = c.SelectedModule.Manufacturer,
                         Model = c.SelectedModule.Model
                     }
                 }).ToList()
@@ -585,12 +585,12 @@ public partial class MainWindow : Window
             var ok = _settings.SaveLastSelection(sel);
             if (!ok)
             {
-                _logger.LogWarning("Letzte Auswahl konnte nicht gespeichert werden.");
+                _logger.LogWarning("The last selection could not be saved.");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Speichern der letzten Auswahl.");
+            _logger.LogError(ex, "Error saving the last selection.");
         }
     }
 
@@ -598,7 +598,7 @@ public partial class MainWindow : Window
     {
         if (_selectedInverter is null)
         {
-            ResultsOutput.Text = "Bitte zuerst einen Wechselrichter auswählen.";
+            ResultsOutput.Text = "Please select an inverter first.";
             BuildMarkdownReport();
             UpdateReportView();
             return;
@@ -611,10 +611,10 @@ public partial class MainWindow : Window
         {
             UpdateMpptControls(result);
 
-            _logger.LogInformation("String-Berechnung aktualisiert. OK={Ok}.", result.IsOk);
+            _logger.LogInformation("String calculation updated. OK={Ok}.", result.IsOk);
             if (!result.IsOk)
             {
-                _logger.LogWarning("Einschränkungen: {Messages}", string.Join(" | ", CalculationTextFormatter.GetMessages(result)));
+                _logger.LogWarning("Restrictions: {Messages}", string.Join(" | ", CalculationTextFormatter.GetMessages(result)));
             }
         }
 
@@ -668,15 +668,15 @@ public partial class MainWindow : Window
                 }
 
                 // The value is only kept inside the slider range, not clamped to the allowed range.
-                cfg.ModuleProString = Math.Clamp(cfg.ModuleProString, 1, (int)refs.NSlider.Maximum);
-                refs.NSlider.Value = cfg.ModuleProString;
+                cfg.ModulesPerString = Math.Clamp(cfg.ModulesPerString, 1, (int)refs.NSlider.Maximum);
+                refs.NSlider.Value = cfg.ModulesPerString;
 
                 // String slider: 1 .. inverter specification.
-                int specMax = _selectedInverter?.MaxStringsProMppt > 0 ? _selectedInverter.MaxStringsProMppt : 10;
+                int specMax = _selectedInverter?.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
                 refs.SSlider.Minimum = 1;
                 refs.SSlider.Maximum = Math.Max(1, specMax);
-                cfg.ParalleleStrings = Math.Clamp(cfg.ParalleleStrings, 1, (int)refs.SSlider.Maximum);
-                refs.SSlider.Value = cfg.ParalleleStrings;
+                cfg.ParallelStrings = Math.Clamp(cfg.ParallelStrings, 1, (int)refs.SSlider.Maximum);
+                refs.SSlider.Value = cfg.ParallelStrings;
             }
         }
         finally
@@ -697,7 +697,7 @@ public partial class MainWindow : Window
 
     #endregion
 
-    #region Bericht
+    #region Report
 
     // Builds the Markdown report from the current configuration.
     private void BuildMarkdownReport()
@@ -709,7 +709,7 @@ public partial class MainWindow : Window
         ReportMarkdownTextBox.Text = _reportMarkdown;
     }
 
-    // Ansicht aktualisieren (Markdown vs. HTML-Preview)
+    // Shows the Markdown source or the HTML preview
     private void UpdateReportView()
     {
         if (_reportPreviewMode)
@@ -720,19 +720,19 @@ public partial class MainWindow : Window
             var htmlBody = _markdown.ToHtml(_reportMarkdown);
             var htmlDoc = new StringBuilder();
             htmlDoc.AppendLine("<!DOCTYPE html>");
-            htmlDoc.AppendLine("<html><head><meta charset=" + (char)34 + "utf-8" + (char)34 + "><title>Bericht</title></head><body>");
+            htmlDoc.AppendLine("<html><head><meta charset=" + (char)34 + "utf-8" + (char)34 + "><title>Report</title></head><body>");
             htmlDoc.AppendLine(htmlBody);
             htmlDoc.AppendLine("</body></html>");
 
             try
             {
                 ReportPreviewBrowser.NavigateToString(htmlDoc.ToString());
-                _logger.LogInformation("Berichtsvorschau aktualisiert. Länge={Laenge}.", htmlBody.Length);
+                _logger.LogInformation("Report preview updated. Length={Length}.", htmlBody.Length);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Fehler beim Aktualisieren der Berichtsvorschau.");
-                MessageBox.Show("Fehler beim Aktualisieren der Berichtsvorschau. Details siehe Log.", "Fehler",
+                _logger.LogError(ex, "Error updating the report preview.");
+                MessageBox.Show("Error updating the report preview. See the log for details.", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -743,42 +743,42 @@ public partial class MainWindow : Window
         }
     }
 
-    // Umschalten der Ansicht
+    // Switches between Markdown and preview
     private void OnToggleReportViewClick(object sender, RoutedEventArgs e)
     {
         _reportPreviewMode = !_reportPreviewMode;
         UpdateReportView();
-        _logger.LogInformation("Bericht-Ansicht umgeschaltet: {Mode}.", _reportPreviewMode ? "Vorschau" : "Markdown");
+        _logger.LogInformation("Report view switched: {Mode}.", _reportPreviewMode ? "preview" : "Markdown");
     }
 
-    // Markdown kopieren
+    // Copies the Markdown report
     private void OnCopyReportClick(object sender, RoutedEventArgs e)
     {
         try
         {
             Clipboard.SetText(_reportMarkdown ?? string.Empty);
-            _logger.LogInformation("Markdown-Bericht in Zwischenablage kopiert. Länge={Laenge}.", (_reportMarkdown ?? string.Empty).Length);
-            MessageBox.Show("Markdown-Bericht wurde in die Zwischenablage kopiert.", "Info",
+            _logger.LogInformation("Markdown report copied to the clipboard. Length={Length}.", (_reportMarkdown ?? string.Empty).Length);
+            MessageBox.Show("The Markdown report was copied to the clipboard.", "Info",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Kopieren des Markdown-Berichts.");
-            MessageBox.Show("Fehler beim Kopieren. Details siehe Log.", "Fehler",
+            _logger.LogError(ex, "Error copying the Markdown report.");
+            MessageBox.Show("Error copying the report. See the log for details.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    // Markdown speichern
+    // Saves the Markdown report
     private void OnSaveReportClick(object sender, RoutedEventArgs e)
     {
         try
         {
             var dlg = new SaveFileDialog
             {
-                Title = "Markdown-Bericht speichern",
-                Filter = "Markdown-Datei (*.md)|*.md|Textdatei (*.txt)|*.txt",
-                FileName = "AnWa-Solar-Bericht.md",
+                Title = "Save Markdown report",
+                Filter = "Markdown file (*.md)|*.md|Text file (*.txt)|*.txt",
+                FileName = "AnWa-Solar-Report.md",
                 AddExtension = true,
                 OverwritePrompt = true
             };
@@ -786,15 +786,15 @@ public partial class MainWindow : Window
             if (ok == true)
             {
                 System.IO.File.WriteAllText(dlg.FileName, _reportMarkdown ?? string.Empty, new System.Text.UTF8Encoding(false));
-                _logger.LogInformation("Markdown-Bericht gespeichert: {Path}.", dlg.FileName);
-                MessageBox.Show("Markdown-Bericht wurde gespeichert.", "Info",
+                _logger.LogInformation("Markdown report saved: {Path}.", dlg.FileName);
+                MessageBox.Show("The Markdown report was saved.", "Info",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fehler beim Speichern des Markdown-Berichts.");
-            MessageBox.Show("Fehler beim Speichern. Details siehe Log.", "Fehler",
+            _logger.LogError(ex, "Error saving the Markdown report.");
+            MessageBox.Show("Error saving the report. See the log for details.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

@@ -14,8 +14,8 @@ public sealed class ReportBuilderTests
     {
         string report = ReportBuilder.Build(null, Parameters(), s_createdAt);
 
-        Assert.Contains("Erstellt am 2026-11-24 12:00", report, StringComparison.Ordinal);
-        Assert.Contains("Bitte zuerst einen Wechselrichter auswählen", report, StringComparison.Ordinal);
+        Assert.Contains("Created on 2026-11-24 12:00", report, StringComparison.Ordinal);
+        Assert.Contains("Please select an inverter first", report, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -28,9 +28,9 @@ public sealed class ReportBuilderTests
         string report = ReportBuilder.Build(result, Parameters(), s_createdAt);
         string mppt2 = report[report.IndexOf("## MPPT 2", StringComparison.Ordinal)..];
 
-        Assert.Contains("Deaktiviert", mppt2, StringComparison.Ordinal);
-        Assert.DoesNotContain("Ergebnisse", mppt2, StringComparison.Ordinal);
-        Assert.DoesNotContain("überschritten", mppt2, StringComparison.Ordinal);
+        Assert.Contains("Disabled", mppt2, StringComparison.Ordinal);
+        Assert.DoesNotContain("### Results", mppt2, StringComparison.Ordinal);
+        Assert.DoesNotContain("exceeded", mppt2, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public sealed class ReportBuilderTests
 
         string report = ReportBuilder.Build(result, Parameters(), s_createdAt);
 
-        Assert.Contains("- Max. Strings/MPPT überschritten: 3 > 2.", report, StringComparison.Ordinal);
+        Assert.Contains("- Max. strings per MPPT exceeded: 3 > 2.", report, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public sealed class ReportBuilderTests
         string text = CalculationTextFormatter.Format(result);
         string report = ReportBuilder.Build(result, Parameters(), s_createdAt);
 
-        foreach (string marker in new[] { "max. DC-Spannung", "MPPT-Obergrenze", "MPPT-Untergrenze", "Startspannung nicht erreicht", "Eingangsstrom-Grenze", "Max. Strings/MPPT" })
+        foreach (string marker in new[] { "Max. DC voltage", "MPPT upper bound", "MPPT lower bound", "Start voltage not reached", "Input current limit", "Max. strings per MPPT" })
         {
             Assert.Contains(marker, text, StringComparison.Ordinal);
             Assert.Contains(marker, report, StringComparison.Ordinal);
@@ -65,7 +65,7 @@ public sealed class ReportBuilderTests
 
         string report = ReportBuilder.Build(result, Parameters(), s_createdAt);
 
-        Assert.Contains("(Näherung: PMAX-Koeffizient)", report, StringComparison.Ordinal);
-        Assert.Contains("Zelltemperaturbereich", report, StringComparison.Ordinal);
+        Assert.Contains("(approximation: Pmax coefficient)", report, StringComparison.Ordinal);
+        Assert.Contains("Cell temperature range", report, StringComparison.Ordinal);
     }
 }

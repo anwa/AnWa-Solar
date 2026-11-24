@@ -12,12 +12,12 @@ public sealed class SettingsServiceTests : IDisposable
             "LastSelection": {
               "Inverter": { "Hersteller": "Deye", "Model": "SUN-18K-SG05LP3-EU-SM2" },
               "Strings": [
-                { "MpptIndex": 1, "ModuleProString": 11, "ParalleleStrings": 1, "IsEnabled": true,
+                { "MpptIndex": 1, "ModulesPerString": 11, "ParallelStrings": 1, "IsEnabled": true,
                   "Module": { "Hersteller": "AIKO", "Model": "AIKO-A500-MAH60Db" } },
-                { "MpptIndex": 2, "ModuleProString": 10, "ParalleleStrings": 1, "IsEnabled": false }
+                { "MpptIndex": 2, "ModulesPerString": 10, "ParallelStrings": 1, "IsEnabled": false }
               ]
             },
-            "Parameters": { "MinTempC": -15, "MaxTempC": 65, "SicherheitsmargePct": 5 }
+            "Parameters": { "MinTempC": -15, "MaxTempC": 65, "SafetyMarginPct": 5 }
           }
         }
         """;
@@ -63,11 +63,11 @@ public sealed class SettingsServiceTests : IDisposable
     public void Saved_values_are_read_by_a_new_instance()
     {
         SettingsService first = Create();
-        Assert.True(first.SaveParameters(new CalculationParameters { MinTempC = -25, MaxTempC = 75, SicherheitsmargePct = 3 }));
+        Assert.True(first.SaveParameters(new CalculationParameters { MinTempC = -25, MaxTempC = 75, SafetyMarginPct = 3 }));
         Assert.True(first.SaveLastSelection(new LastSelection
         {
-            Inverter = new SelectedRef { Hersteller = "Deye", Model = "SUN-18K-SG05LP3-EU-SM2" },
-            Strings = [new MpptStringSelection { MpptIndex = 1, ModuleProString = 12, ParalleleStrings = 2, IsEnabled = false }],
+            Inverter = new SelectedRef { Manufacturer = "Deye", Model = "SUN-18K-SG05LP3-EU-SM2" },
+            Strings = [new MpptStringSelection { MpptIndex = 1, ModulesPerString = 12, ParallelStrings = 2, IsEnabled = false }],
         }));
 
         SettingsService second = Create();
@@ -76,11 +76,11 @@ public sealed class SettingsServiceTests : IDisposable
 
         Assert.Equal(-25, parameters.MinTempC);
         Assert.Equal(75, parameters.MaxTempC);
-        Assert.Equal(3, parameters.SicherheitsmargePct);
+        Assert.Equal(3, parameters.SafetyMarginPct);
         Assert.Equal("SUN-18K-SG05LP3-EU-SM2", selection.Inverter?.Model);
         MpptStringSelection mppt = Assert.Single(selection.Strings);
-        Assert.Equal(12, mppt.ModuleProString);
-        Assert.Equal(2, mppt.ParalleleStrings);
+        Assert.Equal(12, mppt.ModulesPerString);
+        Assert.Equal(2, mppt.ParallelStrings);
         Assert.False(mppt.IsEnabled);
     }
 
@@ -113,7 +113,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         LastSelection selection = Create().LoadLastSelection();
 
-        Assert.Equal("Deye", selection.Inverter?.Hersteller);
+        Assert.Equal("Deye", selection.Inverter?.Manufacturer);
         Assert.Equal(2, selection.Strings.Count);
         Assert.Equal("AIKO-A500-MAH60Db", selection.Strings[0].Module?.Model);
         Assert.False(selection.Strings[1].IsEnabled);
@@ -151,12 +151,45 @@ public sealed class SettingsServiceTests : IDisposable
     public void Invalid_parameters_fall_back_to_defaults()
     {
         Directory.CreateDirectory(UserDirectory);
-        File.WriteAllText(SettingsPath, """{ "SchemaVersion": 1, "Parameters": { "MinTempC": 50, "MaxTempC": 40, "SicherheitsmargePct": 5 } }""");
+        File.WriteAllText(SettingsPath, """{ "SchemaVersion": 1, "Parameters": { "MinTempC": 50, "MaxTempC": 40, "SafetyMarginPct": 5 } }""");
 
         CalculationParameters parameters = Create().LoadParameters();
 
         Assert.Equal(-20, parameters.MinTempC);
         Assert.Equal(70, parameters.MaxTempC);
+    }
+
+    [Fact]
+    public void Schema_version_1_is_migrated_to_english_names()
+    {
+        Directory.CreateDirectory(UserDirectory);
+        File.WriteAllText(SettingsPath, """
+            {
+              "SchemaVersion": 1,
+              "Parameters": { "MinTempC": -20, "MaxTempC": 70, "SicherheitsmargePct": 5 },
+              "LastSelection": {
+                "Inverter": { "Hersteller": "Deye", "Model": "SUN-18K-SG05LP3-EU-SM2" },
+                "Strings": [ { "MpptIndex": 1, "Module": { "Hersteller": "AIKO", "Model": "AIKO-A500-MAH60Db" },
+                               "ModuleProString": 11, "ParalleleStrings": 2, "IsEnabled": true } ]
+              }
+            }
+            """);
+
+        SettingsService service = Create();
+        CalculationParameters parameters = service.LoadParameters();
+        LastSelection selection = service.LoadLastSelection();
+
+        Assert.Equal(5, parameters.SafetyMarginPct);
+        Assert.Equal("Deye", selection.Inverter?.Manufacturer);
+        MpptStringSelection mppt = Assert.Single(selection.Strings);
+        Assert.Equal("AIKO", mppt.Module?.Manufacturer);
+        Assert.Equal(11, mppt.ModulesPerString);
+        Assert.Equal(2, mppt.ParallelStrings);
+
+        string migrated = File.ReadAllText(SettingsPath);
+        Assert.Contains("\"SchemaVersion\": 2", migrated, StringComparison.Ordinal);
+        Assert.Contains("\"ParallelStrings\": 2", migrated, StringComparison.Ordinal);
+        Assert.DoesNotContain("Hersteller", migrated, StringComparison.Ordinal);
     }
 
     private sealed class TestLocation(string directoryPath) : IUserDataLocation

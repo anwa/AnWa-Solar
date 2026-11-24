@@ -18,12 +18,12 @@ public partial class ParametersWindow : Window
         {
             MinTempC = current.MinTempC,
             MaxTempC = current.MaxTempC,
-            SicherheitsmargePct = current.SicherheitsmargePct
+            SafetyMarginPct = current.SafetyMarginPct
         };
 
         MinTempInput.Text = Parameters.MinTempC.ToString(CultureInfo.CurrentCulture);
         MaxTempInput.Text = Parameters.MaxTempC.ToString(CultureInfo.CurrentCulture);
-        SicherheitsmargeInput.Text = Parameters.SicherheitsmargePct.ToString(CultureInfo.CurrentCulture);
+        SafetyMarginInput.Text = Parameters.SafetyMarginPct.ToString(CultureInfo.CurrentCulture);
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -32,20 +32,20 @@ public partial class ParametersWindow : Window
             !TryParseDouble(MaxTempInput.Text, out var tMax) ||
             tMin >= tMax)
         {
-            MessageBox.Show("Ungültiger Temperaturbereich. Tmin < Tmax angeben.", "Fehler",
+            MessageBox.Show("Invalid temperature range. Tmin must be lower than Tmax.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
-        if (!TryParseDouble(SicherheitsmargeInput.Text, out var marginPct) || marginPct < 0 || marginPct > 50)
+        if (!TryParseDouble(SafetyMarginInput.Text, out var marginPct) || marginPct < 0 || marginPct > 50)
         {
-            MessageBox.Show("Ungültige Sicherheitsmarge (%). Bereich 0–50 %.", "Fehler",
+            MessageBox.Show("Invalid safety margin. Allowed range: 0–50 %.", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
         Parameters.MinTempC = tMin;
         Parameters.MaxTempC = tMax;
-        Parameters.SicherheitsmargePct = marginPct;
+        Parameters.SafetyMarginPct = marginPct;
 
         DialogResult = true;
         Close();

@@ -64,7 +64,7 @@ internal sealed class JsonFileLogger : ILogger
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull
     {
-        // Scopes werden aktuell nicht genutzt; Rückgabe bleibt null.
+        // Scopes are not used.
         return default;
     }
 
