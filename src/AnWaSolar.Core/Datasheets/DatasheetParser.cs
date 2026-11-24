@@ -81,8 +81,16 @@ public static partial class DatasheetParser
         [DatasheetFields.MpptRangeV] = [Re(@"mppt?-?spannungsbereich|mppt?-?voltagerange?|mppt?operatingvoltagerange|mpp-?bereich")],
         [DatasheetFields.NominalDcVoltageV] = [Re(@"nenn-?dc-?eingangsspannung|(rated|nominal)(dc)?inputvoltage|nenneingangsspannung")],
         [DatasheetFields.MaxInputCurrentA] = [Re(@"max\.?betriebs-?pv-?eingangsstrom|max\.?operatingpvinputcurrent|max(imum)?\.?(pv|dc)?inputcurrent(?!.*short)|max\.?(pv-?)?eingangsstrom")],
+        [DatasheetFields.RatedAcPowerW] = [Re(@"nenn-?ac-?(eingangs-?/)?ausgangs-?wirkleistung|ratedac(input/)?output(active)?power|ratedacpower|ac-?nennleistung|nenn-?ausgangsleistung|(rated|nominal)(ac)?outputpower|nominalacpower")],
+        [DatasheetFields.MaxAcApparentPowerVA] = [Re(@"scheinleistung|apparentpower")],
+        [DatasheetFields.RatedAcCurrentA] = [Re(@"ac-?(eingangs-?/)?ausgangsnennstrom|nenn-?ac-?strom|ratedac(input/)?outputcurrent|(rated|nominal)outputcurrent")],
+        [DatasheetFields.MaxAcCurrentA] = [Re(@"max\.?ac-?(eingangs-?/)?ausgangs+strom|max(imum)?\.?ac(input/)?outputcurrent|max(imum)?\.?outputcurrent")],
         [DatasheetFields.MaxShortCircuitCurrentA] = [Re(@"eingangs-?kurzschlus+strom|inputshort-?circuitcurrent|max(imum)?\.?short-?circuitcurrent|max\.?kurzschlus+strom|iscpv")],
     };
+
+    private static readonly Regex s_threePhase = Re(@"dreiphas|three-?phase|3l\+n\+pe|3/n/pe|3w\+n\+pe");
+
+    private static readonly Regex s_singlePhase = Re(@"einphas|single-?phase|1/n/pe|(?<![0-9a-z])l\+n\+pe");
 
     private static readonly Regex[] s_mpptCount = [Re(@"anzahlder(mpp|mpp-?tracker)|no\.?ofmppt?|numberofmppt?|mpp-?trackers?/|mppt?anzahl")];
 
@@ -141,6 +149,7 @@ public static partial class DatasheetParser
                 {
                     DatasheetFields.MpptRangeV => RangeOf,
                     DatasheetFields.MaxInputCurrentA or DatasheetFields.MaxShortCircuitCurrentA => PerMpptOf,
+                    DatasheetFields.RatedAcCurrentA or DatasheetFields.MaxAcCurrentA => LastOf,
                     _ => NumberOf,
                 };
                 values[key] = ReadColumns(lines, patterns, columns, read);
@@ -154,6 +163,10 @@ public static partial class DatasheetParser
             }
 
             values[DatasheetFields.MaxStringsPerMppt] = strings;
+
+            string text = string.Concat(words.Select(w => Normalize(w.Text))).ToLowerInvariant();
+            string? phases = s_threePhase.IsMatch(text) ? "3" : s_singlePhase.IsMatch(text) ? "1" : null;
+            values[DatasheetFields.AcPhases] = Shared(columns, phases is null ? null : new DatasheetValue(phases, phases == "3" ? "Three-phase grid connection in the datasheet" : "Single-phase grid connection in the datasheet"));
         }
 
         string? manufacturer = FindManufacturer(words, manufacturers);
@@ -271,7 +284,7 @@ public static partial class DatasheetParser
 
                 int labelEnd = WordIndexAt(line, match.Index + match.Length - 1);
                 double labelRight = line.Words[labelEnd].Right;
-                List<DatasheetWord> same = ValueTokens(line.Words.Skip(labelEnd + 1));
+                List<DatasheetWord> same = ValueTokens(MergeFragments(line.Words.Skip(labelEnd + 1)));
                 if (same.Count > 0)
                 {
                     yield return new Candidate(line, line, same, order++);
@@ -284,7 +297,7 @@ public static partial class DatasheetParser
                         && Math.Abs(l.CenterY - line.CenterY) <= 1.6 * Math.Max(l.Height, line.Height))
                     .OrderBy(l => Math.Abs(l.CenterY - line.CenterY)))
                 {
-                    List<DatasheetWord> tokens = ValueTokens(neighbour.Words.Where(w => w.Left >= labelRight - 1));
+                    List<DatasheetWord> tokens = ValueTokens(MergeFragments(neighbour.Words.Where(w => w.Left >= labelRight - 1)));
                     if (tokens.Count > 0 && !HasOwnLabel(neighbour, labelRight))
                     {
                         yield return new Candidate(line, neighbour, tokens, order++);
@@ -313,6 +326,26 @@ public static partial class DatasheetParser
         }
 
         return index;
+    }
+
+    // Joins number fragments that the PDF split into words, for example "27" ".3/26.1" into "27.3/26.1".
+    private static List<DatasheetWord> MergeFragments(IEnumerable<DatasheetWord> words)
+    {
+        var result = new List<DatasheetWord>();
+        foreach (DatasheetWord word in words)
+        {
+            if (result.Count > 0 && word.Text.Length > 1 && word.Text[0] is '.' or ',' && char.IsDigit(word.Text[1])
+                && result[^1] is { } previous && char.IsDigit(previous.Text[^1]) && word.Left - previous.Right < previous.Height)
+            {
+                result[^1] = previous with { Text = previous.Text + word.Text, Right = word.Right };
+            }
+            else
+            {
+                result.Add(word);
+            }
+        }
+
+        return result;
     }
 
     private static List<DatasheetWord> ValueTokens(IEnumerable<DatasheetWord> words) =>
@@ -504,6 +537,9 @@ public static partial class DatasheetParser
     private static string? NumberOf(string token) => TryNumber(token, out double value) ? Format(value) : null;
 
     private static string? IntegerOf(string token) => TryNumber(token, out double value) && value == Math.Floor(value) && value > 0 ? Format(value) : null;
+
+    // "27.3/26.1": AC values at 220/380 V and 230/400 V (or input/output); the last one is taken.
+    private static string? LastOf(string token) => NumberOf(Normalize(token).Split('/')[^1]);
 
     // "36+36" or "20+20(A)": the value of one MPPT.
     private static string? PerMpptOf(string token)

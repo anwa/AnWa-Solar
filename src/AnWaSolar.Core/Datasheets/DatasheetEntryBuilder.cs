@@ -88,6 +88,11 @@ public static class DatasheetEntryBuilder
             MaxShortCircuitCurrentA = reader.Number(DatasheetFields.MaxShortCircuitCurrentA),
             MpptCount = reader.Integer(DatasheetFields.MpptCount),
             MaxStringsPerMppt = reader.OptionalInteger(DatasheetFields.MaxStringsPerMppt) ?? 0,
+            RatedAcPowerW = reader.OptionalNumber(DatasheetFields.RatedAcPowerW) ?? 0,
+            MaxAcApparentPowerVA = reader.OptionalNumber(DatasheetFields.MaxAcApparentPowerVA) ?? 0,
+            RatedAcCurrentA = reader.OptionalNumber(DatasheetFields.RatedAcCurrentA) ?? 0,
+            MaxAcCurrentA = reader.OptionalNumber(DatasheetFields.MaxAcCurrentA) ?? 0,
+            AcPhases = reader.OptionalInteger(DatasheetFields.AcPhases) ?? 0,
         };
 
         if (errors.Count == 0)

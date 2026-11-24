@@ -179,5 +179,9 @@ public sealed class StringCalculationResult
 
     public IReadOnlyList<MpptResult> Mppts { get; init; } = [];
 
-    public bool IsOk => HasValidMpptRange && Mppts.All(m => m.IsOk);
+    /// <summary>AC side and grid connection; null when the MPPT range is invalid.</summary>
+    public AcCalculationResult? Ac { get; init; }
+
+    /// <summary>True when no MPPT and no grid rule prevents the configuration.</summary>
+    public bool IsOk => HasValidMpptRange && Mppts.All(m => m.IsOk) && Ac?.HasErrors != true;
 }

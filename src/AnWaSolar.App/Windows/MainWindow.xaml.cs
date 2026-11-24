@@ -417,6 +417,9 @@ public partial class MainWindow : ChromeWindow
         InverterSpecs.Children.Add(ValueTile("Start voltage", string.Create(c, $"{inv.StartVoltageV} V"), false));
         InverterSpecs.Children.Add(ValueTile("Max. input current", string.Create(c, $"{inv.MaxInputCurrentA} A"), false));
         InverterSpecs.Children.Add(ValueTile("Max. Isc", string.Create(c, $"{inv.MaxShortCircuitCurrentA} A"), false));
+        InverterSpecs.Children.Add(ValueTile("AC power", inv.RatedAcPowerW > 0
+            ? string.Create(c, $"{inv.RatedAcPowerW / 1000:0.#} kW") + (inv.AcPhases > 0 ? $" · {inv.AcPhases}-phase" : string.Empty)
+            : "not stated", false));
         InverterSpecs.Children.Add(ValueTile("MPPTs / strings", string.Create(c, $"{inv.MpptCount} / {(inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(c) : "n/a")}"), false));
     }
 

@@ -54,6 +54,11 @@ public static class DatasheetFields
     public const string MaxShortCircuitCurrentA = "MaxShortCircuitCurrentA";
     public const string MpptCount = "MpptCount";
     public const string MaxStringsPerMppt = "MaxStringsPerMppt";
+    public const string RatedAcPowerW = "RatedAcPowerW";
+    public const string MaxAcApparentPowerVA = "MaxAcApparentPowerVA";
+    public const string RatedAcCurrentA = "RatedAcCurrentA";
+    public const string MaxAcCurrentA = "MaxAcCurrentA";
+    public const string AcPhases = "AcPhases";
 
     public static IReadOnlyList<DatasheetField> Module { get; } =
     [
@@ -86,6 +91,11 @@ public static class DatasheetFields
         new(MaxShortCircuitCurrentA, "Max. short-circuit current per MPPT", "A", DatasheetValueType.Number, true, "Per MPPT: for \"54+54\" enter 54."),
         new(MpptCount, "MPPT count", string.Empty, DatasheetValueType.Integer, true),
         new(MaxStringsPerMppt, "Max. strings per MPPT", string.Empty, DatasheetValueType.Integer, false, "Leave empty when the datasheet does not state it."),
+        new(RatedAcPowerW, "Rated AC output power", "W", DatasheetValueType.Number, false, "Rated active power on the AC side."),
+        new(MaxAcApparentPowerVA, "Max. AC apparent power", "VA", DatasheetValueType.Number, false),
+        new(RatedAcCurrentA, "Rated AC output current", "A", DatasheetValueType.Number, false, "Per phase at 230/400 V: for \"27.3/26.1\" (220/380 V / 230/400 V) enter 26.1."),
+        new(MaxAcCurrentA, "Max. AC output current", "A", DatasheetValueType.Number, false, "Per phase at 230/400 V."),
+        new(AcPhases, "AC phases", string.Empty, DatasheetValueType.Integer, false, "1 or 3."),
     ];
 
     public static IReadOnlyList<DatasheetField> For(DatasheetKind kind) => kind == DatasheetKind.Module ? Module : Inverter;

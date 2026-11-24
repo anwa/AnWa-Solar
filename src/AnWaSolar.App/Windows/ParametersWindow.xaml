@@ -6,7 +6,7 @@
                 Style="{StaticResource AppDialog}"
                 WindowStartupLocation="CenterOwner"
                 Title="Calculation parameters"
-                Width="520"
+                Width="900"
                 SizeToContent="Height">
     <DockPanel>
         <Border DockPanel.Dock="Bottom"
@@ -26,28 +26,79 @@
             </StackPanel>
         </Border>
 
-        <StackPanel Margin="24,20,24,16">
-            <TextBlock Style="{StaticResource AnWaSoft.Text.Muted}"
-                       Margin="0,0,0,16"
-                       Text="Tmin and Tmax are module (cell) temperatures. The safety margin reduces maximum limits and raises minimum limits." />
-            <TextBox x:Name="MinTempInput"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                     materialDesign:HintAssist.Hint="Min. cell temperature (°C)"
-                     materialDesign:HintAssist.HelperText="Coldest expected cell temperature, for example -20"
-                     materialDesign:TextFieldAssist.SuffixText="°C"
-                     Margin="0,0,0,26" />
-            <TextBox x:Name="MaxTempInput"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                     materialDesign:HintAssist.Hint="Max. cell temperature (°C)"
-                     materialDesign:HintAssist.HelperText="Hottest expected cell temperature, for example 70"
-                     materialDesign:TextFieldAssist.SuffixText="°C"
-                     Margin="0,0,0,26" />
-            <TextBox x:Name="SafetyMarginInput"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                     materialDesign:HintAssist.Hint="Safety margin (%)"
-                     materialDesign:HintAssist.HelperText="0 to 50 %, for example 10"
-                     materialDesign:TextFieldAssist.SuffixText="%"
-                     Margin="0,0,0,20" />
-        </StackPanel>
+        <Grid Margin="24,20,24,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="32" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="String calculation" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,0,0,6" />
+                <TextBlock Style="{StaticResource AnWaSoft.Text.Muted}"
+                           Margin="0,0,0,16"
+                           Text="Tmin and Tmax are module (cell) temperatures. The safety margin reduces maximum limits and raises minimum limits." />
+                <TextBox x:Name="MinTempInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Min. cell temperature (°C)"
+                         materialDesign:HintAssist.HelperText="Coldest expected cell temperature, for example -20"
+                         materialDesign:TextFieldAssist.SuffixText="°C"
+                         Margin="0,0,0,26" />
+                <TextBox x:Name="MaxTempInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Max. cell temperature (°C)"
+                         materialDesign:HintAssist.HelperText="Hottest expected cell temperature, for example 70"
+                         materialDesign:TextFieldAssist.SuffixText="°C"
+                         Margin="0,0,0,26" />
+                <TextBox x:Name="SafetyMarginInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Safety margin (%)"
+                         materialDesign:HintAssist.HelperText="0 to 50 %, for example 10"
+                         materialDesign:TextFieldAssist.SuffixText="%"
+                         Margin="0,0,0,20" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="AC side and grid connection" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,0,0,6" />
+                <TextBlock Style="{StaticResource AnWaSoft.Text.Muted}"
+                           Margin="0,0,0,16"
+                           Text="Limits of your grid operator and your design goals; check them against the current rules (VDE-AR-N 4105)." />
+                <TextBox x:Name="UnbalancedInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Unbalanced load limit (kVA)"
+                         materialDesign:HintAssist.HelperText="Max. apparent power of a single-phase inverter, for example 4.6"
+                         materialDesign:TextFieldAssist.SuffixText="kVA"
+                         Margin="0,0,0,26" />
+                <TextBox x:Name="RegistrationInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Simplified registration up to (kVA)"
+                         materialDesign:HintAssist.HelperText="System size of the simplified grid registration, for example 30"
+                         materialDesign:TextFieldAssist.SuffixText="kVA"
+                         Margin="0,0,0,26" />
+                <TextBox x:Name="FeedInInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Feed-in limit (%)"
+                         materialDesign:HintAssist.HelperText="Of the PV peak power; 100 means no limit"
+                         materialDesign:TextFieldAssist.SuffixText="%"
+                         Margin="0,0,0,26" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="RatioMinInput"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="DC/AC ratio from"
+                             materialDesign:HintAssist.HelperText="Recommended range, for example 0.9"
+                             materialDesign:TextFieldAssist.SuffixText=""
+                             Margin="0,0,0,20" />
+                    <TextBox Grid.Column="2" x:Name="RatioMaxInput"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="DC/AC ratio up to"
+                             materialDesign:HintAssist.HelperText="for example 1.3"
+                             materialDesign:TextFieldAssist.SuffixText=""
+                             Margin="0,0,0,20" />
+                </Grid>
+            </StackPanel>
+        </Grid>
     </DockPanel>
 </aw:ChromeWindow>

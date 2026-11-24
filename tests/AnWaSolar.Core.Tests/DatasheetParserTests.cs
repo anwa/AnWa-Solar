@@ -79,6 +79,10 @@ public sealed class DatasheetParserTests
         .. Row(572, (40, "Anzahl der MPP Trackers/")),
         .. Row(568, (280, "2/2+2")),
         .. Row(564, (40, "Anzahl der Strings MPP Tracker")),
+        .. Row(556, [(40, "Nenn-AC-Eingangs-/Ausgangswirkleistung"), .. Columns("14000", "15000", "16000", "18000", "20000")]),
+        .. Row(548, [(40, "Max. AC-Eingangs-/Ausgangs-Scheinleistung"), .. Columns("15400", "16500", "17600", "19800", "22000")]),
+        .. Row(544, (40, "AC-Eingangs-/Ausgangsnennstrom (A)"), (200, "21 .3/20,3"), (240, "22.8/21.8"), (280, "24 .3/23.2"), (320, "27 .3/26.1"), (360, "30 .4/29")),
+        .. Row(542, (40, "Form des Netzanschlusses 3L+N+PE")),
         .. Row(540, (40, "Dreiphasen-Hybrid-Wechselrichter, Wechselrichter-Topologie, AC-Ausgang, Netz, www.deyeinverter.com")),
     ];
 
@@ -137,6 +141,19 @@ public sealed class DatasheetParserTests
         Assert.Equal("54", result.Get(DatasheetFields.MaxShortCircuitCurrentA, sun18k)!.Text);
         Assert.Equal("2", result.Get(DatasheetFields.MpptCount, sun18k)!.Text);
         Assert.Equal("2", result.Get(DatasheetFields.MaxStringsPerMppt, sun18k)!.Text);
+    }
+
+    [Fact]
+    public void Inverter_ac_values_take_the_230_400_v_value_and_join_split_numbers()
+    {
+        DatasheetParseResult result = DatasheetParser.Parse(DeyeWords(), DatasheetKind.Inverter, ["Deye"]);
+        int sun18k = 3;
+
+        Assert.Equal("18000", result.Get(DatasheetFields.RatedAcPowerW, sun18k)!.Text);
+        Assert.Equal("19800", result.Get(DatasheetFields.MaxAcApparentPowerVA, sun18k)!.Text);
+        Assert.Equal("26.1", result.Get(DatasheetFields.RatedAcCurrentA, sun18k)!.Text); // "27 .3/26.1"
+        Assert.Equal("21.8", result.Get(DatasheetFields.RatedAcCurrentA, 1)!.Text);
+        Assert.Equal("3", result.Get(DatasheetFields.AcPhases, sun18k)!.Text);
     }
 
     [Fact]

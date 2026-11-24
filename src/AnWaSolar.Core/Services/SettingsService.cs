@@ -23,16 +23,39 @@ public class CalculationParameters
     /// <summary>Safety margin in percent that tightens all inverter limits.</summary>
     public double SafetyMarginPct { get; set; } = 10.0;
 
-    /// <summary>True when Tmin &lt; Tmax and the margin is within 0–50 %, as the parameter dialog requires.</summary>
+    /// <summary>Highest AC apparent power of a single-phase inverter (unbalanced load limit, VDE-AR-N 4105), in VA.</summary>
+    public double UnbalancedLoadLimitVA { get; set; } = 4600.0;
+
+    /// <summary>System size up to which the simplified grid registration applies, in VA.</summary>
+    public double SimplifiedRegistrationLimitVA { get; set; } = 30000.0;
+
+    /// <summary>Feed-in limit in percent of the PV peak power; 100 means no limit.</summary>
+    public double FeedInLimitPct { get; set; } = 100.0;
+
+    /// <summary>Lower end of the recommended DC/AC ratio (PV peak power to rated AC power).</summary>
+    public double DcAcRatioMin { get; set; } = 0.9;
+
+    /// <summary>Upper end of the recommended DC/AC ratio.</summary>
+    public double DcAcRatioMax { get; set; } = 1.3;
+
+    /// <summary>True when the values are within the ranges the parameter dialog allows.</summary>
     public bool IsValid()
         => double.IsFinite(MinTempC) && double.IsFinite(MaxTempC) && MinTempC < MaxTempC
-           && SafetyMarginPct is >= 0 and <= 50;
+           && SafetyMarginPct is >= 0 and <= 50
+           && UnbalancedLoadLimitVA > 0 && SimplifiedRegistrationLimitVA > 0
+           && FeedInLimitPct is > 0 and <= 100
+           && DcAcRatioMin > 0 && DcAcRatioMin < DcAcRatioMax;
 
     public CalculationParameters Clone() => new()
     {
         MinTempC = MinTempC,
         MaxTempC = MaxTempC,
         SafetyMarginPct = SafetyMarginPct,
+        UnbalancedLoadLimitVA = UnbalancedLoadLimitVA,
+        SimplifiedRegistrationLimitVA = SimplifiedRegistrationLimitVA,
+        FeedInLimitPct = FeedInLimitPct,
+        DcAcRatioMin = DcAcRatioMin,
+        DcAcRatioMax = DcAcRatioMax,
     };
 }
 
@@ -386,6 +409,11 @@ public sealed class SettingsService : ISettingsService
                 MinTempC = Value<double>(parameters, "MinTempC") ?? defaults.MinTempC,
                 MaxTempC = Value<double>(parameters, "MaxTempC") ?? defaults.MaxTempC,
                 SafetyMarginPct = Value<double>(parameters, "SafetyMarginPct", "SicherheitsmargePct") ?? defaults.SafetyMarginPct,
+                UnbalancedLoadLimitVA = Value<double>(parameters, "UnbalancedLoadLimitVA") ?? defaults.UnbalancedLoadLimitVA,
+                SimplifiedRegistrationLimitVA = Value<double>(parameters, "SimplifiedRegistrationLimitVA") ?? defaults.SimplifiedRegistrationLimitVA,
+                FeedInLimitPct = Value<double>(parameters, "FeedInLimitPct") ?? defaults.FeedInLimitPct,
+                DcAcRatioMin = Value<double>(parameters, "DcAcRatioMin") ?? defaults.DcAcRatioMin,
+                DcAcRatioMax = Value<double>(parameters, "DcAcRatioMax") ?? defaults.DcAcRatioMax,
             },
             LastSelection = new LastSelection { Inverter = ReadRef(lastSelection?["Inverter"] as JsonObject) },
         };

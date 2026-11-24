@@ -32,7 +32,8 @@ public sealed class ResultPresenterTests
     [Fact]
     public void Valid_design_is_ok_and_shows_values_against_the_effective_limits()
     {
-        ResultOverview overview = Present(Aiko(1, 11), Aiko(2, 11));
+        // 2 × 11 × 2 × 500 W = 22 kWp on 18 kW AC: DC/AC ratio 1.22, within 0.9 … 1.3.
+        ResultOverview overview = Present(Aiko(1, 11, 2), Aiko(2, 11, 2));
 
         Assert.Equal(ResultState.Ok, overview.State);
         Assert.Equal("All limits are met", overview.Headline);

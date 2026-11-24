@@ -1,6 +1,21 @@
 {
   "Modules": [
     {
+      "Manufacturer": "Ja-Solar",
+      "Model": "JAM54D40-460/LB",
+      "Pmax (W)": 460,
+      "Vmpp (V)": 33.17,
+      "Impp (A)": 13.87,
+      "Voc (V)": 39.7,
+      "Isc (A)": 14.64,
+      "Module efficiency (%)": 23,
+      "Temperature coefficient of Pmax (%/°C)": -0.29,
+      "Temperature coefficient of Voc (%/°C)": -0.25,
+      "Temperature coefficient of Isc (%/°C)": 0.045,
+      "Operating temperature min (°C)": -40,
+      "Operating temperature max (°C)": 85
+    },
+    {
       "Manufacturer": "Trina",
       "Model": "TSM-455-NEG9R.28",
       "Pmax (W)": 455,
@@ -11,7 +26,22 @@
       "Module efficiency (%)": 22.8,
       "Temperature coefficient of Pmax (%/°C)": -0.29,
       "Temperature coefficient of Voc (%/°C)": -0.24,
-      "Temperature coefficient of Isc (%/°C)": -0.04,
+      "Temperature coefficient of Isc (%/°C)": 0.04,
+      "Operating temperature min (°C)": -40,
+      "Operating temperature max (°C)": 85
+    },
+    {
+      "Manufacturer": "Trina",
+      "Model": "TSM-450-NEG9R.25",
+      "Pmax (W)": 450,
+      "Vmpp (V)": 44.6,
+      "Impp (A)": 10.09,
+      "Voc (V)": 52.9,
+      "Isc (A)": 10.74,
+      "Module efficiency (%)": 22.5,
+      "Temperature coefficient of Pmax (%/°C)": -0.29,
+      "Temperature coefficient of Voc (%/°C)": -0.24,
+      "Temperature coefficient of Isc (%/°C)": 0.04,
       "Operating temperature min (°C)": -40,
       "Operating temperature max (°C)": 85
     },
@@ -26,7 +56,7 @@
       "Module efficiency (%)": 22.6,
       "Temperature coefficient of Pmax (%/°C)": -0.26,
       "Temperature coefficient of Voc (%/°C)": -0.22,
-      "Temperature coefficient of Isc (%/°C)": -0.05,
+      "Temperature coefficient of Isc (%/°C)": 0.05,
       "Operating temperature min (°C)": -40,
       "Operating temperature max (°C)": 85
     }

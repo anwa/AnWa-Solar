@@ -37,6 +37,8 @@ Numbers may use a decimal point or a decimal comma.
 - **Max. DC input power**: some inverter datasheets also state a higher "max. PV access power". AnWa-Solar uses the DC input power of the inverter.
 - **Currents per MPPT**: datasheets often write "36+36" for two MPPTs. Enter the value of one MPPT, 36.
 - **MPPT count and strings**: "2/2+2" means 2 MPPTs with up to 2 strings each.
+- **AC currents**: datasheets often state two values such as "27.3/26.1" for 220/380 V and 230/400 V. AnWa-Solar takes the second value, for 230/400 V.
+- **AC phases** are recognised from the grid connection ("three-phase", "3L+N+PE"); check them.
 - **Temperature coefficients in mV/°C or mA/°C** are not converted; enter the value in %/°C from the datasheet or calculate it from the datasheet values.
 - **Scanned datasheets** contain no text. The dialog then opens empty, and you enter all values by hand; the datasheet is stored with them.
 

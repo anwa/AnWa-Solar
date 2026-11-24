@@ -45,9 +45,16 @@ Enter only values from the manufacturer datasheets. Numbers use a dot as decimal
   "Max. input current per MPPT (A)": 36,
   "Max. short-circuit current per MPPT (A)": 54,
   "MPPT count": 2,
-  "Max. strings per MPPT": 2
+  "Max. strings per MPPT": 2,
+  "Rated AC output power (W)": 18000,
+  "Max. AC apparent power (VA)": 19800,
+  "Rated AC output current (A)": 26.1,
+  "Max. AC output current (A)": 28.7,
+  "AC phases": 3
 }
 ```
+
+The AC values are optional; without them the AC side shows "not stated". AC currents are per phase at 230/400 V.
 
 The MPPT voltage range is text in the form `"min-max"`. Currents are per MPPT input.
 

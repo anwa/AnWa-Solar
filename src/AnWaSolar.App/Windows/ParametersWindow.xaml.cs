@@ -17,16 +17,17 @@ public partial class ParametersWindow : ChromeWindow
     {
         InitializeComponent();
 
-        Parameters = new CalculationParameters
-        {
-            MinTempC = current.MinTempC,
-            MaxTempC = current.MaxTempC,
-            SafetyMarginPct = current.SafetyMarginPct
-        };
+        Parameters = current.Clone();
 
-        MinTempInput.Text = Parameters.MinTempC.ToString(CultureInfo.CurrentCulture);
-        MaxTempInput.Text = Parameters.MaxTempC.ToString(CultureInfo.CurrentCulture);
-        SafetyMarginInput.Text = Parameters.SafetyMarginPct.ToString(CultureInfo.CurrentCulture);
+        CultureInfo c = CultureInfo.CurrentCulture;
+        MinTempInput.Text = Parameters.MinTempC.ToString(c);
+        MaxTempInput.Text = Parameters.MaxTempC.ToString(c);
+        SafetyMarginInput.Text = Parameters.SafetyMarginPct.ToString(c);
+        UnbalancedInput.Text = (Parameters.UnbalancedLoadLimitVA / 1000).ToString(c);
+        RegistrationInput.Text = (Parameters.SimplifiedRegistrationLimitVA / 1000).ToString(c);
+        FeedInInput.Text = Parameters.FeedInLimitPct.ToString(c);
+        RatioMinInput.Text = Parameters.DcAcRatioMin.ToString(c);
+        RatioMaxInput.Text = Parameters.DcAcRatioMax.ToString(c);
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -44,9 +45,32 @@ public partial class ParametersWindow : ChromeWindow
             return;
         }
 
+        if (!TryParseDouble(UnbalancedInput.Text, out var unbalancedKva) || unbalancedKva <= 0
+            || !TryParseDouble(RegistrationInput.Text, out var registrationKva) || registrationKva <= 0)
+        {
+            MessageDialog.Show(this, "The unbalanced load limit and the registration limit must be greater than 0 kVA.", Title, StatusKind.Error);
+            return;
+        }
+        if (!TryParseDouble(FeedInInput.Text, out var feedInPct) || feedInPct <= 0 || feedInPct > 100)
+        {
+            MessageDialog.Show(this, "Invalid feed-in limit. Allowed range: above 0 up to 100 % (100 means no limit).", Title, StatusKind.Error);
+            return;
+        }
+        if (!TryParseDouble(RatioMinInput.Text, out var ratioMin) || !TryParseDouble(RatioMaxInput.Text, out var ratioMax)
+            || ratioMin <= 0 || ratioMin >= ratioMax)
+        {
+            MessageDialog.Show(this, "Invalid DC/AC ratio range. The lower value must be greater than 0 and lower than the upper value.", Title, StatusKind.Error);
+            return;
+        }
+
         Parameters.MinTempC = tMin;
         Parameters.MaxTempC = tMax;
         Parameters.SafetyMarginPct = marginPct;
+        Parameters.UnbalancedLoadLimitVA = unbalancedKva * 1000;
+        Parameters.SimplifiedRegistrationLimitVA = registrationKva * 1000;
+        Parameters.FeedInLimitPct = feedInPct;
+        Parameters.DcAcRatioMin = ratioMin;
+        Parameters.DcAcRatioMax = ratioMax;
 
         DialogResult = true;
         Close();

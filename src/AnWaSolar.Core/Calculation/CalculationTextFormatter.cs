@@ -70,6 +70,21 @@ public static class CalculationTextFormatter
             }
         }
 
+        if (result.Ac is { } ac)
+        {
+            sb.AppendLine(string.Empty);
+            sb.AppendLine("AC side and grid connection:");
+            foreach (string line in FormatAcValues(ac))
+            {
+                sb.AppendLine($"- {line}");
+            }
+
+            foreach (AcCheck check in ac.Checks)
+            {
+                sb.AppendLine($"  - {FormatAcCheck(check, ac)}");
+            }
+        }
+
         sb.AppendLine(string.Empty);
         sb.AppendLine($"Result: {(result.IsOk ? "All conditions are met." : "Restrictions or violations found.")}");
 
@@ -84,6 +99,41 @@ public static class CalculationTextFormatter
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>Note for a check of the AC side.</summary>
+    public static string FormatAcCheck(AcCheck check, AcCalculationResult ac)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+        ArgumentNullException.ThrowIfNull(ac);
+        CultureInfo c = CultureInfo.CurrentCulture;
+        return check.Kind switch
+        {
+            AcCheckKind.AcValuesMissing => $"The master data of the inverter has no {string.Join(", ", ac.MissingValues)}. Import its datasheet to check the AC side completely.",
+            AcCheckKind.DcAcRatioLow => string.Create(c, $"DC/AC ratio {check.Actual:F2} is below {check.Limit:F2}: the inverter is large for the PV power."),
+            AcCheckKind.DcAcRatioHigh => string.Create(c, $"DC/AC ratio {check.Actual:F2} is above {check.Limit:F2}: on sunny days the inverter limits the power (clipping)."),
+            AcCheckKind.UnbalancedLoad => string.Create(c, $"Single-phase inverter with {check.Actual / 1000:F1} kVA exceeds the unbalanced load limit of {check.Limit / 1000:F1} kVA."),
+            AcCheckKind.RegistrationLimit => string.Create(c, $"Apparent power {check.Actual / 1000:F1} kVA is above {check.Limit / 1000:F1} kVA: the simplified grid registration does not apply; ask the grid operator for the procedure."),
+            AcCheckKind.FeedInLimit => string.Create(c, $"Feed-in is limited to {check.Actual / 1000:F1} kW ({ac.FeedInCapW / Math.Max(1, ac.PvPeakPowerW) * 100:F0} % of the PV peak power); above that the inverter reduces its output."),
+            _ => throw new ArgumentOutOfRangeException(nameof(check), check.Kind, "Unknown AC check."),
+        };
+    }
+
+    /// <summary>Values of the AC side in one line each.</summary>
+    public static IReadOnlyList<string> FormatAcValues(AcCalculationResult ac)
+    {
+        ArgumentNullException.ThrowIfNull(ac);
+        CultureInfo c = CultureInfo.CurrentCulture;
+        static string Or(double? value, Func<double, string> format) => value is { } v ? format(v) : "not stated";
+        return
+        [
+            string.Create(c, $"PV peak power (STC): {ac.PvPeakPowerW / 1000:F2} kWp"),
+            $"Rated AC power: {Or(ac.RatedAcPowerW, v => string.Create(c, $"{v / 1000:F1} kW"))}",
+            $"DC/AC ratio: {Or(ac.DcAcRatio, v => v.ToString("F2", c))}",
+            $"Max. AC apparent power: {Or(ac.ApparentPowerVA, v => string.Create(c, $"{v / 1000:F1} kVA"))}",
+            $"AC phases: {(ac.Phases is { } p ? p.ToString(c) : "not stated")}",
+            $"AC current per phase: rated {Or(ac.RatedAcCurrentA, v => string.Create(c, $"{v:F1} A"))}, max. {Or(ac.MaxAcCurrentA, v => string.Create(c, $"{v:F1} A"))}",
+        ];
     }
 
     /// <summary>All notes of the calculation, each prefixed with its MPPT ("MPPT 1: …").</summary>
@@ -103,6 +153,11 @@ public static class CalculationTextFormatter
             {
                 messages.Add($"MPPT {mppt.MpptIndex}: {FormatViolation(violation)}");
             }
+        }
+
+        if (result.Ac is { } ac)
+        {
+            messages.AddRange(ac.Checks.Where(c => c.State != ResultState.Neutral).Select(c => $"AC side: {FormatAcCheck(c, ac)}"));
         }
 
         return messages;
