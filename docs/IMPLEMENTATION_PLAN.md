@@ -47,7 +47,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] WiX 5 installer project `installer/AnWaSolar.Installer` with a fixed `UpgradeCode`
 - [x] `tools/Build-Installer.ps1`: self-contained win-x64 publish, MSI and SHA-256 in `dist\installer\`
 - [x] `docs/DEPLOYMENT.md` with the build recipe and build records
-- [ ] First release built from its tag in a clean worktree
+- [x] First release built from its tag in a clean worktree (v0.8.0)
 
 ## Later
 

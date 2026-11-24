@@ -22,3 +22,4 @@ The MSI installs per machine into `C:\Program Files\AnWa-Solar` with a Start men
 
 | Version | Commit | Date | SDK | MSI SHA-256 | Result |
 |---|---|---|---|---|---|
+| 0.8.0 | `2e707f9` | 2026-11-24 | 11.0.100 | `952003E4A647BB81E5B0BEC2714FCFE812681AED1864D16A01B1CB052A9B655F` | Built from the tag in a clean worktree. Build without warnings, 55 tests passed, published exe starts and shows version 0.8.0. MSI properties checked read-only (name, version 0.8.0, manufacturer, UpgradeCode `55C1C5AB-3178-461E-A8D7-DA8A3B306EF8`, per-machine, 438 files including the master data and LICENSE.txt, no .pdb, Start menu shortcut); not installed by the agent. Replaces the local test build of 0.8.0 in `dist\installer`. |
