@@ -19,7 +19,7 @@ AnWa-Solar is a Windows desktop tool for designing photovoltaic systems. It curr
 
 - The migration to the rules of this file and the further milestones are tracked in `docs/IMPLEMENTATION_PLAN.md`. Read it before starting work; where the code does not yet follow a rule below, the plan names the milestone that changes it.
 - Implement one milestone at a time on its branch. Merge into `main` only when the user confirms the milestone is complete; that merge increases the minor version and is tagged.
-- Keep `README.md`, `CHANGELOG.md` and the milestone checkboxes in `docs/IMPLEMENTATION_PLAN.md` current with every behavior change.
+- Keep `README.md`, `CHANGELOG.md`, the user manual in `docs/manual` and the milestone checkboxes in `docs/IMPLEMENTATION_PLAN.md` current with every behavior change. The manual is written for users, in English, and describes the current GUI texts; its links and anchors are checked by a test.
 
 ## Language
 
