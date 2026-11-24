@@ -1,14 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+
 using AnWaSolar.Models;
 using AnWaSolar.Services;
-using Microsoft.Extensions.Logging;
+
 using MaterialDesignThemes.Wpf;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
 namespace AnWaSolar.Windows;

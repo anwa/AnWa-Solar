@@ -1,14 +1,16 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
+
+using AnWaSolar.Services;
+using AnWaSolar.Windows;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using AnWaSolar.Services;
-using AnWaSolar.Windows;
 
 namespace AnWaSolar;
 
