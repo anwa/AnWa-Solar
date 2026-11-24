@@ -55,4 +55,33 @@ public sealed class HtmlDocumentTests : IDisposable
     {
         Assert.False(HtmlDocument.TryResolveAsset(_katex, requestPath, out _, out _));
     }
+
+    [Fact]
+    public void Standalone_file_has_no_scripts_and_no_external_references()
+    {
+        File.WriteAllText(Path.Combine(_katex, "katex.min.css"),
+            "@font-face{font-family:KaTeX_Main;src:url(fonts/KaTeX_Main-Regular.woff2) format(\"woff2\"),url(fonts/KaTeX_Main-Regular.woff) format(\"woff\"),url(fonts/KaTeX_Main-Regular.ttf) format(\"truetype\")}.katex{font:normal 1.21em KaTeX_Main}");
+        string rendered = HtmlDocument.Create("<p>U = <span class=\"katex\">x</span></p>", "Report & <test>");
+
+        string html = HtmlDocument.CreateStandalone(rendered, _katex);
+
+        Assert.StartsWith("<!DOCTYPE html>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/katex/", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("url(fonts/", html, StringComparison.Ordinal);
+        Assert.Contains("url(data:font/woff2;base64,Zm9udA==)", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"katex\">x</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<title>Report &amp; &lt;test&gt;</title>", html, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\">", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Standalone_file_uses_the_light_colours()
+    {
+        string html = HtmlDocument.CreateStandalone(HtmlDocument.Create("<p>x</p>", "Report"), _katex);
+
+        Assert.DoesNotContain("prefers-color-scheme: dark", html, StringComparison.Ordinal);
+        Assert.Contains("<meta name=\"color-scheme\" content=\"light\">", html, StringComparison.Ordinal);
+        Assert.Contains("color-scheme: light;", html, StringComparison.Ordinal);
+    }
 }

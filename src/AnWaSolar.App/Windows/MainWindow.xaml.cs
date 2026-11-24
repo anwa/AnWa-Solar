@@ -61,6 +61,8 @@ public partial class MainWindow : ChromeWindow
     // Local host name of the report preview; requests to it are answered by OnPreviewResourceRequested.
     private const string PreviewHost = "report.anwasolar.invalid";
     private const string PreviewPageUrl = "https://" + PreviewHost + "/report.html";
+    private const string ReportTitle = "AnWa-Solar report";
+    private TaskCompletionSource<bool>? _navigation;
     private static readonly string s_katexDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "katex");
 
     // Suppress slider and toggle events while values are set programmatically
@@ -946,12 +948,13 @@ public partial class MainWindow : ChromeWindow
         try
         {
             string body = _markdown.ToHtml(_reportMarkdown);
-            _previewHtml = HtmlDocument.Create(body, "Report");
+            _previewHtml = HtmlDocument.Create(body, ReportTitle);
             if (!await EnsurePreviewAsync())
             {
                 return;
             }
 
+            _navigation = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             ReportPreviewBrowser.CoreWebView2.Navigate(PreviewPageUrl);
             _logger.LogInformation("Report preview updated. Length={Length}.", body.Length);
         }
@@ -1009,6 +1012,144 @@ public partial class MainWindow : ChromeWindow
                 e.Cancel = true;
             }
         };
+
+        // KaTeX renders on DOMContentLoaded, so the formulas are rendered when the navigation is completed.
+        core.NavigationCompleted += (_, e) =>
+        {
+            if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
+            {
+                _navigation?.TrySetResult(e.IsSuccess);
+            }
+        };
+    }
+
+    // Renders the current report in the preview and waits until it is loaded; false when WebView2 is not available.
+    private async Task<bool> RenderPreviewForExportAsync()
+    {
+        if (!_reportPreviewMode)
+        {
+            ReportViewSelector.SelectedIndex = 0;
+        }
+
+        await ShowPreviewAsync();
+        if (ReportPreviewBrowser.CoreWebView2 is null || _navigation is not { } navigation)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await navigation.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "The report preview did not finish loading.");
+            return false;
+        }
+    }
+
+    // Saves the report as one HTML file: the rendered preview (formulas as HTML), KaTeX style and fonts embedded.
+    private async void OnExportHtmlClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Title = "Export report as HTML",
+            Filter = "HTML file (*.html)|*.html",
+            FileName = "AnWa-Solar-Report.html",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            string html;
+            if (await RenderPreviewForExportAsync())
+            {
+                string json = await ReportPreviewBrowser.CoreWebView2.ExecuteScriptAsync("document.documentElement.outerHTML");
+                html = System.Text.Json.JsonSerializer.Deserialize<string>(json) ?? string.Empty;
+            }
+            else
+            {
+                // Without WebView2 the formulas stay as KaTeX source text.
+                html = HtmlDocument.Create(_markdown.ToHtml(_reportMarkdown), ReportTitle);
+            }
+
+            File.WriteAllText(dlg.FileName, HtmlDocument.CreateStandalone(html, s_katexDirectory), new UTF8Encoding(false));
+            _logger.LogInformation("Report exported as HTML: {Path}.", dlg.FileName);
+            Snackbar.MessageQueue?.Enqueue($"Report exported: {Path.GetFileName(dlg.FileName)}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Error exporting the report as HTML.");
+            MessageDialog.Show(this, "The report could not be exported. See the log for details.", "Error", StatusKind.Error);
+        }
+    }
+
+    // Prints the preview to a PDF file (A4, light colours, title, date and page numbers).
+    private async void OnExportPdfClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Title = "Export report as PDF",
+            Filter = "PDF file (*.pdf)|*.pdf",
+            FileName = "AnWa-Solar-Report.pdf",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!await RenderPreviewForExportAsync())
+            {
+                MessageDialog.Show(this, "The PDF export needs the report preview (Microsoft Edge WebView2 Runtime), which is not available.", "Export PDF", StatusKind.Warning);
+                return;
+            }
+
+            CoreWebView2 core = ReportPreviewBrowser.CoreWebView2;
+            CoreWebView2PrintSettings settings = core.Environment.CreatePrintSettings();
+            settings.Orientation = CoreWebView2PrintOrientation.Portrait;
+            settings.PageWidth = 8.27; // A4 in inches
+            settings.PageHeight = 11.69;
+            settings.MarginTop = settings.MarginBottom = 0.6;
+            settings.MarginLeft = settings.MarginRight = 0.6;
+            settings.ShouldPrintBackgrounds = true;
+            settings.ShouldPrintHeaderAndFooter = true;
+            settings.HeaderTitle = ReportTitle;
+            settings.FooterUri = string.Empty;
+
+            bool saved;
+            WebViewSupport.ApplyColorScheme(core, dark: false);
+            try
+            {
+                saved = await core.PrintToPdfAsync(dlg.FileName, settings);
+            }
+            finally
+            {
+                WebViewSupport.ApplyColorScheme(core, _theme.IsDark);
+            }
+
+            if (!saved)
+            {
+                MessageDialog.Show(this, "The PDF file could not be written.", "Export PDF", StatusKind.Error);
+                return;
+            }
+
+            _logger.LogInformation("Report exported as PDF: {Path}.", dlg.FileName);
+            Snackbar.MessageQueue?.Enqueue($"Report exported: {Path.GetFileName(dlg.FileName)}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Error exporting the report as PDF.");
+            MessageDialog.Show(this, "The report could not be exported. See the log for details.", "Error", StatusKind.Error);
+        }
     }
 
     private void OnPreviewResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
