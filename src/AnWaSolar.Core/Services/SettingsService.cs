@@ -1,263 +1,346 @@
-using System;
-using System.IO;
+using System.Globalization;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AnWaSolar.Core.Services;
 
-#region Schnittstellen und Modelle
+#region Models
 
+/// <summary>Temperature range and safety margin of the string calculation.</summary>
 public class CalculationParameters
 {
     /// <summary>Lowest module (cell) temperature in °C; at sunrise it is close to the ambient temperature.</summary>
     public double MinTempC { get; set; } = -20.0;
+
     /// <summary>Highest module (cell) temperature in °C; in summer cells reach 60–70 °C.</summary>
     public double MaxTempC { get; set; } = 70.0;
+
+    /// <summary>Safety margin in percent that tightens all inverter limits.</summary>
     public double SicherheitsmargePct { get; set; } = 10.0;
+
+    /// <summary>True when Tmin &lt; Tmax and the margin is within 0–50 %, as the parameter dialog requires.</summary>
+    public bool IsValid()
+        => double.IsFinite(MinTempC) && double.IsFinite(MaxTempC) && MinTempC < MaxTempC
+           && SicherheitsmargePct is >= 0 and <= 50;
+
+    public CalculationParameters Clone() => new()
+    {
+        MinTempC = MinTempC,
+        MaxTempC = MaxTempC,
+        SicherheitsmargePct = SicherheitsmargePct,
+    };
 }
 
+/// <summary>Reference to a master data entry by manufacturer and model.</summary>
 public class SelectedRef
 {
     public string Hersteller { get; set; } = string.Empty;
+
     public string Model { get; set; } = string.Empty;
 }
 
+/// <summary>Saved configuration of one MPPT.</summary>
 public class MpptStringSelection
 {
     public int MpptIndex { get; set; }
+
     public SelectedRef? Module { get; set; }
+
     public int ModuleProString { get; set; } = 10;
+
     public int ParalleleStrings { get; set; } = 1;
+
     public bool IsEnabled { get; set; } = true;
 }
 
+/// <summary>Last selected inverter and string configuration.</summary>
 public class LastSelection
 {
     public SelectedRef? Inverter { get; set; }
-    public System.Collections.Generic.List<MpptStringSelection> Strings { get; set; } = new System.Collections.Generic.List<MpptStringSelection>();
+
+    public List<MpptStringSelection> Strings { get; set; } = [];
+}
+
+/// <summary>Content of the user settings file.</summary>
+public sealed class UserSettings
+{
+    public const int CurrentSchemaVersion = 1;
+
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+
+    public CalculationParameters Parameters { get; set; } = new();
+
+    public LastSelection LastSelection { get; set; } = new();
 }
 
 public interface ISettingsService
 {
     CalculationParameters LoadParameters();
+
     bool SaveParameters(CalculationParameters parameters);
 
     LastSelection LoadLastSelection();
+
     bool SaveLastSelection(LastSelection selection);
+}
+
+/// <summary>Folder for per-user data (settings and logs).</summary>
+public interface IUserDataLocation
+{
+    string DirectoryPath { get; }
+}
+
+/// <summary><c>%LOCALAPPDATA%\AnWa-Solar</c>.</summary>
+public sealed class UserDataLocation : IUserDataLocation
+{
+    public string DirectoryPath { get; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnWa-Solar");
 }
 
 #endregion
 
-#region Implementierung
+#region Implementation
 
-public class SettingsService : ISettingsService
+/// <summary>
+/// Stores calculation parameters and the last selection in <c>settings.json</c> in the per-user data folder.
+/// The file is written atomically. When it does not exist yet, the values are imported once from the
+/// <c>appsettings.json</c> next to the executable, where versions before 0.5.0 stored them.
+/// </summary>
+public sealed class SettingsService : ISettingsService
 {
-    private readonly ILogger<SettingsService> _logger;
-    private readonly IConfiguration _cfg;
-    private readonly string _appSettingsPath;
+    public const string FileName = "settings.json";
 
-    public SettingsService(ILogger<SettingsService> logger, IConfiguration cfg)
+    private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
-        _logger = logger;
-        _cfg = cfg;
-        _appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private readonly ILogger<SettingsService> _logger;
+    private readonly string _legacyAppSettingsPath;
+    private readonly Lock _lock = new();
+    private UserSettings? _settings;
+
+    public SettingsService(ILogger<SettingsService> logger, IUserDataLocation location)
+        : this(logger, location, Path.Combine(AppContext.BaseDirectory, "appsettings.json"))
+    {
     }
+
+    internal SettingsService(ILogger<SettingsService> logger, IUserDataLocation location, string legacyAppSettingsPath)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+        _logger = logger;
+        _legacyAppSettingsPath = legacyAppSettingsPath;
+        SettingsFilePath = Path.Combine(location.DirectoryPath, FileName);
+    }
+
+    /// <summary>Full path of the settings file.</summary>
+    public string SettingsFilePath { get; }
 
     public CalculationParameters LoadParameters()
     {
-        try
+        lock (_lock)
         {
-            var p = new CalculationParameters
-            {
-                MinTempC = TryParseDouble(_cfg["AnWaSolar:Parameters:MinTempC"], -20.0),
-                MaxTempC = TryParseDouble(_cfg["AnWaSolar:Parameters:MaxTempC"], 70.0),
-                SicherheitsmargePct = TryParseDouble(_cfg["AnWaSolar:Parameters:SicherheitsmargePct"], 10.0)
-            };
+            CalculationParameters p = EnsureLoaded().Parameters.Clone();
             _logger.LogInformation("Berechnungsparameter geladen: Tmin={Tmin} °C, Tmax={Tmax} °C, Sicherheitsmarge={Margin} %.",
                 p.MinTempC, p.MaxTempC, p.SicherheitsmargePct);
             return p;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Fehler beim Laden der Berechnungsparameter, es werden Standardwerte verwendet.");
-            return new CalculationParameters();
         }
     }
 
     public bool SaveParameters(CalculationParameters parameters)
     {
-        try
+        ArgumentNullException.ThrowIfNull(parameters);
+        lock (_lock)
         {
-            var root = LoadOrCreateRoot();
-            var anWa = root["AnWaSolar"] as JsonObject ?? new JsonObject();
-            root["AnWaSolar"] = anWa;
-
-            var paramNode = new JsonObject
+            EnsureLoaded().Parameters = parameters.Clone();
+            bool ok = TryWrite();
+            if (ok)
             {
-                ["MinTempC"] = parameters.MinTempC,
-                ["MaxTempC"] = parameters.MaxTempC,
-                ["SicherheitsmargePct"] = parameters.SicherheitsmargePct
-            };
-            anWa["Parameters"] = paramNode;
+                _logger.LogInformation("Berechnungsparameter gespeichert in {Path}.", SettingsFilePath);
+            }
 
-            WriteIndented(root);
-            _logger.LogInformation("Berechnungsparameter gespeichert in {Path}.", _appSettingsPath);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Fehler beim Speichern der Berechnungsparameter in {Path}.", _appSettingsPath);
-            return false;
+            return ok;
         }
     }
 
     public LastSelection LoadLastSelection()
     {
-        var result = new LastSelection();
-        try
+        lock (_lock)
         {
-            var json = File.Exists(_appSettingsPath) ? File.ReadAllText(_appSettingsPath) : null;
-            if (string.IsNullOrWhiteSpace(json)) return result;
-
-            var root = JsonNode.Parse(json) as JsonObject;
-            var anWa = root?["AnWaSolar"] as JsonObject;
-            var last = anWa?["LastSelection"] as JsonObject;
-            if (last is null) return result;
-
-            var invNode = last["Inverter"] as JsonObject;
-            if (invNode is not null)
-            {
-                result.Inverter = new SelectedRef
-                {
-                    Hersteller = invNode["Hersteller"]?.GetValue<string>() ?? string.Empty,
-                    Model = invNode["Model"]?.GetValue<string>() ?? string.Empty
-                };
-            }
-
-            var stringsNode = last["Strings"] as JsonArray;
-            if (stringsNode is not null)
-            {
-                foreach (var n in stringsNode)
-                {
-                    if (n is JsonObject o)
-                    {
-                        var sel = new MpptStringSelection
-                        {
-                            MpptIndex = o["MpptIndex"]?.GetValue<int>() ?? 0,
-                            ModuleProString = o["ModuleProString"]?.GetValue<int>() ?? 10,
-                            ParalleleStrings = o["ParalleleStrings"]?.GetValue<int>() ?? 1,
-                            IsEnabled = o["IsEnabled"]?.GetValue<bool>() ?? true
-                        };
-                        var modRef = o["Module"] as JsonObject;
-                        if (modRef is not null)
-                        {
-                            sel.Module = new SelectedRef
-                            {
-                                Hersteller = modRef["Hersteller"]?.GetValue<string>() ?? string.Empty,
-                                Model = modRef["Model"]?.GetValue<string>() ?? string.Empty
-                            };
-                        }
-                        result.Strings.Add(sel);
-                    }
-                }
-            }
-
+            LastSelection result = Clone(EnsureLoaded().LastSelection);
             _logger.LogInformation("Letzte Auswahl geladen: WR={Wr}, Strings={Count}.",
                 result.Inverter is null ? "(none)" : $"{result.Inverter.Hersteller} {result.Inverter.Model}",
                 result.Strings.Count);
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Fehler beim Laden der letzten Auswahl. Es wird leerer Standard zurückgegeben.");
             return result;
         }
     }
 
     public bool SaveLastSelection(LastSelection selection)
     {
+        ArgumentNullException.ThrowIfNull(selection);
+        lock (_lock)
+        {
+            EnsureLoaded().LastSelection = Clone(selection);
+            bool ok = TryWrite();
+            if (ok)
+            {
+                _logger.LogInformation("Letzte Auswahl gespeichert in {Path}.", SettingsFilePath);
+            }
+
+            return ok;
+        }
+    }
+
+    private UserSettings EnsureLoaded()
+    {
+        if (_settings is not null)
+        {
+            return _settings;
+        }
+
+        if (File.Exists(SettingsFilePath))
+        {
+            _settings = ReadSettingsFile() ?? new UserSettings();
+        }
+        else if (TryImportLegacy() is { } imported)
+        {
+            _settings = imported;
+            if (TryWrite())
+            {
+                _logger.LogInformation("Einstellungen aus {Legacy} nach {Path} übernommen.", _legacyAppSettingsPath, SettingsFilePath);
+            }
+        }
+        else
+        {
+            _settings = new UserSettings();
+        }
+
+        if (!_settings.Parameters.IsValid())
+        {
+            _logger.LogWarning("Ungültige Berechnungsparameter in {Path}, es werden Standardwerte verwendet.", SettingsFilePath);
+            _settings.Parameters = new CalculationParameters();
+        }
+
+        return _settings;
+    }
+
+    // Reads settings.json; an unreadable file is kept as a backup and replaced by defaults.
+    private UserSettings? ReadSettingsFile()
+    {
         try
         {
-            var root = LoadOrCreateRoot();
-            var anWa = root["AnWaSolar"] as JsonObject ?? new JsonObject();
-            root["AnWaSolar"] = anWa;
-
-            var last = new JsonObject();
-
-            if (selection.Inverter is not null)
+            string json = File.ReadAllText(SettingsFilePath);
+            UserSettings? settings = JsonSerializer.Deserialize<UserSettings>(json, s_jsonOptions);
+            if (settings is not null)
             {
-                last["Inverter"] = new JsonObject
-                {
-                    ["Hersteller"] = selection.Inverter.Hersteller,
-                    ["Model"] = selection.Inverter.Model
-                };
+                settings.Parameters ??= new CalculationParameters();
+                settings.LastSelection ??= new LastSelection();
+                settings.LastSelection.Strings ??= [];
             }
 
-            var arr = new JsonArray();
-            foreach (var s in selection.Strings)
+            return settings;
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            string backup = $"{SettingsFilePath}.invalid-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}";
+            try
             {
-                var item = new JsonObject
-                {
-                    ["MpptIndex"] = s.MpptIndex,
-                    ["ModuleProString"] = s.ModuleProString,
-                    ["ParalleleStrings"] = s.ParalleleStrings,
-                    ["IsEnabled"] = s.IsEnabled
-                };
-                if (s.Module is not null)
-                {
-                    item["Module"] = new JsonObject
-                    {
-                        ["Hersteller"] = s.Module.Hersteller,
-                        ["Model"] = s.Module.Model
-                    };
-                }
-                arr.Add(item);
+                File.Copy(SettingsFilePath, backup, overwrite: true);
             }
-            last["Strings"] = arr;
+            catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException)
+            {
+                backup = "(keine Sicherung möglich)";
+            }
 
-            anWa["LastSelection"] = last;
+            _logger.LogError(ex, "Einstellungen in {Path} konnten nicht gelesen werden. Standardwerte werden verwendet, Sicherung: {Backup}.",
+                SettingsFilePath, backup);
+            return null;
+        }
+    }
 
-            WriteIndented(root);
-            _logger.LogInformation("Letzte Auswahl gespeichert in {Path}.", _appSettingsPath);
+    private bool TryWrite()
+    {
+        string tempPath = SettingsFilePath + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsFilePath)!);
+            string json = JsonSerializer.Serialize(_settings, s_jsonOptions);
+            File.WriteAllText(tempPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            File.Move(tempPath, SettingsFilePath, overwrite: true);
             return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogError(ex, "Fehler beim Speichern der letzten Auswahl in {Path}.", _appSettingsPath);
+            _logger.LogError(ex, "Einstellungen konnten nicht in {Path} gespeichert werden.", SettingsFilePath);
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch (Exception deleteEx) when (deleteEx is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(deleteEx, "Temporäre Datei {Path} konnte nicht gelöscht werden.", tempPath);
+            }
+
             return false;
         }
     }
 
-    private JsonObject LoadOrCreateRoot()
+    // Reads parameters and last selection from the appsettings.json of versions before 0.5.0.
+    private UserSettings? TryImportLegacy()
     {
-        if (File.Exists(_appSettingsPath))
+        try
         {
-            var json = File.ReadAllText(_appSettingsPath);
-            var root = JsonNode.Parse(json) as JsonObject;
-            return root ?? new JsonObject();
+            if (!File.Exists(_legacyAppSettingsPath))
+            {
+                return null;
+            }
+
+            if (JsonNode.Parse(File.ReadAllText(_legacyAppSettingsPath))?["AnWaSolar"] is not JsonObject anWa)
+            {
+                return null;
+            }
+
+            var parameterNode = anWa["Parameters"] as JsonObject;
+            var lastNode = anWa["LastSelection"] as JsonObject;
+            if (parameterNode is null && lastNode is null)
+            {
+                return null;
+            }
+
+            var settings = new UserSettings();
+            if (parameterNode is not null)
+            {
+                var defaults = new CalculationParameters();
+                settings.Parameters = new CalculationParameters
+                {
+                    MinTempC = parameterNode["MinTempC"]?.GetValue<double>() ?? defaults.MinTempC,
+                    MaxTempC = parameterNode["MaxTempC"]?.GetValue<double>() ?? defaults.MaxTempC,
+                    SicherheitsmargePct = parameterNode["SicherheitsmargePct"]?.GetValue<double>() ?? defaults.SicherheitsmargePct,
+                };
+            }
+
+            if (lastNode is not null)
+            {
+                settings.LastSelection = lastNode.Deserialize<LastSelection>(s_jsonOptions) ?? new LastSelection();
+                settings.LastSelection.Strings ??= [];
+            }
+
+            return settings;
         }
-        return new JsonObject();
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Alte Einstellungen in {Path} konnten nicht übernommen werden.", _legacyAppSettingsPath);
+            return null;
+        }
     }
 
-    private void WriteIndented(JsonObject root)
-    {
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        var jsonOut = root.ToJsonString(options);
-        File.WriteAllText(_appSettingsPath, jsonOut);
-    }
-
-    private static double TryParseDouble(string? text, double fallback)
-    {
-        if (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
-            return v;
-        if (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out v))
-            return v;
-        return fallback;
-    }
+    private static LastSelection Clone(LastSelection selection)
+        => JsonSerializer.Deserialize<LastSelection>(JsonSerializer.Serialize(selection, s_jsonOptions), s_jsonOptions) ?? new LastSelection();
 }
 
 #endregion

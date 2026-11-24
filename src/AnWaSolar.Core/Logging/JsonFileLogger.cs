@@ -49,6 +49,8 @@ public class JsonFileLoggerProvider : ILoggerProvider
 
 internal sealed class JsonFileLogger : ILogger
 {
+    private static readonly Lock s_writeLock = new();
+
     private readonly string _categoryName;
     private readonly ILogFilePathProvider _pathProvider;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -85,14 +87,17 @@ internal sealed class JsonFileLogger : ILogger
         var line = JsonSerializer.Serialize(record, _jsonOptions);
         var path = _pathProvider.GetCurrentLogFilePath();
 
-        // einfache, threadsichere Anhängeoperation
-        try
+        // All loggers of the process share one lock, so concurrent writes never collide on the same file.
+        lock (s_writeLock)
         {
-            File.AppendAllText(path, line + Environment.NewLine, Encoding.UTF8);
-        }
-        catch
-        {
-            // im Fehlerfall nichts werfen, um App stabil zu halten
+            try
+            {
+                File.AppendAllText(path, line + Environment.NewLine, Encoding.UTF8);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Logging must never break the application; a line that cannot be written is dropped.
+            }
         }
     }
 }
