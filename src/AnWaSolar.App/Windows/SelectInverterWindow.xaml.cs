@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 
@@ -83,8 +84,8 @@ public partial class SelectInverterWindow : Window
         DetailHersteller.Text = wr.Hersteller;
         DetailModel.Text = wr.Model;
         DetailMppt.Text = wr.MpptSpannungsbereichV;
-        DetailVdcMax.Text = wr.MaxDcEingangsspannungV.ToString();
-        DetailStart.Text = wr.StartspannungV.ToString();
+        DetailVdcMax.Text = wr.MaxDcEingangsspannungV.ToString(CultureInfo.CurrentCulture);
+        DetailStart.Text = wr.StartspannungV.ToString(CultureInfo.CurrentCulture);
         DetailCurrents.Text = $"{wr.MaxBetriebsPvEingangsstromA} / {wr.MaxEingangsKurzschlussstromA}";
         DetailMpptCount.Text = $"{wr.AnzahlDerMpptTrackers} / {wr.MaxStringsProMppt}";
     }

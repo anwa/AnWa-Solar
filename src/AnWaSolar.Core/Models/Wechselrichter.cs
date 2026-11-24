@@ -11,26 +11,26 @@ public class Wechselrichter
     public string Model { get; set; } = string.Empty;
 
     [JsonPropertyName("Max.DC-Eingangsleistung (W)")]
-    public int MaxDcEingangsleistungW { get; set; }
+    public double MaxDcEingangsleistungW { get; set; }
 
     [JsonPropertyName("Max.DC-Eingangsspannung (V)")]
-    public int MaxDcEingangsspannungV { get; set; }
+    public double MaxDcEingangsspannungV { get; set; }
 
     [JsonPropertyName("Startspannung (V)")]
-    public int StartspannungV { get; set; }
+    public double StartspannungV { get; set; }
 
-    // Bereich als String "160-650" (kann später geparst werden)
+    // Range as text, for example "160-650"; parsed by StringCalculator.TryParseVoltageRange.
     [JsonPropertyName("MPPT-Spannungsbereich (V)")]
     public string MpptSpannungsbereichV { get; set; } = string.Empty;
 
     [JsonPropertyName("Nenn-DC-Eingangsspannung (V)")]
-    public int NennDcEingangsspannungV { get; set; }
+    public double NennDcEingangsspannungV { get; set; }
 
     [JsonPropertyName("Max. Betriebs-PV-Eingangsstrom (A)")]
-    public int MaxBetriebsPvEingangsstromA { get; set; }
+    public double MaxBetriebsPvEingangsstromA { get; set; }
 
     [JsonPropertyName("Max. Eingangs-Kurzschlussstrom (A)")]
-    public int MaxEingangsKurzschlussstromA { get; set; }
+    public double MaxEingangsKurzschlussstromA { get; set; }
 
     [JsonPropertyName("Anzahl der MPP Trackers")]
     public int AnzahlDerMpptTrackers { get; set; }

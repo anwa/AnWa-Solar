@@ -51,7 +51,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - Folder `src/AnWaSolar.Core/Data/`, copied into the `Data` folder next to the executable
   - PV-Module.json: PV module datasheet values (power, UMPP/IMPP, UOC/ISC, temperature coefficients, operating temperature). The VMPP temperature coefficient (`Temperaturkoeffzient von VMPP (%/°C)`) is optional; without it the PMAX coefficient is used as a conservative approximation.
   - Wechselrichter.json: Stammdaten zu Wechselrichtern (DC-Spannungen, MPPT-Bereich, Ströme, Anzahl MPPT, max. Strings/MPPT).
-- Beide Dateien werden beim Start geladen. Bei Fehlern oder fehlenden Dateien wird dies geloggt und robust behandelt.
+- Both files are loaded at startup. Every entry is checked on its own (value types, MPPT range format such as `160-650`, positive values, UOC > UMPP, ISC ≥ IMPP, no duplicate manufacturer and model); invalid entries are skipped, and skipped entries or unreadable files are listed in a message after the start and in the log. Numeric datasheet values may be decimal numbers.
 
 ## Bedienung
 - Wechselrichter:

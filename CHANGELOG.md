@@ -3,6 +3,11 @@ Kurzbeschreibung als Header (bitte ganz oben einfügen)
 # AnWa-Solar – Solaranlagen- und String-Berechnung
 AnWa-Solar ist ein WPF-Tool zur Auslegung und Berechnung von PV-Strings mit Wechselrichtern und Batteriespeicher-Bezug. Die App bietet eine moderne Material Design 3 Oberfläche, sofortige Live-Berechnungen bei Änderungen sowie eine komfortable Markdown-Vorschau für Berichte. Einstellungen und letzte Auswahl werden in appsettings.json gespeichert und beim Start wiederhergestellt.
 
+v0.6.0 (2026-11-24)
+- Improved: Datasheet values of inverters and the module power may be decimal numbers, for example 12.5 A.
+- Improved: An invalid master data entry (wrong value type, invalid MPPT range, missing or inconsistent values, duplicate) is skipped on its own instead of discarding the whole file.
+- New: After the start, a message lists master data entries and files that could not be loaded.
+
 v0.5.0 (2026-11-24)
 - Changed: Calculation parameters and the last selection are stored per user in `%LOCALAPPDATA%\AnWa-Solar\settings.json` instead of the appsettings.json next to the program. Existing values are taken over automatically on the first start.
 - Improved: While dragging a slider, the settings are saved once the input stops instead of on every step; they are also saved when the window closes.

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 
@@ -83,7 +84,7 @@ public partial class SelectModuleWindow : Window
 
         DetailHersteller.Text = mod.Hersteller;
         DetailModel.Text = mod.Model;
-        DetailPmax.Text = mod.NominalleistungPmaxWp.ToString();
+        DetailPmax.Text = mod.NominalleistungPmaxWp.ToString(CultureInfo.CurrentCulture);
         DetailMpp.Text = $"{mod.SpannungImMppUmppV:F2} / {mod.StromImMppImppA:F2}";
         DetailOcSc.Text = $"{mod.LeerlaufspannungUocV:F2} / {mod.KurzschlusstromIscA:F2}";
         DetailCoeffs.Text = $"{mod.TemperaturkoeffPmaxProzentProGradC:F2} / {mod.TemperaturkoeffVocProzentProGradC:F2} / {mod.TemperaturkoeffIscProzentProGradC:F2}";

@@ -58,6 +58,7 @@ public partial class MainWindow : Window
             WriteLastSelection();
         };
         Closing += (_, _) => FlushPendingPersist();
+        Loaded += (_, _) => ShowDataIssues();
 
         InitializeComponent();
         Title = $"AnWa-Solar {AppVersion.Current}";
@@ -328,6 +329,29 @@ public partial class MainWindow : Window
     #endregion
 
     #region Events
+
+    // Shows master data entries that could not be loaded, once the window is visible.
+    private void ShowDataIssues()
+    {
+        IReadOnlyList<DataLoadIssue> issues = _dataStore.Issues;
+        if (issues.Count == 0) return;
+
+        const int MaxShown = 10;
+        var text = new StringBuilder();
+        text.AppendLine("Einige Stammdaten konnten nicht geladen werden:");
+        text.AppendLine();
+        foreach (DataLoadIssue issue in issues.Take(MaxShown))
+        {
+            text.AppendLine($"• {issue}");
+        }
+
+        if (issues.Count > MaxShown)
+        {
+            text.AppendLine($"• … und {issues.Count - MaxShown} weitere (siehe Log).");
+        }
+
+        MessageBox.Show(this, text.ToString(), "Stammdaten", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
 
     private void OnSelectInverterClick(object sender, RoutedEventArgs e)
     {
