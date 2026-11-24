@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-using AnWaSolar.Models;
+using AnWaSolar.Core.Models;
 
 using Microsoft.Extensions.Logging;
 
-namespace AnWaSolar.Services;
+namespace AnWaSolar.Core.Services;
 
 public interface IDataStore
 {

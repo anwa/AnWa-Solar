@@ -6,8 +6,9 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 
-using AnWaSolar.Models;
-using AnWaSolar.Services;
+using AnWaSolar.Core;
+using AnWaSolar.Core.Models;
+using AnWaSolar.Core.Services;
 
 using MaterialDesignThemes.Wpf;
 
@@ -45,6 +46,7 @@ public partial class MainWindow : Window
     public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings)
     {
         InitializeComponent();
+        Title = $"AnWa-Solar {AppVersion.Current}";
         _logger = logger;
         _markdown = markdown;
         _dataStore = dataStore;

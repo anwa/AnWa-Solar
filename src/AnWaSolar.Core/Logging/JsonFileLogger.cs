@@ -6,7 +6,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace AnWaSolar;
+namespace AnWaSolar.Core.Logging;
 
 public interface ILogFilePathProvider
 {

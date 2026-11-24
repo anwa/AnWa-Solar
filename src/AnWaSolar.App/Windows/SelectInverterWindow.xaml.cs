@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using System.Windows;
 
-using AnWaSolar.Models;
+using AnWaSolar.Core.Models;
 
-namespace AnWaSolar;
+namespace AnWaSolar.Windows;
 
 public partial class SelectInverterWindow : Window
 {

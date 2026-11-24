@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace AnWaSolar.Models;
+namespace AnWaSolar.Core.Models;
 
 public class PVModule
 {

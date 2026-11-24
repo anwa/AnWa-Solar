@@ -2,7 +2,7 @@ using Markdig;
 
 using Microsoft.Extensions.Configuration;
 
-namespace AnWaSolar;
+namespace AnWaSolar.Core.Services;
 
 public interface IMarkdownService
 {

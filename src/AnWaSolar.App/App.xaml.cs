@@ -1,10 +1,11 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 
-using AnWaSolar.Services;
+using AnWaSolar.Core;
+using AnWaSolar.Core.Logging;
+using AnWaSolar.Core.Services;
 using AnWaSolar.Windows;
 
 using Microsoft.Extensions.Configuration;
@@ -72,7 +73,7 @@ public partial class App : Application
         main.Show();
 
         var logger = _host.Services.GetRequiredService<ILogger<App>>();
-        logger.LogInformation("AnWa-Solar gestartet. Daten geladen. Version {Version}", Assembly.GetExecutingAssembly().GetName().Version?.ToString());
+        logger.LogInformation("AnWa-Solar gestartet. Daten geladen. Version {Version}", AppVersion.Current);
     }
 
     protected override void OnExit(ExitEventArgs e)
