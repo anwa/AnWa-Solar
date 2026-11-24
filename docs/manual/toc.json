@@ -8,6 +8,7 @@
     { "path": "calculation.md", "title": "How the Calculation Works" },
     { "path": "report.md", "title": "Report" },
     { "path": "master-data.md", "title": "Master Data" },
+    { "path": "datasheet-import.md", "title": "Datasheet Import" },
     { "path": "settings.md", "title": "Settings, Theme and Files" },
     { "path": "troubleshooting.md", "title": "Troubleshooting" }
   ]

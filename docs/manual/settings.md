@@ -28,9 +28,10 @@ Settings of older versions are taken over automatically on the first start.
 |---|---|
 | `C:\Program Files\AnWa-Solar` | Program, `Data\Modules.json`, `Data\Inverters.json`, `appsettings.json` |
 | `%LOCALAPPDATA%\AnWa-Solar\settings.json` | Your settings |
+| `%LOCALAPPDATA%\AnWa-Solar\Data` | Your own master data and imported datasheets, see [Datasheet Import](datasheet-import.md#your-own-master-data) |
 | `%LOCALAPPDATA%\AnWa-Solar\logs` | Log files, one per day (`log-YYYY-MM-DD.jsonl`) |
 | `%LOCALAPPDATA%\AnWa-Solar\WebView2` | Data of the report preview and of this manual |
 
 The **About** window shows the exact paths on your computer; **Copy** copies them to the clipboard.
 
-Uninstalling AnWa-Solar keeps the folder `%LOCALAPPDATA%\AnWa-Solar`. Delete it by hand to remove your settings and logs.
+Uninstalling AnWa-Solar keeps the folder `%LOCALAPPDATA%\AnWa-Solar`. Delete it by hand to remove your settings, logs and own master data.

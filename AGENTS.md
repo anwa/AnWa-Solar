@@ -67,6 +67,7 @@ dotnet format --verify-no-changes
 - Tmin and Tmax are module (cell) temperatures. VMPP uses the module's VMPP temperature coefficient; without one, the PMAX coefficient is the conservative approximation. Currents use the higher value of both temperatures.
 - Master data (`Data/Modules.json`, `Data/Inverters.json`) contains values from manufacturer datasheets only. Never estimate or invent datasheet values; when a value is missing, ask the user. Property names carry their unit.
 - Master data is shipped with the application and is read-only at runtime. The application never writes into its installation folder.
+- Own master data (datasheet import) lives in `%LOCALAPPDATA%\AnWa-Solar\Data` with the imported PDFs in `Datasheets`; an own entry replaces a shipped entry with the same manufacturer and model. Values read from a datasheet are a proposal: the import dialog shows their source, leaves values that were not found empty and saves only what the user confirmed. Never fill a missing value with an estimate.
 - A master data file that cannot be parsed is reported in the GUI, not only in the log; one invalid entry must not discard the whole file.
 
 ## GUI

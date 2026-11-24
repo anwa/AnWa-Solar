@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace AnWaSolar.Core.Models;
 
 /// <summary>Inverter datasheet values from <c>Data/Inverters.json</c>.</summary>
-public class Inverter
+public class Inverter : IMasterDataEntry
 {
     [JsonPropertyName("Manufacturer")]
     public string Manufacturer { get; set; } = string.Empty;
@@ -41,6 +41,17 @@ public class Inverter
     /// <summary>Maximum parallel strings per MPPT; 0 when the datasheet does not state it.</summary>
     [JsonPropertyName("Max. strings per MPPT")]
     public int MaxStringsPerMppt { get; set; }
+
+    /// <summary>
+    /// Imported datasheet, relative to the user data folder (for example <c>Datasheets/Trina TSM-445.pdf</c>); only own
+    /// entries have one.
+    /// </summary>
+    [JsonPropertyName("Datasheet file")]
+    public string? DatasheetFile { get; set; }
+
+    /// <summary>True for an entry from the own master data in the user data folder.</summary>
+    [JsonIgnore]
+    public bool IsUserEntry { get; set; }
 
     [JsonIgnore]
     public string DisplayName => $"{Manufacturer} {Model} (MPPT {MpptVoltageRangeV} V)";

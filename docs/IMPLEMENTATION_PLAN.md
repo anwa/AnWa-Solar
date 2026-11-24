@@ -76,6 +76,14 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] `Theme.xaml` keeps only AnWa-Solar's window styles and the state bindings of the results
 - [x] Installer contains `AnWaSoft.Design.Wpf.dll`
 
+## M12 – Datasheet import (`feature/datasheet-import`, v0.13.0)
+
+- [x] Own master data in `%LOCALAPPDATA%\AnWa-Solar\Data`, merged with the shipped data; an own entry replaces a shipped one with the same manufacturer and model
+- [x] PDF datasheet import: text extraction with PdfPig, recognition of module and inverter values, power class or model selection
+- [x] Import dialog to check, correct and complete the values; the datasheet is copied to the user data folder
+- [x] Datasheet viewer (WebView2) from the selection dialogs and the main window
+- [x] Manual page for the import
+
 ## Later
 
 - Further calculations: battery storage, AC side, cable and fuse sizing

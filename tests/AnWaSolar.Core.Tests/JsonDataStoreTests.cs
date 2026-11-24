@@ -163,8 +163,110 @@ public sealed class JsonDataStoreTests : IDisposable
         Assert.Contains("\"Inverters\" is missing", Assert.Single(store.Issues).Message, StringComparison.Ordinal);
     }
 
+    private string UserDirectory => Path.Combine(_directory, "user");
+
+    [Fact]
+    public void Own_entry_replaces_the_shipped_entry_and_new_ones_are_added()
+    {
+        Directory.CreateDirectory(UserDirectory);
+        string ownInverter = ValidInverter.Replace("\"Start voltage (V)\": 160", "\"Start voltage (V)\": 180", StringComparison.Ordinal);
+        string otherInverter = ValidInverter.Replace("SUN-18K", "SUN-20K", StringComparison.Ordinal);
+        File.WriteAllText(Path.Combine(UserDirectory, JsonDataStore.InverterFileName), Inverters(ownInverter, otherInverter));
+
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+
+        Assert.Equal(2, store.Inverters.Count);
+        Assert.Equal(180, store.Inverters[0].StartVoltageV);
+        Assert.All(store.Inverters, i => Assert.True(i.IsUserEntry));
+        Assert.False(store.Modules[0].IsUserEntry);
+        Assert.Empty(store.Issues);
+    }
+
+    [Fact]
+    public void Invalid_own_file_is_reported_with_its_own_name()
+    {
+        Directory.CreateDirectory(UserDirectory);
+        File.WriteAllText(Path.Combine(UserDirectory, JsonDataStore.ModuleFileName), "{ broken");
+
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+
+        Assert.Single(store.Modules);
+        Assert.Equal("Modules.json (own data)", Assert.Single(store.Issues).FileName);
+    }
+
+    [Fact]
+    public void Saving_writes_the_own_file_and_copies_the_datasheet()
+    {
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+        string shipped = File.ReadAllText(Path.Combine(_directory, JsonDataStore.ModuleFileName));
+        string pdf = Path.Combine(_directory, "trina.pdf");
+        File.WriteAllText(pdf, "%PDF-1.7 test");
+        Dictionary<string, string?> values = DatasheetEntryBuilderTests.Trina445();
+        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildModule(values, out Models.PVModule? module));
+
+        Models.PVModule saved = store.SaveModule(module!, pdf);
+
+        Assert.True(saved.IsUserEntry);
+        Assert.Equal("Datasheets/Trina TSM-445-NEG9R.28.pdf", saved.DatasheetFile);
+        Assert.Equal(2, store.Modules.Count);
+        Assert.Equal(File.ReadAllText(pdf), File.ReadAllText(store.GetDatasheetPath(saved)!));
+        Assert.Equal(shipped, File.ReadAllText(Path.Combine(_directory, JsonDataStore.ModuleFileName)));
+        string own = File.ReadAllText(Path.Combine(UserDirectory, JsonDataStore.ModuleFileName));
+        Assert.Contains("\"Temperature coefficient of Voc (%/°C)\": -0.24", own, StringComparison.Ordinal);
+        Assert.DoesNotContain("Vmpp (%/°C)", own, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Saving_again_replaces_the_own_entry()
+    {
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(DatasheetEntryBuilderTests.Deye18K(), out Models.Inverter? first));
+        store.SaveInverter(first!, datasheetSourcePath: null);
+        Dictionary<string, string?> changed = DatasheetEntryBuilderTests.Deye18K();
+        changed[Datasheets.DatasheetFields.StartVoltageV] = "170";
+        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(changed, out Models.Inverter? second));
+
+        Models.Inverter saved = store.SaveInverter(second!, datasheetSourcePath: null);
+
+        Assert.Equal(170, saved.StartVoltageV);
+        Assert.Equal(170, Assert.Single(store.Inverters).StartVoltageV);
+        Assert.Null(store.GetDatasheetPath(saved));
+    }
+
+    [Fact]
+    public void Unreadable_own_file_is_not_overwritten()
+    {
+        Directory.CreateDirectory(UserDirectory);
+        string ownPath = Path.Combine(UserDirectory, JsonDataStore.InverterFileName);
+        File.WriteAllText(ownPath, "{ broken");
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(DatasheetEntryBuilderTests.Deye18K(), out Models.Inverter? inverter));
+
+        Assert.Throws<IOException>(() => store.SaveInverter(inverter!, datasheetSourcePath: null));
+        Assert.Equal("{ broken", File.ReadAllText(ownPath));
+    }
+
+    [Fact]
+    public void Datasheet_path_outside_the_user_folder_is_not_opened()
+    {
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+        var entry = new Models.Inverter { IsUserEntry = true, DatasheetFile = "../" + JsonDataStore.ModuleFileName };
+
+        Assert.Null(store.GetDatasheetPath(entry));
+    }
+
+    [Fact]
+    public void Datasheet_file_name_replaces_invalid_characters()
+    {
+        var module = new Models.PVModule { Manufacturer = "Ja-Solar", Model = "JAM54D40-460/LB" };
+
+        Assert.Equal("Ja-Solar JAM54D40-460_LB.pdf", JsonDataStore.DatasheetFileName(module));
+    }
+
     private sealed class TestPaths(string directory) : IDataPathProvider
     {
         public string GetFilePath(string fileName) => Path.Combine(directory, fileName);
+
+        public string UserDirectory => Path.Combine(directory, "user");
     }
 }

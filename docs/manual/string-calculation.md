@@ -4,7 +4,7 @@ The **String calculation** tab has two columns: the **Configuration** on the lef
 
 ## Inverter
 
-**Select** (later **Change**) in the **Inverter** card opens the selection dialog. Choose the manufacturer and the model; the dialog shows the datasheet values (MPPT voltage range, max. DC input voltage, start voltage, currents, MPPT count and max. strings per MPPT). **Apply** takes over the inverter.
+**Select** (later **Change**) in the **Inverter** card opens the selection dialog. Choose the manufacturer and the model; the dialog shows the datasheet values (MPPT voltage range, max. DC input voltage, start voltage, currents, MPPT count and max. strings per MPPT). **Apply** takes over the inverter. **Import…** reads a PDF datasheet into your own master data, **Datasheet** shows the stored datasheet of the selected entry, see [Datasheet Import](datasheet-import.md).
 
 After the selection the card shows the inverter values, and one card per MPPT input appears below **Strings**.
 
@@ -14,6 +14,7 @@ Each MPPT has its own card:
 
 - **Switch** on the right of the MPPT title: disables the MPPT. A disabled MPPT keeps its module and counts but is skipped by the calculation and the report. Its card is dimmed and locked until you enable it again.
 - **Select module** / **Change**: opens the module selection with the datasheet values of the module. The card then shows the module with Pmax, Voc, Vmpp and Impp.
+- **Datasheet** (PDF icon): shows the imported datasheet of the module; only visible when it has one. The inverter card has the same button.
 - **Remove** (bin icon): removes the module from this MPPT; only visible when a module is selected.
 - **Modules per string** (first slider): ranges from 1 to the highest allowed count + 5. The current value is shown on the right; the marked range and the line below the slider show the allowed range of this module on this inverter, see [How the Calculation Works](calculation.md#allowed-modules-per-string).
 - **Parallel strings** (second slider): ranges from 1 to the max. strings per MPPT of the inverter.

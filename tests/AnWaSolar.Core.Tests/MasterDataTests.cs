@@ -13,7 +13,7 @@ public sealed class MasterDataTests
 {
     private static JsonDataStore LoadShippedData()
     {
-        var store = new JsonDataStore(NullLogger<JsonDataStore>.Instance, new JsonSerializerOptions(), new DataPathProvider());
+        var store = new JsonDataStore(NullLogger<JsonDataStore>.Instance, new JsonSerializerOptions(), new DataPathProvider(new NoUserData()));
         store.Load();
         return store;
     }
@@ -55,5 +55,11 @@ public sealed class MasterDataTests
             Assert.True(inverter.MaxShortCircuitCurrentA >= inverter.MaxInputCurrentA, name);
             Assert.Matches(@"^\d+-\d+$", inverter.MpptVoltageRangeV);
         }
+    }
+
+    // Only the shipped files: a user data folder that does not exist.
+    private sealed class NoUserData : IUserDataLocation
+    {
+        public string DirectoryPath { get; } = Path.Combine(Path.GetTempPath(), "AnWaSolar.Tests", Guid.NewGuid().ToString("N"));
     }
 }

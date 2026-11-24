@@ -1,0 +1,115 @@
+<aw:ChromeWindow x:Class="AnWaSolar.Windows.ImportDatasheetWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:aw="https://anwa-soft.de/design/wpf"
+                 Style="{StaticResource AppDialog}"
+                 WindowStartupLocation="CenterOwner"
+                 ResizeMode="CanResize"
+                 Title="Import datasheet"
+                 Width="840"
+                 Height="820"
+                 MinWidth="640"
+                 MinHeight="480">
+    <DockPanel>
+        <!-- Buttons -->
+        <Border Style="{StaticResource AnWaSoft.DialogButtonBar}">
+            <DockPanel>
+                <Button DockPanel.Dock="Left"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Click="OnOpenDatasheetClick"
+                        ToolTip="Show the datasheet next to this dialog to compare the values"
+                        AutomationProperties.Name="Open datasheet">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Open datasheet" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            MinWidth="96"
+                            Margin="0,0,8,0"
+                            IsCancel="True" />
+                    <Button Content="Apply"
+                            MinWidth="96"
+                            IsDefault="True"
+                            Click="OnApplyClick" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Kind, power class and notes -->
+        <StackPanel DockPanel.Dock="Top" Margin="24,18,24,8">
+            <TextBlock x:Name="FileText" Style="{StaticResource AnWaSoft.Text.Muted}" Margin="0,0,0,12" />
+            <DockPanel>
+                <ListBox x:Name="KindSelector"
+                         DockPanel.Dock="Left"
+                         Style="{StaticResource MaterialDesignToolToggleListBox}"
+                         SelectionChanged="OnKindChanged"
+                         VerticalAlignment="Center"
+                         AutomationProperties.Name="Kind">
+                    <ListBoxItem AutomationProperties.Name="PV module">
+                        <StackPanel Orientation="Horizontal" Margin="4,0">
+                            <materialDesign:PackIcon Kind="SolarPanel" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="PV module" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem AutomationProperties.Name="Inverter">
+                        <StackPanel Orientation="Horizontal" Margin="4,0">
+                            <materialDesign:PackIcon Kind="FlashOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Inverter" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+                <ComboBox x:Name="VariantCombo"
+                          Margin="16,0,0,0"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Model or power class in the datasheet"
+                          SelectionChanged="OnVariantChanged"
+                          AutomationProperties.Name="Model in the datasheet" />
+            </DockPanel>
+
+            <Border Style="{StaticResource AnWaSoft.StatusBanner}"
+                    aw:StatusAssist.Kind="Warning"
+                    Margin="0,14,0,0"
+                    Padding="14,10">
+                <DockPanel>
+                    <materialDesign:PackIcon DockPanel.Dock="Left"
+                                             Style="{StaticResource AnWaSoft.StatusIcon}"
+                                             aw:StatusAssist.Kind="Warning"
+                                             Margin="0,0,10,0"
+                                             VerticalAlignment="Top" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="The values were read automatically. Check every value against the datasheet before you apply them: the string check relies on them. Fields that were not found are empty; enter them from the datasheet." />
+                </DockPanel>
+            </Border>
+            <TextBlock x:Name="ExistingText"
+                       Margin="0,10,0,0"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed"
+                       Foreground="{DynamicResource AnWaSoft.Brush.Status.Warning}" />
+        </StackPanel>
+
+        <!-- Problems after Apply -->
+        <TextBlock x:Name="ErrorText"
+                   DockPanel.Dock="Bottom"
+                   Margin="24,4,24,10"
+                   TextWrapping="Wrap"
+                   Visibility="Collapsed"
+                   Foreground="{DynamicResource AnWaSoft.Brush.Status.Error}"
+                   AutomationProperties.Name="Problems" />
+
+        <!-- Fields, created in code -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid x:Name="FieldGrid" Margin="24,4,24,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="250" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="56" />
+                    <ColumnDefinition Width="28" />
+                </Grid.ColumnDefinitions>
+            </Grid>
+        </ScrollViewer>
+    </DockPanel>
+</aw:ChromeWindow>

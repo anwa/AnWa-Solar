@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using AnWaSolar.Core.Calculation;
 using AnWaSolar.Core.Models;
@@ -26,34 +28,66 @@ public interface IDataStore
     IReadOnlyList<DataLoadIssue> Issues { get; }
 
     void Load();
+
+    /// <summary>Full path of the datasheet of an entry, or null when it has none or the file is missing.</summary>
+    string? GetDatasheetPath(IMasterDataEntry entry);
+
+    /// <summary>
+    /// Saves a module into the own master data, replacing an own entry with the same manufacturer and model, copies
+    /// the datasheet (when given) into the user data folder and reloads the master data. Returns the loaded entry.
+    /// </summary>
+    /// <exception cref="IOException">The own master data or the datasheet cannot be written.</exception>
+    PVModule SaveModule(PVModule module, string? datasheetSourcePath);
+
+    /// <inheritdoc cref="SaveModule"/>
+    Inverter SaveInverter(Inverter inverter, string? datasheetSourcePath);
 }
 
 public interface IDataPathProvider
 {
+    /// <summary>Path of a shipped master data file (read-only).</summary>
     string GetFilePath(string fileName);
+
+    /// <summary>Folder of the own master data and the imported datasheets.</summary>
+    string UserDirectory { get; }
 }
 
 public class DataPathProvider : IDataPathProvider
 {
     private readonly string _dataDir;
 
-    public DataPathProvider()
+    public DataPathProvider(IUserDataLocation userData)
     {
-        // The Data folder is shipped next to the executable.
+        // The shipped Data folder is next to the executable; the own master data is in the per-user data folder.
         _dataDir = Path.Combine(AppContext.BaseDirectory, "Data");
+        UserDirectory = Path.Combine(userData.DirectoryPath, "Data");
     }
+
+    public string UserDirectory { get; }
 
     public string GetFilePath(string fileName) => Path.Combine(_dataDir, fileName);
 }
 
 /// <summary>
-/// Loads the master data files. Every entry is read and validated on its own, so one invalid entry does not discard
-/// the whole file; skipped entries and unreadable files are reported in <see cref="Issues"/>.
+/// Loads the shipped master data and the own master data from the user data folder. Every entry is read and validated
+/// on its own, so one invalid entry does not discard the whole file; skipped entries and unreadable files are reported
+/// in <see cref="Issues"/>. An own entry replaces a shipped entry with the same manufacturer and model. The shipped
+/// files are never written.
 /// </summary>
 public class JsonDataStore : IDataStore
 {
     public const string ModuleFileName = "Modules.json";
     public const string InverterFileName = "Inverters.json";
+    public const string DatasheetFolder = "Datasheets";
+
+    private const string OwnSuffix = " (own data)";
+
+    private static readonly JsonSerializerOptions s_writeOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
 
     private readonly ILogger<JsonDataStore> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -79,31 +113,188 @@ public class JsonDataStore : IDataStore
     public void Load()
     {
         var issues = new List<DataLoadIssue>();
-        _modules = LoadEntries<PVModule>(ModuleFileName, "Modules", ValidateModule, m => (m.Manufacturer, m.Model), issues);
-        _inverters = LoadEntries<Inverter>(InverterFileName, "Inverters", ValidateInverter, w => (w.Manufacturer, w.Model), issues);
+        _modules = Merge(
+            LoadEntries<PVModule>(_paths.GetFilePath(ModuleFileName), ModuleFileName, "Modules", ValidateModule, issues, own: false),
+            LoadEntries<PVModule>(UserFilePath(ModuleFileName), ModuleFileName + OwnSuffix, "Modules", ValidateModule, issues, own: true));
+        _inverters = Merge(
+            LoadEntries<Inverter>(_paths.GetFilePath(InverterFileName), InverterFileName, "Inverters", ValidateInverter, issues, own: false),
+            LoadEntries<Inverter>(UserFilePath(InverterFileName), InverterFileName + OwnSuffix, "Inverters", ValidateInverter, issues, own: true));
         _issues = issues;
 
-        _logger.LogInformation("Master data loaded: {ModuleCount} PV modules, {InvCount} inverters.",
-            _modules.Count, _inverters.Count);
+        _logger.LogInformation("Master data loaded: {ModuleCount} PV modules, {InvCount} inverters ({OwnModules} and {OwnInverters} own).",
+            _modules.Count, _inverters.Count, _modules.Count(m => m.IsUserEntry), _inverters.Count(i => i.IsUserEntry));
         foreach (DataLoadIssue issue in issues)
         {
             _logger.LogWarning("Master data: {Issue}", issue.ToString());
         }
     }
 
+    public string? GetDatasheetPath(IMasterDataEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (!entry.IsUserEntry || string.IsNullOrWhiteSpace(entry.DatasheetFile))
+        {
+            return null;
+        }
+
+        // Only files inside the user data folder are opened.
+        string root = Path.GetFullPath(_paths.UserDirectory) + Path.DirectorySeparatorChar;
+        string path = Path.GetFullPath(Path.Combine(root, entry.DatasheetFile));
+        return path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
+    }
+
+    public PVModule SaveModule(PVModule module, string? datasheetSourcePath)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        if (ValidateModule(module) is { } error)
+        {
+            throw new ArgumentException($"The module is invalid: {error}", nameof(module));
+        }
+
+        Save(module, datasheetSourcePath, ModuleFileName, "Modules");
+        return _modules.First(m => m.IsUserEntry && SameKey(m, module));
+    }
+
+    public Inverter SaveInverter(Inverter inverter, string? datasheetSourcePath)
+    {
+        ArgumentNullException.ThrowIfNull(inverter);
+        if (ValidateInverter(inverter) is { } error)
+        {
+            throw new ArgumentException($"The inverter is invalid: {error}", nameof(inverter));
+        }
+
+        Save(inverter, datasheetSourcePath, InverterFileName, "Inverters");
+        return _inverters.First(i => i.IsUserEntry && SameKey(i, inverter));
+    }
+
+    /// <summary>File name of a stored datasheet: manufacturer and model without characters Windows does not allow.</summary>
+    public static string DatasheetFileName(IMasterDataEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        char[] invalid = Path.GetInvalidFileNameChars();
+        string name = new([.. $"{entry.Manufacturer} {entry.Model}".Select(c => invalid.Contains(c) ? '_' : c)]);
+        return name.Trim().TrimEnd('.') + ".pdf";
+    }
+
+    private string UserFilePath(string fileName) => Path.Combine(_paths.UserDirectory, fileName);
+
+    private static bool SameKey(IMasterDataEntry a, IMasterDataEntry b) =>
+        string.Equals(a.Manufacturer, b.Manufacturer, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(a.Model, b.Model, StringComparison.OrdinalIgnoreCase);
+
+    // Shipped entries in their order; an own entry replaces the shipped one with the same key, the others follow.
+    private static List<T> Merge<T>(List<T> shipped, List<T> own)
+        where T : IMasterDataEntry
+    {
+        var result = new List<T>(shipped);
+        foreach (T entry in own)
+        {
+            int index = result.FindIndex(s => SameKey(s, entry));
+            if (index >= 0)
+            {
+                result[index] = entry;
+            }
+            else
+            {
+                result.Add(entry);
+            }
+        }
+
+        return result;
+    }
+
+    private void Save<T>(T entry, string? datasheetSourcePath, string fileName, string arrayProperty)
+        where T : class, IMasterDataEntry
+    {
+        Directory.CreateDirectory(_paths.UserDirectory);
+        string jsonPath = UserFilePath(fileName);
+
+        // Read the own file first, so that nothing is copied when it cannot be updated.
+        JsonObject root;
+        if (File.Exists(jsonPath))
+        {
+            try
+            {
+                root = JsonNode.Parse(File.ReadAllText(jsonPath), documentOptions: new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }) as JsonObject
+                    ?? throw new InvalidDataException("The file does not contain a JSON object.");
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidDataException)
+            {
+                throw new IOException($"The own master data file {jsonPath} cannot be read ({ex.Message}). Correct or remove it first.", ex);
+            }
+        }
+        else
+        {
+            root = [];
+        }
+
+        if (root[arrayProperty] is not JsonArray array)
+        {
+            array = [];
+            root[arrayProperty] = array;
+        }
+
+        entry.DatasheetFile = datasheetSourcePath is null ? null : CopyDatasheet(entry, datasheetSourcePath);
+
+        for (int i = array.Count - 1; i >= 0; i--)
+        {
+            if (array[i] is JsonObject existing
+                && string.Equals((string?)existing["Manufacturer"], entry.Manufacturer, StringComparison.OrdinalIgnoreCase)
+                && string.Equals((string?)existing["Model"], entry.Model, StringComparison.OrdinalIgnoreCase))
+            {
+                array.RemoveAt(i);
+            }
+        }
+
+        array.Add(JsonSerializer.SerializeToNode(entry, s_writeOptions));
+        WriteAtomically(jsonPath, root.ToJsonString(s_writeOptions));
+        _logger.LogInformation("Own master data saved: {Manufacturer} {Model} in {Path}, datasheet {Datasheet}.",
+            entry.Manufacturer, entry.Model, jsonPath, entry.DatasheetFile ?? "(none)");
+        Load();
+    }
+
+    // Copies the datasheet into the user data folder and returns its path relative to that folder.
+    private string CopyDatasheet(IMasterDataEntry entry, string sourcePath)
+    {
+        string folder = Path.Combine(_paths.UserDirectory, DatasheetFolder);
+        Directory.CreateDirectory(folder);
+        string name = DatasheetFileName(entry);
+        string target = Path.Combine(folder, name);
+        if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+        {
+            string temp = target + ".tmp";
+            File.Copy(sourcePath, temp, overwrite: true);
+            File.Move(temp, target, overwrite: true);
+        }
+
+        return DatasheetFolder + "/" + name;
+    }
+
+    private static void WriteAtomically(string path, string content)
+    {
+        string temp = path + ".tmp";
+        File.WriteAllText(temp, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.Move(temp, path, overwrite: true);
+    }
+
     private List<T> LoadEntries<T>(
+        string path,
         string fileName,
         string arrayProperty,
         Func<T, string?> validate,
-        Func<T, (string Manufacturer, string Model)> key,
-        List<DataLoadIssue> issues)
-        where T : class
+        List<DataLoadIssue> issues,
+        bool own)
+        where T : class, IMasterDataEntry
     {
         var result = new List<T>();
-        string path = _paths.GetFilePath(fileName);
         if (!File.Exists(path))
         {
-            issues.Add(new DataLoadIssue(fileName, null, "File not found."));
+            // The own master data is optional.
+            if (!own)
+            {
+                issues.Add(new DataLoadIssue(fileName, null, "File not found."));
+            }
+
             return result;
         }
 
@@ -158,11 +349,17 @@ public class JsonDataStore : IDataStore
                     continue;
                 }
 
-                (string manufacturer, string model) = key(item);
-                if (!seen.Add((manufacturer.ToUpperInvariant(), model.ToUpperInvariant())))
+                if (!seen.Add((item.Manufacturer.ToUpperInvariant(), item.Model.ToUpperInvariant())))
                 {
                     issues.Add(new DataLoadIssue(fileName, entry, "Entry skipped: duplicate manufacturer and model."));
                     continue;
+                }
+
+                item.IsUserEntry = own;
+                if (!own)
+                {
+                    // Datasheets belong to the own master data only.
+                    item.DatasheetFile = null;
                 }
 
                 result.Add(item);
