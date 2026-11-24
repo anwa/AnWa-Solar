@@ -1,8 +1,10 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Windows;
 
-namespace AnWaSolar;
+using AnWaSolar.Core.Services;
+
+namespace AnWaSolar.Windows;
 
 public partial class ParametersWindow : Window
 {

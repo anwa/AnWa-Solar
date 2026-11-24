@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
-using AnWaSolar.Models;
 
-namespace AnWaSolar;
+using AnWaSolar.Core.Models;
+
+namespace AnWaSolar.Windows;
 
 public partial class SelectModuleWindow : Window
 {

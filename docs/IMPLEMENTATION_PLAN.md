@@ -7,14 +7,14 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] `AGENTS.md`, `CLAUDE.md` and this plan
 - [x] Remove the prompt tooling of the former chat workflow (`prePrompt.md`, `CreatePrompt.py`, its `.gitignore` entries)
 
-## M2 – Project structure and build (`refactor/project-structure`)
+## M2 – Project structure and build (`refactor/project-structure`, v0.3.0)
 
-- [ ] Target `net11.0-windows`; `global.json` pins the SDK
-- [ ] `Directory.Build.props` with `<Version>` as the single version source, `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild`; version shown in the main window title and logged at startup
-- [ ] `Directory.Packages.props` with central package versions (newest stable versions for .NET 11)
-- [ ] `.editorconfig` and `.gitattributes`
-- [ ] Split into `src/AnWaSolar.Core`, `src/AnWaSolar.App` and `tests/AnWaSolar.Core.Tests` (xUnit); namespaces match folders
-- [ ] Checks `dotnet build -warnaserror`, `dotnet test`, `dotnet format --verify-no-changes` pass
+- [x] Target `net11.0-windows`; `global.json` pins the SDK
+- [x] `Directory.Build.props` with `<Version>` as the single version source, `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild`; version shown in the main window title and logged at startup
+- [x] `Directory.Packages.props` with central package versions (newest stable versions for .NET 11)
+- [x] `.editorconfig` and `.gitattributes`
+- [x] Split into `src/AnWaSolar.Core`, `src/AnWaSolar.App` and `tests/AnWaSolar.Core.Tests` (xUnit); namespaces match folders
+- [x] Checks `dotnet build -warnaserror`, `dotnet test`, `dotnet format --verify-no-changes` pass
 
 ## M3 – Calculation core (`feature/calculation-core`)
 

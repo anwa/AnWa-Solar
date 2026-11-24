@@ -1,14 +1,18 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using AnWaSolar.Models;
-using AnWaSolar.Services;
-using Microsoft.Extensions.Logging;
+
+using AnWaSolar.Core;
+using AnWaSolar.Core.Models;
+using AnWaSolar.Core.Services;
+
 using MaterialDesignThemes.Wpf;
+
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
 namespace AnWaSolar.Windows;
@@ -42,6 +46,7 @@ public partial class MainWindow : Window
     public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings)
     {
         InitializeComponent();
+        Title = $"AnWa-Solar {AppVersion.Current}";
         _logger = logger;
         _markdown = markdown;
         _dataStore = dataStore;

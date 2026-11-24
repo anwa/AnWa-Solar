@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AnWaSolar.App/AnWaSolar.App.csproj" />
+    <Project Path="src/AnWaSolar.Core/AnWaSolar.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AnWaSolar.Core.Tests/AnWaSolar.Core.Tests.csproj" />
+  </Folder>
+</Solution>

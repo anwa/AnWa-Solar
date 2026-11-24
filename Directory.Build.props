@@ -1,0 +1,20 @@
+<Project>
+  <!-- Single version source of the application (x.y.z, without "v"). -->
+  <PropertyGroup>
+    <Version>0.3.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Authors>Andreas Wansner</Authors>
+    <Product>AnWa-Solar</Product>
+    <Copyright>© $([System.DateTime]::Now.Year) Andreas Wansner</Copyright>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

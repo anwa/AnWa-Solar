@@ -32,22 +32,23 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - Strukturiertes Logging mit JSONL-Dateien, inkl. Leveln und aussagekräftigen Meldungen.
 
 ## Systemvoraussetzungen
-- Windows 11
-- .NET 10 (TargetFramework net10.0-windows)
-- Visual Studio Community 2026 (oder kompatibel)
-- Keine Abhängigkeit zu Newtonsoft.Json
+- Windows 11 (x64)
+- .NET 11 SDK (target framework `net11.0-windows`, SDK pinned in `global.json`)
+- Visual Studio 2026 or the `dotnet` CLI
 
 ## Installation und Start
-1. Repository klonen:
-   - https://github.com/anwa/AnWa-Solar.git
-2. Projekt öffnen:
-   - AnWa-Solar.slnx oder AnWa-Solar.csproj in Visual Studio öffnen.
-3. NuGet-Pakete werden automatisch wiederhergestellt.
-4. Starten:
-   - Konfiguration „Debug“ oder „Release“ auswählen und die App starten.
+1. Clone the repository: https://github.com/anwa/AnWa-Solar.git
+2. Build and test from the repository root:
+
+   ```powershell
+   dotnet build -warnaserror
+   dotnet test
+   ```
+
+3. Start the application with `dotnet run --project src/AnWaSolar.App`, or open `AnWaSolar.slnx` in Visual Studio and start `AnWaSolar.App`.
 
 ## Datenquellen
-- Verzeichnis Data/
+- Folder `src/AnWaSolar.Core/Data/`, copied into the `Data` folder next to the executable
   - PV-Module.json: Stammdaten zu PV-Modulen (Leistung, UMPP/IMPP, UOC/ISC, Temperaturkoeffizienten, Betriebstemperatur).
   - Wechselrichter.json: Stammdaten zu Wechselrichtern (DC-Spannungen, MPPT-Bereich, Ströme, Anzahl MPPT, max. Strings/MPPT).
 - Beide Dateien werden beim Start geladen. Bei Fehlern oder fehlenden Dateien wird dies geloggt und robust behandelt.
@@ -91,7 +92,10 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - States und Kontraste auf Lesbarkeit geprüft.
 
 ## Architektur
-- WPF mit DI über Microsoft.Extensions.Hosting.
+- `src/AnWaSolar.Core`: models, master data, services and logging without WPF references.
+- `src/AnWaSolar.App`: WPF application (windows, dependency injection through Microsoft.Extensions.Hosting).
+- `tests/AnWaSolar.Core.Tests`: xUnit tests for Core.
+- The version is defined once in `Directory.Build.props` and shown in the main window title; package versions are pinned in `Directory.Packages.props`.
 - Services:
   - JsonDataStore: Laden der Stammdaten (System.Text.Json).
   - MarkdownService: Markdown→HTML via Markdig.

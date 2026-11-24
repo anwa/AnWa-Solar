@@ -1,11 +1,12 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace AnWaSolar;
+namespace AnWaSolar.Core.Services;
 
 #region Schnittstellen und Modelle
 

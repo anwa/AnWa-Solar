@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace AnWaSolar.Models;
+namespace AnWaSolar.Core.Models;
 
 public class StringConfiguration
 {

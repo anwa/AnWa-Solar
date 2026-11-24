@@ -1,10 +1,10 @@
-﻿<Window x:Class="AnWaSolar.SelectModuleWindow"
+﻿<Window x:Class="AnWaSolar.Windows.SelectInverterWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="PV-Modul auswählen"
-        Width="720"
-        Height="560"
+        Title="Wechselrichter auswählen"
+        Width="680"
+        Height="520"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize">
     <Grid>
@@ -12,7 +12,7 @@
             <materialDesign:ColorZone Mode="PrimaryMid"
                                       DockPanel.Dock="Top"
                                       Padding="12">
-                <TextBlock Text="PV-Modul-Auswahl"
+                <TextBlock Text="Wechselrichter-Auswahl"
                            Foreground="White"
                            FontSize="16"
                            VerticalAlignment="Center" />
@@ -59,7 +59,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="220" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
@@ -79,38 +79,38 @@
                                        Text="-" />
                             <TextBlock Grid.Row="2"
                                        Grid.Column="0"
-                                       Text="Pmax (Wp)" />
+                                       Text="MPPT-Spannungsbereich (V)" />
                             <TextBlock Grid.Row="2"
                                        Grid.Column="1"
-                                       x:Name="DetailPmax"
+                                       x:Name="DetailMppt"
                                        Text="-" />
                             <TextBlock Grid.Row="3"
                                        Grid.Column="0"
-                                       Text="UMPP (V) / IMPP (A)" />
+                                       Text="Max. DC-Eingangsspannung (V)" />
                             <TextBlock Grid.Row="3"
                                        Grid.Column="1"
-                                       x:Name="DetailMpp"
+                                       x:Name="DetailVdcMax"
                                        Text="-" />
                             <TextBlock Grid.Row="4"
                                        Grid.Column="0"
-                                       Text="UOC (V) / ISC (A)" />
+                                       Text="Startspannung (V)" />
                             <TextBlock Grid.Row="4"
                                        Grid.Column="1"
-                                       x:Name="DetailOcSc"
+                                       x:Name="DetailStart"
                                        Text="-" />
                             <TextBlock Grid.Row="5"
                                        Grid.Column="0"
-                                       Text="Temp.-Koeff. Pmax / Voc / Isc (%/°C)" />
+                                       Text="I_in_max / I_sc_max (A)" />
                             <TextBlock Grid.Row="5"
                                        Grid.Column="1"
-                                       x:Name="DetailCoeffs"
+                                       x:Name="DetailCurrents"
                                        Text="-" />
                             <TextBlock Grid.Row="6"
                                        Grid.Column="0"
-                                       Text="Betriebstemperatur (°C)" />
+                                       Text="MPPTs / Max. Strings/MPPT" />
                             <TextBlock Grid.Row="6"
                                        Grid.Column="1"
-                                       x:Name="DetailTempRange"
+                                       x:Name="DetailMpptCount"
                                        Text="-" />
                         </Grid>
                     </StackPanel>

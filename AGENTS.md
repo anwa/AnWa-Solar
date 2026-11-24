@@ -51,8 +51,6 @@ dotnet test
 dotnet format --verify-no-changes
 ```
 
-Until the test project exists (milestone M2 in `docs/IMPLEMENTATION_PLAN.md`), `dotnet build` is the only available check.
-
 ## Installer and Release
 
 - The MSI is built with WiX 5 (`installer/AnWaSolar.Installer`), deliberately not WiX 6 or newer, whose EULA requires the Open Source Maintenance Fee. Do not upgrade WiX without the user's decision.

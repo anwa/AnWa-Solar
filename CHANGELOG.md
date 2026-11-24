@@ -3,7 +3,9 @@ Kurzbeschreibung als Header (bitte ganz oben einfügen)
 # AnWa-Solar – Solaranlagen- und String-Berechnung
 AnWa-Solar ist ein WPF-Tool zur Auslegung und Berechnung von PV-Strings mit Wechselrichtern und Batteriespeicher-Bezug. Die App bietet eine moderne Material Design 3 Oberfläche, sofortige Live-Berechnungen bei Änderungen sowie eine komfortable Markdown-Vorschau für Berichte. Einstellungen und letzte Auswahl werden in appsettings.json gespeichert und beim Start wiederhergestellt.
 
-Unveröffentlich
+v0.3.0 (2026-11-24)
+- Changed: AnWa-Solar now requires .NET 11.
+- New: The main window title shows the application version.
 
 v0.2.0
 - Neu: In den String-Abschnitten steuern Slider die Anzahl der Module pro String und die Anzahl paralleler Strings. Grenzen werden dynamisch aus den Berechnungsergebnissen abgeleitet.
