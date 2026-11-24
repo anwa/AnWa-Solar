@@ -28,7 +28,7 @@ AnWa-Solar is a Windows desktop tool for designing photovoltaic systems. It curr
 
 ## Stack
 
-- C# on .NET 11 (`net11.0-windows`), WPF, MaterialDesignThemes (Material Design 3), Markdig for the report, `System.Text.Json` (no Newtonsoft.Json), `Microsoft.Extensions.Hosting` for dependency injection, configuration and logging.
+- C# on .NET 11 (`net11.0-windows`), WPF, MaterialDesignThemes (Material Design 3), Markdig for the report, Microsoft Edge WebView2 for the report preview with KaTeX shipped in `src/AnWaSolar.App/Assets/katex` (third-party files kept unchanged; update them only as a whole release with its license), `System.Text.Json` (no Newtonsoft.Json), `Microsoft.Extensions.Hosting` for dependency injection, configuration and logging.
 - The Python sections of `../AGENTS.md` (Python environment, pytest/ruff checks) do not apply. Its configuration, GUI threading and release build rules apply with the .NET equivalents below.
 - Projects: a Core library without WPF references (models, master data loading, calculations, report generation, settings), the WPF application, and an xUnit test project for Core. Calculation logic has exactly one owner in Core; the live results and the report both consume the same calculation result.
 - `Nullable` and `ImplicitUsings` are enabled; build warnings are treated as errors.
