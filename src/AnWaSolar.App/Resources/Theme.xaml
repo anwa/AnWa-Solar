@@ -1,308 +1,35 @@
+<!-- AnWa-Solar styles on top of the AnWa-Soft design library (AnWaSoft.Design.Wpf). Colours, the title bar and the
+     shared styles come from the library; this dictionary only adds the application icon and binds the result
+     states of the calculation to the library's status styles. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-                    xmlns:w="clr-namespace:AnWaSolar.Windows"
-                    xmlns:calc="clr-namespace:AnWaSolar.Core.Calculation;assembly=AnWaSolar.Core">
+                    xmlns:aw="https://anwa-soft.de/design/wpf">
 
-    <!-- Colours. Theme-dependent brushes are replaced by ThemeService when the light or dark theme is applied;
-         the values here are the light theme. -->
-    <SolidColorBrush x:Key="App.TitleBar" Color="#3F51B5" />
-    <SolidColorBrush x:Key="App.Accent" Color="#FFC107" />
-    <SolidColorBrush x:Key="App.TextMuted" Color="#5F6368" />
-    <SolidColorBrush x:Key="App.PanelBackground" Color="#F4F5FA" />
-    <SolidColorBrush x:Key="App.RowAlternate" Color="#0A3F51B5" />
-
-    <SolidColorBrush x:Key="State.Ok" Color="#2E7D32" />
-    <SolidColorBrush x:Key="State.Warning" Color="#B26A00" />
-    <SolidColorBrush x:Key="State.Error" Color="#C62828" />
-    <SolidColorBrush x:Key="State.Neutral" Color="#5F6368" />
-    <SolidColorBrush x:Key="State.OkTint" Color="#E8F5E9" />
-    <SolidColorBrush x:Key="State.WarningTint" Color="#FFF4E0" />
-    <SolidColorBrush x:Key="State.ErrorTint" Color="#FDECEA" />
-    <SolidColorBrush x:Key="State.NeutralTint" Color="#EEEFF3" />
-
-    <FontFamily x:Key="AppFont">Segoe UI</FontFamily>
-    <sys:Double x:Key="TitleBarHeight">48</sys:Double>
-
-    <!-- Window buttons and title bar buttons -->
-    <Style x:Key="CaptionButton" TargetType="Button">
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Width" Value="46" />
-        <Setter Property="Height" Value="{StaticResource TitleBarHeight}" />
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="IsTabStop" Value="False" />
-        <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#26FFFFFF" />
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#40FFFFFF" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="CloseCaptionButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bg" Background="{TemplateBinding Background}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#E81123" />
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="#F1707A" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="TitleBarButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconForegroundButton}">
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="Width" Value="40" />
-        <Setter Property="Height" Value="40" />
-        <Setter Property="Margin" Value="2,0" />
-        <Setter Property="materialDesign:RippleAssist.Feedback" Value="White" />
-        <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
-    </Style>
-
-    <!-- All windows: own title bar with icon, title, subtitle, optional content and window buttons, then a thin
-         accent line. The Windows title bar is replaced through WindowChrome. -->
-    <Style x:Key="AppWindow" TargetType="w:ChromeWindow">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Background}" />
-        <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
-        <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
-        <Setter Property="TextElement.FontSize" Value="13" />
+    <!-- Windows and dialogs with the AnWa-Solar icon -->
+    <Style x:Key="AppWindow" TargetType="aw:ChromeWindow" BasedOn="{StaticResource AnWaSoft.Window}">
         <Setter Property="Icon" Value="pack://application:,,,/Resources/AppIcon.ico" />
-        <Setter Property="WindowChrome.WindowChrome">
-            <Setter.Value>
-                <WindowChrome CaptionHeight="{StaticResource TitleBarHeight}"
-                              ResizeBorderThickness="6"
-                              GlassFrameThickness="0"
-                              CornerRadius="0"
-                              UseAeroCaptionButtons="False" />
-            </Setter.Value>
-        </Setter>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="w:ChromeWindow">
-                    <Border x:Name="Root"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{DynamicResource App.TitleBar}"
-                            BorderThickness="1">
-                        <DockPanel>
-                            <Border DockPanel.Dock="Top"
-                                    Height="{StaticResource TitleBarHeight}"
-                                    Background="{DynamicResource App.TitleBar}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
-                                        <Image Source="{TemplateBinding Icon}" Width="24" Height="24" Margin="0,0,10,0"
-                                               RenderOptions.BitmapScalingMode="HighQuality" />
-                                        <TextBlock Text="{TemplateBinding Title}" Foreground="White" FontSize="15"
-                                                   FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        <TextBlock Text="{TemplateBinding Subtitle}" Foreground="#CCFFFFFF" FontSize="12"
-                                                   Margin="10,2,0,0" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                    <ContentPresenter Grid.Column="2"
-                                                      Content="{TemplateBinding TitleBarContent}"
-                                                      VerticalAlignment="Center"
-                                                      Margin="0,0,8,0"
-                                                      WindowChrome.IsHitTestVisibleInChrome="True" />
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                        <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}"
-                                                Command="{x:Static SystemCommands.MinimizeWindowCommand}"
-                                                ToolTip="Minimize" AutomationProperties.Name="Minimize">
-                                            <materialDesign:PackIcon Kind="WindowMinimize" />
-                                        </Button>
-                                        <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}"
-                                                Command="{x:Static SystemCommands.MaximizeWindowCommand}"
-                                                ToolTip="Maximize" AutomationProperties.Name="Maximize">
-                                            <materialDesign:PackIcon Kind="WindowMaximize" />
-                                        </Button>
-                                        <Button x:Name="RestoreButton" Style="{StaticResource CaptionButton}"
-                                                Command="{x:Static SystemCommands.RestoreWindowCommand}"
-                                                Visibility="Collapsed"
-                                                ToolTip="Restore" AutomationProperties.Name="Restore">
-                                            <materialDesign:PackIcon Kind="WindowRestore" />
-                                        </Button>
-                                        <Button Style="{StaticResource CloseCaptionButton}"
-                                                Command="{x:Static SystemCommands.CloseWindowCommand}"
-                                                ToolTip="Close" AutomationProperties.Name="Close window">
-                                            <materialDesign:PackIcon Kind="Close" />
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                            <Rectangle DockPanel.Dock="Top" Height="3" Fill="{DynamicResource App.Accent}" />
-                            <AdornerDecorator>
-                                <ContentPresenter />
-                            </AdornerDecorator>
-                        </DockPanel>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="WindowState" Value="Maximized">
-                            <Setter TargetName="Root" Property="BorderThickness" Value="0" />
-                            <Setter TargetName="Root" Property="Margin" Value="7" />
-                            <Setter TargetName="MaximizeButton" Property="Visibility" Value="Collapsed" />
-                            <Setter TargetName="RestoreButton" Property="Visibility" Value="Visible" />
-                        </Trigger>
-                        <Trigger Property="ResizeMode" Value="CanMinimize">
-                            <Setter TargetName="MaximizeButton" Property="Visibility" Value="Collapsed" />
-                            <Setter TargetName="RestoreButton" Property="Visibility" Value="Collapsed" />
-                        </Trigger>
-                        <Trigger Property="ResizeMode" Value="NoResize">
-                            <Setter TargetName="MinimizeButton" Property="Visibility" Value="Collapsed" />
-                            <Setter TargetName="MaximizeButton" Property="Visibility" Value="Collapsed" />
-                            <Setter TargetName="RestoreButton" Property="Visibility" Value="Collapsed" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
     </Style>
 
-    <!-- Dialogs: no window buttons except Close, not in the taskbar. Each dialog sets WindowStartupLocation itself,
-         because it is not a dependency property. -->
-    <Style x:Key="AppDialog" TargetType="w:ChromeWindow" BasedOn="{StaticResource AppWindow}">
-        <Setter Property="ResizeMode" Value="NoResize" />
-        <Setter Property="ShowInTaskbar" Value="False" />
+    <Style x:Key="AppDialog" TargetType="aw:ChromeWindow" BasedOn="{StaticResource AnWaSoft.Dialog}">
+        <Setter Property="Icon" Value="pack://application:,,,/Resources/AppIcon.ico" />
     </Style>
 
-    <!-- Text -->
-    <Style x:Key="CardTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="VerticalAlignment" Value="Center" />
+    <!-- Result states: the State property of the data context (ResultOverview, MpptView, ResultValueRow or
+         ResultNote, enum ResultState with Ok, Warning and Error) drives the library's status styles. -->
+    <Style x:Key="StateIcon" TargetType="materialDesign:PackIcon" BasedOn="{StaticResource AnWaSoft.StatusIcon}">
+        <Setter Property="aw:StatusAssist.Kind" Value="{Binding State, Converter={StaticResource AnWaSoft.StatusKindConverter}}" />
     </Style>
 
-    <Style x:Key="SectionLabel" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{DynamicResource App.TextMuted}" />
-        <Setter Property="Margin" Value="4,0,0,8" />
+    <Style x:Key="StateText" TargetType="TextBlock" BasedOn="{StaticResource AnWaSoft.StatusText}">
+        <Setter Property="aw:StatusAssist.Kind" Value="{Binding State, Converter={StaticResource AnWaSoft.StatusKindConverter}}" />
     </Style>
 
-    <Style x:Key="MutedText" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource App.TextMuted}" />
-        <Setter Property="TextWrapping" Value="Wrap" />
+    <Style x:Key="StateChip" TargetType="Border" BasedOn="{StaticResource AnWaSoft.StatusChip}">
+        <Setter Property="aw:StatusAssist.Kind" Value="{Binding State, Converter={StaticResource AnWaSoft.StatusKindConverter}}" />
     </Style>
 
-    <Style x:Key="ValueText" TargetType="TextBlock">
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <Style x:Key="StateBanner" TargetType="Border" BasedOn="{StaticResource AnWaSoft.StatusBanner}">
+        <Setter Property="aw:StatusAssist.Kind" Value="{Binding State, Converter={StaticResource AnWaSoft.StatusKindConverter}}" />
     </Style>
-
-    <Style x:Key="ContentCard" TargetType="materialDesign:Card">
-        <Setter Property="Padding" Value="20,16" />
-        <Setter Property="Margin" Value="0,0,0,16" />
-        <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp1" />
-        <Setter Property="UniformCornerRadius" Value="10" />
-    </Style>
-
-    <!-- Result state: icon, foreground and chip follow the State property of the data context
-         (ResultOverview, MpptView, ResultValueRow or ResultNote). -->
-    <Style x:Key="StateIcon" TargetType="materialDesign:PackIcon">
-        <Setter Property="Width" Value="20" />
-        <Setter Property="Height" Value="20" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Kind" Value="InformationOutline" />
-        <Setter Property="Foreground" Value="{DynamicResource State.Neutral}" />
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Ok}">
-                <Setter Property="Kind" Value="CheckCircle" />
-                <Setter Property="Foreground" Value="{DynamicResource State.Ok}" />
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Warning}">
-                <Setter Property="Kind" Value="AlertOutline" />
-                <Setter Property="Foreground" Value="{DynamicResource State.Warning}" />
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Error}">
-                <Setter Property="Kind" Value="AlertCircle" />
-                <Setter Property="Foreground" Value="{DynamicResource State.Error}" />
-            </DataTrigger>
-        </Style.Triggers>
-    </Style>
-
-    <Style x:Key="StateText" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Error}">
-                <Setter Property="Foreground" Value="{DynamicResource State.Error}" />
-            </DataTrigger>
-        </Style.Triggers>
-    </Style>
-
-    <Style x:Key="StateChip" TargetType="Border">
-        <Setter Property="CornerRadius" Value="12" />
-        <Setter Property="Padding" Value="10,3" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Background" Value="{DynamicResource State.NeutralTint}" />
-        <Setter Property="TextElement.Foreground" Value="{DynamicResource State.Neutral}" />
-        <Setter Property="TextElement.FontWeight" Value="SemiBold" />
-        <Setter Property="TextElement.FontSize" Value="12" />
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Ok}">
-                <Setter Property="Background" Value="{DynamicResource State.OkTint}" />
-                <Setter Property="TextElement.Foreground" Value="{DynamicResource State.Ok}" />
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Warning}">
-                <Setter Property="Background" Value="{DynamicResource State.WarningTint}" />
-                <Setter Property="TextElement.Foreground" Value="{DynamicResource State.Warning}" />
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Error}">
-                <Setter Property="Background" Value="{DynamicResource State.ErrorTint}" />
-                <Setter Property="TextElement.Foreground" Value="{DynamicResource State.Error}" />
-            </DataTrigger>
-        </Style.Triggers>
-    </Style>
-
-    <!-- Banner with the overall result: tinted background and a coloured left edge. -->
-    <Style x:Key="StateBanner" TargetType="Border">
-        <Setter Property="CornerRadius" Value="10" />
-        <Setter Property="Padding" Value="18,14" />
-        <Setter Property="Margin" Value="0,0,0,16" />
-        <Setter Property="BorderThickness" Value="5,0,0,0" />
-        <Setter Property="Background" Value="{DynamicResource State.NeutralTint}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource State.Neutral}" />
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Ok}">
-                <Setter Property="Background" Value="{DynamicResource State.OkTint}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource State.Ok}" />
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Warning}">
-                <Setter Property="Background" Value="{DynamicResource State.WarningTint}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource State.Warning}" />
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="{x:Static calc:ResultState.Error}">
-                <Setter Property="Background" Value="{DynamicResource State.ErrorTint}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource State.Error}" />
-            </DataTrigger>
-        </Style.Triggers>
-    </Style>
-
-    <!-- Thin Material scroll bars in all windows -->
-    <Style TargetType="ScrollBar" BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
 </ResourceDictionary>

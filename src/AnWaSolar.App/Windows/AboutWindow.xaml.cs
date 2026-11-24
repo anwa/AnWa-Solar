@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 
+using AnWaSoft.Design.Wpf.Controls;
+
 using AnWaSolar.Core;
 using AnWaSolar.Core.Logging;
 using AnWaSolar.Core.Services;

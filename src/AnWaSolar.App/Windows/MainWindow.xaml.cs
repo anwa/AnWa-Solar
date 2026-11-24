@@ -11,6 +11,10 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 
+using AnWaSoft.Design.Wpf.Controls;
+using AnWaSoft.Design.Wpf.Status;
+using AnWaSoft.Design.Wpf.Theming;
+
 using AnWaSolar.Core;
 using AnWaSolar.Core.Calculation;
 using AnWaSolar.Core.Logging;
@@ -148,7 +152,7 @@ public partial class MainWindow : ChromeWindow
             _stringConfigs.Add(cfg);
 
             var root = new StackPanel();
-            var card = new Card { Content = root, Style = (Style)FindResource("ContentCard") };
+            var card = new Card { Content = root, Style = (Style)FindResource("AnWaSoft.Card") };
             AutomationProperties.SetName(card, $"MPPT {cfg.MpptIndex} configuration");
 
             // Header: title and the enable switch
@@ -164,7 +168,7 @@ public partial class MainWindow : ChromeWindow
             var icon = new PackIcon { Kind = PackIconKind.SolarPanel, Width = 22, Height = 22, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
             icon.SetResourceReference(ForegroundProperty, "MaterialDesign.Brush.Primary");
             header.Children.Add(icon);
-            header.Children.Add(new TextBlock { Text = $"MPPT {cfg.MpptIndex}", Style = (Style)FindResource("CardTitle") });
+            header.Children.Add(new TextBlock { Text = $"MPPT {cfg.MpptIndex}", Style = (Style)FindResource("AnWaSoft.Text.CardTitle") });
             root.Children.Add(header);
 
             var body = new StackPanel();
@@ -172,7 +176,7 @@ public partial class MainWindow : ChromeWindow
 
             // Module: name and key values, select and remove buttons
             var moduleBox = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 8, 10), Margin = new Thickness(0, 12, 0, 0) };
-            moduleBox.SetResourceReference(Border.BackgroundProperty, "App.PanelBackground");
+            moduleBox.SetResourceReference(Border.BackgroundProperty, "AnWaSoft.Brush.PanelBackground");
             var moduleRow = new DockPanel();
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             DockPanel.SetDock(buttons, Dock.Right);
@@ -327,7 +331,7 @@ public partial class MainWindow : ChromeWindow
 
     private TextBlock Muted(string text, double fontSize)
     {
-        return new TextBlock { Text = text, FontSize = fontSize, Style = (Style)FindResource("MutedText") };
+        return new TextBlock { Text = text, FontSize = fontSize, Style = (Style)FindResource("AnWaSoft.Text.Muted") };
     }
 
     private static (DockPanel Row, TextBlock Value) SliderHeader(string label)
@@ -360,7 +364,7 @@ public partial class MainWindow : ChromeWindow
         }
 
         var border = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 8, 12, 8), Margin = new Thickness(0, 0, 8, 0), Child = panel };
-        border.SetResourceReference(Border.BackgroundProperty, "App.PanelBackground");
+        border.SetResourceReference(Border.BackgroundProperty, "AnWaSoft.Brush.PanelBackground");
         return border;
     }
 
@@ -396,9 +400,9 @@ public partial class MainWindow : ChromeWindow
     // Switches System → Light → Dark → System and saves the choice.
     private void OnThemeClick(object sender, RoutedEventArgs e)
     {
-        AppTheme next = ThemeService.Next(_theme.Mode);
+        ThemePreference next = ThemeService.Next(_theme.Preference);
         _theme.Apply(next);
-        if (!_settings.SaveTheme(next))
+        if (!_settings.SaveTheme(ThemeMapping.ToAppTheme(next)))
         {
             _logger.LogWarning("The theme could not be saved.");
         }
@@ -414,16 +418,11 @@ public partial class MainWindow : ChromeWindow
 
     private void UpdateThemeButton()
     {
-        ThemeIcon.Kind = _theme.Mode switch
+        ThemeIcon.Kind = ThemeService.IconFor(_theme.Preference);
+        ThemeButton.ToolTip = _theme.Preference switch
         {
-            AppTheme.Light => PackIconKind.WhiteBalanceSunny,
-            AppTheme.Dark => PackIconKind.WeatherNight,
-            _ => PackIconKind.ThemeLightDark,
-        };
-        ThemeButton.ToolTip = _theme.Mode switch
-        {
-            AppTheme.Light => "Theme: light (click for dark)",
-            AppTheme.Dark => "Theme: dark (click for system)",
+            ThemePreference.Light => "Theme: light (click for dark)",
+            ThemePreference.Dark => "Theme: dark (click for system)",
             _ => $"Theme: system, currently {(_theme.IsDark ? "dark" : "light")} (click for light)",
         };
     }
@@ -488,7 +487,7 @@ public partial class MainWindow : ChromeWindow
             text.AppendLine($"• … and {issues.Count - MaxShown} more (see log).");
         }
 
-        AppDialog.Show(this, text.ToString().TrimEnd(), "Master data", DialogKind.Warning);
+        MessageDialog.Show(this, text.ToString().TrimEnd(), "Master data", StatusKind.Warning);
     }
 
     private void OnSelectInverterClick(object sender, RoutedEventArgs e)
@@ -510,7 +509,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the inverter selection.");
-            AppDialog.Show(this, "Error in the inverter selection. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error in the inverter selection. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -532,7 +531,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the module selection.");
-            AppDialog.Show(this, "Error in the module selection. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error in the module selection. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -566,7 +565,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing the module.");
-            AppDialog.Show(this, "Error removing the module. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error removing the module. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -579,7 +578,7 @@ public partial class MainWindow : ChromeWindow
             {
                 if (!_settings.SaveParameters(win.Parameters))
                 {
-                    AppDialog.Show(this, "The parameters could not be saved. They apply until the application is closed.", "Parameters", DialogKind.Warning);
+                    MessageDialog.Show(this, "The parameters could not be saved. They apply until the application is closed.", "Parameters", StatusKind.Warning);
                 }
 
                 _parameters = win.Parameters;
@@ -592,7 +591,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the parameter dialog.");
-            AppDialog.Show(this, "Error in the parameter dialog. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error in the parameter dialog. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -608,7 +607,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex) when (ex is COMException or ExternalException)
         {
             _logger.LogError(ex, "Error copying the results.");
-            AppDialog.Show(this, "The results could not be copied. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "The results could not be copied. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -883,7 +882,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating the report preview.");
-            AppDialog.Show(this, "Error updating the report preview. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error updating the report preview. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -908,8 +907,8 @@ public partial class MainWindow : ChromeWindow
             WebViewSupport.ResetEnvironment();
             _logger.LogError(ex, "The report preview (WebView2) could not be started.");
             ReportViewSelector.SelectedIndex = 1;
-            AppDialog.Show(this, "The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details.",
-                "Report preview", DialogKind.Warning);
+            MessageDialog.Show(this, "The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details.",
+                "Report preview", StatusKind.Warning);
             return false;
         }
     }
@@ -986,7 +985,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error copying the Markdown report.");
-            AppDialog.Show(this, "Error copying the report. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error copying the report. See the log for details.", "Error", StatusKind.Error);
         }
     }
 
@@ -1013,7 +1012,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving the Markdown report.");
-            AppDialog.Show(this, "Error saving the report. See the log for details.", "Error", DialogKind.Error);
+            MessageDialog.Show(this, "Error saving the report. See the log for details.", "Error", StatusKind.Error);
         }
     }
 

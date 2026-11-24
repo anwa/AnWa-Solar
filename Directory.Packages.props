@@ -1,6 +1,8 @@
 <Project>
   <!-- Newest stable versions that support net11.0-windows. -->
   <ItemGroup>
+    <!-- AnWa-Soft design library from the local feed, see nuget.config. -->
+    <PackageVersion Include="AnWaSoft.Design.Wpf" Version="0.1.0" />
     <PackageVersion Include="Markdig" Version="1.6.0" />
     <PackageVersion Include="MaterialDesignThemes" Version="5.4.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="11.0.0" />

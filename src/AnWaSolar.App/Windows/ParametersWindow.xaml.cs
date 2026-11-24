@@ -2,6 +2,9 @@ using System;
 using System.Globalization;
 using System.Windows;
 
+using AnWaSoft.Design.Wpf.Controls;
+using AnWaSoft.Design.Wpf.Status;
+
 using AnWaSolar.Core.Services;
 
 namespace AnWaSolar.Windows;
@@ -32,12 +35,12 @@ public partial class ParametersWindow : ChromeWindow
             !TryParseDouble(MaxTempInput.Text, out var tMax) ||
             tMin >= tMax)
         {
-            AppDialog.Show(this, "Invalid temperature range. Tmin must be lower than Tmax.", Title, DialogKind.Error);
+            MessageDialog.Show(this, "Invalid temperature range. Tmin must be lower than Tmax.", Title, StatusKind.Error);
             return;
         }
         if (!TryParseDouble(SafetyMarginInput.Text, out var marginPct) || marginPct < 0 || marginPct > 50)
         {
-            AppDialog.Show(this, "Invalid safety margin. Allowed range: 0–50 %.", Title, DialogKind.Error);
+            MessageDialog.Show(this, "Invalid safety margin. Allowed range: 0–50 %.", Title, StatusKind.Error);
             return;
         }
 

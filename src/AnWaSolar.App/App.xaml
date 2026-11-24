@@ -2,17 +2,22 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:aw="https://anwa-soft.de/design/wpf"
              ShutdownMode="OnMainWindowClose">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <!-- Material Design 3; ThemeService switches between light and dark at runtime. -->
+        <!-- Material Design 3 with the AnWa-Soft palette; the ThemeService of the design library switches between
+             light and dark at runtime. -->
         <materialDesign:BundledTheme BaseTheme="Light"
                                      PrimaryColor="Indigo"
                                      SecondaryColor="Amber" />
         <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.Defaults.xaml" />
+        <aw:AnWaSoftTheme />
+        <ResourceDictionary Source="pack://application:,,,/AnWaSoft.Design.Wpf;component/Themes/Styles.xaml" />
         <ResourceDictionary Source="/Resources/Theme.xaml" />
       </ResourceDictionary.MergedDictionaries>
+      <Style TargetType="ScrollBar" BasedOn="{StaticResource AnWaSoft.ScrollBar}" />
     </ResourceDictionary>
   </Application.Resources>
 </Application>

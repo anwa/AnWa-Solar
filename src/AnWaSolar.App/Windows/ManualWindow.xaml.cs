@@ -6,6 +6,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
+using AnWaSoft.Design.Wpf.Controls;
+using AnWaSoft.Design.Wpf.Status;
+using AnWaSoft.Design.Wpf.Theming;
+
 using AnWaSolar.Core;
 using AnWaSolar.Core.Manual;
 using AnWaSolar.Core.Services;
@@ -148,7 +152,7 @@ public partial class ManualWindow : ChromeWindow
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             _logger.LogWarning(ex, "Link {Uri} could not be opened.", uri);
-            AppDialog.Show(this, $"The link could not be opened: {ex.Message}", "Manual", DialogKind.Warning);
+            MessageDialog.Show(this, $"The link could not be opened: {ex.Message}", "Manual", StatusKind.Warning);
         }
     }
 

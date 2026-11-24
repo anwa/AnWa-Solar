@@ -3,6 +3,8 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 
+using AnWaSoft.Design.Wpf.Theming;
+
 using AnWaSolar.Core;
 using AnWaSolar.Core.Logging;
 using AnWaSolar.Core.Services;
@@ -69,7 +71,7 @@ public partial class App : Application
         _host = builder.Build();
 
         // Apply the saved theme before the first window is shown
-        _host.Services.GetRequiredService<ThemeService>().Apply(_host.Services.GetRequiredService<ISettingsService>().LoadTheme());
+        _host.Services.GetRequiredService<ThemeService>().Apply(ThemeMapping.ToPreference(_host.Services.GetRequiredService<ISettingsService>().LoadTheme()));
 
         // Load the master data at startup
         var dataStore = _host.Services.GetRequiredService<IDataStore>();

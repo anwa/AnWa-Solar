@@ -30,14 +30,15 @@ Install the MSI `AnWaSolar-Setup-X.Y.Z.msi` (Windows 11, x64). It installs per m
 ## Build and Start
 
 1. Clone the repository: https://github.com/anwa/AnWa-Solar.git
-2. Build and test from the repository root:
+2. Provide the AnWa-Soft design library: `nuget.config` takes the package `AnWaSoft.Design.Wpf` from the local feed `D:\Workspace\Claude\Design\packages`, which `dotnet pack -c Release` in the Design repository fills. Without that feed the restore fails.
+3. Build and test from the repository root:
 
    ```powershell
    dotnet build -warnaserror
    dotnet test
    ```
 
-3. Start the application with `dotnet run --project src/AnWaSolar.App`, or open `AnWaSolar.slnx` in Visual Studio and start `AnWaSolar.App`.
+4. Start the application with `dotnet run --project src/AnWaSolar.App`, or open `AnWaSolar.slnx` in Visual Studio and start `AnWaSolar.App`.
 
 ## Calculation
 
@@ -85,13 +86,13 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 
 ## Design
 
-- Material Design 3 through MaterialDesignThemes (BundledTheme, `BaseTheme="Inherit"` follows the Windows light or dark mode).
+- AnWa-Soft design library `AnWaSoft.Design.Wpf` (palette, own title bar, cards, status styles, message dialog, light/dark/system theme service) on Material Design 3 through MaterialDesignThemes. `src/AnWaSolar.App/Resources/Theme.xaml` only adds the application icon and binds the result states to the status styles.
 - Reference design: [MaterialDesign3.Demo.Wpf](https://github.com/MaterialDesignInXAML/MaterialDesignInXamlToolkit/tree/master/src/MaterialDesign3.Demo.Wpf).
 
 ## Architecture
 
 - `src/AnWaSolar.Core`: models, master data (`JsonDataStore`), string calculation (`Calculation/StringCalculator`), results text and presentation (`ResultPresenter`), Markdown report, settings (`SettingsService`) and the JSONL logger, without WPF references. The live results and the report use the same calculation result.
-- `src/AnWaSolar.App`: WPF application (windows with a shared title bar in `ChromeWindow`, theme service, dependency injection through Microsoft.Extensions.Hosting). The report preview and the manual share one WebView2 setup.
+- `src/AnWaSolar.App`: WPF application (windows on `ChromeWindow` of the design library, dependency injection through Microsoft.Extensions.Hosting). The report preview and the manual share one WebView2 setup.
 - `docs/manual`: user manual (Markdown and `toc.json`), embedded into the executable; `ManualIndex` in Core builds the page tree and the search.
 - `tests/AnWaSolar.Core.Tests`: xUnit tests for Core.
 - `installer/AnWaSolar.Installer`: WiX 5 MSI project; `tools/Build-Installer.ps1` builds the MSI (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
