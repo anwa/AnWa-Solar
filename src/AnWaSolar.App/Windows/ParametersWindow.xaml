@@ -33,7 +33,7 @@
 
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
-                               Text="Min. Temperatur (°C)" />
+                               Text="Min. Zelltemperatur (°C)" />
                     <TextBox Grid.Row="0"
                              Grid.Column="1"
                              x:Name="MinTempInput"
@@ -41,12 +41,12 @@
                              materialDesign:HintAssist.Hint="z. B. -20" />
                     <TextBlock Grid.Row="1"
                                Grid.Column="0"
-                               Text="Max. Temperatur (°C)" />
+                               Text="Max. Zelltemperatur (°C)" />
                     <TextBox Grid.Row="1"
                              Grid.Column="1"
                              x:Name="MaxTempInput"
-                             Text="40"
-                             materialDesign:HintAssist.Hint="z. B. 40" />
+                             Text="70"
+                             materialDesign:HintAssist.Hint="z. B. 70" />
                     <TextBlock Grid.Row="2"
                                Grid.Column="0"
                                Text="Sicherheitsmarge (%)" />

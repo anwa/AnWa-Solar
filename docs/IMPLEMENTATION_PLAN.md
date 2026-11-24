@@ -16,13 +16,13 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Split into `src/AnWaSolar.Core`, `src/AnWaSolar.App` and `tests/AnWaSolar.Core.Tests` (xUnit); namespaces match folders
 - [x] Checks `dotnet build -warnaserror`, `dotnet test`, `dotnet format --verify-no-changes` pass
 
-## M3 – Calculation core (`feature/calculation-core`)
+## M3 – Calculation core (`feature/calculation-core`, v0.4.0)
 
-- [ ] One string calculation in Core that returns a result object (temperature-corrected values, limit checks, allowed module and string ranges, messages); the live results and the report both use it
-- [ ] Disabled MPPTs are skipped in the report as in the live results
-- [ ] The report also checks the maximum number of strings per MPPT
-- [ ] Tests with worked examples from real datasheets for every check
-- [ ] Decide with the user: cell temperature model for `Tmax` (ambient vs. cell temperature) and a separate VMPP temperature coefficient instead of the VOC coefficient as approximation
+- [x] One string calculation in Core that returns a result object (temperature-corrected values, limit checks, allowed module and string ranges, messages); the live results and the report both use it
+- [x] Disabled MPPTs are skipped in the report as in the live results
+- [x] The report also checks the maximum number of strings per MPPT
+- [x] Tests with worked examples from real datasheets for every check
+- [x] Tmin and Tmax are cell temperatures (default Tmax 70 °C); optional VMPP temperature coefficient with the PMAX coefficient as fallback
 
 ## M4 – Settings and logging (`feature/user-settings`)
 
