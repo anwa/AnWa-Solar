@@ -1,0 +1,20 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!--
+    Builds the MSI from the self-contained publish output of the application.
+    Use tools/Build-Installer.ps1; it publishes the app and passes PublishDir.
+  -->
+  <PropertyGroup>
+    <OutputName>AnWaSolar-Setup-$(Version)</OutputName>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\dist\publish\</PublishDir>
+    <DefineConstants>ProductVersion=$(Version);PublishDir=$(PublishDir);AssetsDir=$(MSBuildThisFileDirectory)Assets;LicenseFile=$(MSBuildThisFileDirectory)..\..\LICENSE</DefineConstants>
+    <SuppressValidation>false</SuppressValidation>
+    <Cultures>en-US</Cultures>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" />
+    <PackageReference Include="WixToolset.Util.wixext" />
+  </ItemGroup>
+</Project>

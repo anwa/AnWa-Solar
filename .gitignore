@@ -419,3 +419,6 @@ FodyWeavers.xsd
 
 # Generated reports
 AnWa-Solar-Report.md
+
+# Build output of tools/Build-Installer.ps1
+dist/

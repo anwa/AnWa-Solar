@@ -9,4 +9,10 @@
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
   </ItemGroup>
+  <!-- WiX 5 is used deliberately (no Open Source Maintenance Fee); keep the extensions on the SDK version
+       in installer/AnWaSolar.Installer/AnWaSolar.Installer.wixproj. -->
+  <ItemGroup>
+    <PackageVersion Include="WixToolset.UI.wixext" Version="5.0.2" />
+    <PackageVersion Include="WixToolset.Util.wixext" Version="5.0.2" />
+  </ItemGroup>
 </Project>

@@ -42,11 +42,11 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Master data property names in English, with a migration of the existing data files and of saved selections
 - [x] `README.md` and `CHANGELOG.md` in English; remove the formula experiment from the README
 
-## M7 – Installer and release (`feature/installer`)
+## M7 – Installer and release (`feature/installer`, v0.8.0)
 
-- [ ] WiX 5 installer project `installer/AnWaSolar.Installer` with a fixed `UpgradeCode`
-- [ ] `tools/Build-Installer.ps1`: self-contained win-x64 publish, MSI and SHA-256 in `dist\installer\`
-- [ ] `docs/DEPLOYMENT.md` with the build recipe and build records
+- [x] WiX 5 installer project `installer/AnWaSolar.Installer` with a fixed `UpgradeCode`
+- [x] `tools/Build-Installer.ps1`: self-contained win-x64 publish, MSI and SHA-256 in `dist\installer\`
+- [x] `docs/DEPLOYMENT.md` with the build recipe and build records
 - [ ] First release built from its tag in a clean worktree
 
 ## Later

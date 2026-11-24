@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v0.8.0 (2026-11-24)
+
+- New: Windows installer (MSI) that installs AnWa-Solar into `C:\Program Files\AnWa-Solar` with a Start menu shortcut and the license text. It contains everything the application needs, so no separate .NET installation is required.
+
 ## v0.7.0 (2026-11-24)
 
 - Changed: The application, the report, the messages and the log are in English.
