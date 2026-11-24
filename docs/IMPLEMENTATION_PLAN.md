@@ -31,7 +31,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] File logger serializes concurrent writes
 - [x] Remove the committed personal selection from `appsettings.json`
 
-## M5 – Master data robustness (`fix/master-data`)
+## M5 – Master data robustness (`fix/master-data`, v0.6.0)
 
 - [x] Inverter currents and other datasheet values as decimal numbers
 - [x] Invalid entries are skipped individually and reported in the GUI
