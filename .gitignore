@@ -417,6 +417,5 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# ChatGPT Prompts
-prompt*.md
+# Generated reports
 AnWa-Solar-Bericht.md
