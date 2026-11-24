@@ -407,11 +407,31 @@
                                                     <TextBlock Text="Copy Markdown" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
-                                            <Button Click="OnSaveReportClick"
+                                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    Margin="0,0,8,0"
+                                                    Click="OnSaveReportClick"
                                                     AutomationProperties.Name="Save Markdown">
                                                 <StackPanel Orientation="Horizontal">
                                                     <materialDesign:PackIcon Kind="ContentSaveOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
                                                     <TextBlock Text="Save Markdown" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    Margin="0,0,8,0"
+                                                    Click="OnExportHtmlClick"
+                                                    ToolTip="Save the report as a single HTML file with rendered formulas"
+                                                    AutomationProperties.Name="Export HTML">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="LanguageHtml5" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Export HTML" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Click="OnExportPdfClick"
+                                                    ToolTip="Save the report as a PDF file (A4)"
+                                                    AutomationProperties.Name="Export PDF">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Export PDF" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>

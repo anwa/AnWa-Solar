@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AnWaSolar.Core;
 
@@ -8,7 +9,7 @@ namespace AnWaSolar.Core;
 /// <c>\[ … \]</c> are rendered by KaTeX, which is shipped with the application and served from <c>/katex/</c> of the
 /// same local host. The page follows the light or dark colour scheme of the application.
 /// </summary>
-public static class HtmlDocument
+public static partial class HtmlDocument
 {
     private const string Style = """
         :root { color-scheme: light dark; --accent: #3F51B5; --muted-bg: #F1F3F9; --border: #D0D4E4; }
@@ -56,6 +57,59 @@ public static class HtmlDocument
         html.AppendLine("</html>");
         return html.ToString();
     }
+
+    /// <summary>
+    /// Turns a report page into a single file that works offline and without scripts: scripts are removed (formulas must
+    /// already be rendered, for example the DOM of the preview), the KaTeX style sheet is inlined with its fonts as data
+    /// URIs, and the page always uses the light colours.
+    /// </summary>
+    /// <param name="html">The page, as created by <see cref="Create"/> or as rendered by the preview.</param>
+    /// <param name="katexDirectory">Folder with <c>katex.min.css</c> and <c>fonts</c>; missing files are left out.</param>
+    public static string CreateStandalone(string html, string katexDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+        string result = ScriptPattern().Replace(html, string.Empty);
+        result = KatexLinkPattern().Replace(result, _ => "<style>" + InlineKatexCss(katexDirectory) + "</style>");
+        result = DarkSchemePattern().Replace(result, string.Empty);
+        result = result
+            .Replace("<meta name=\"color-scheme\" content=\"light dark\">", "<meta name=\"color-scheme\" content=\"light\">", StringComparison.Ordinal)
+            .Replace("color-scheme: light dark;", "color-scheme: light;", StringComparison.Ordinal);
+        return result.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) ? result : "<!DOCTYPE html>\n" + result;
+    }
+
+    // The KaTeX style sheet with the woff2 fonts as data URIs; the woff and ttf alternatives are not shipped.
+    private static string InlineKatexCss(string katexDirectory)
+    {
+        string cssPath = Path.Combine(katexDirectory, "katex.min.css");
+        if (!File.Exists(cssPath))
+        {
+            return string.Empty;
+        }
+
+        string css = AlternativeFontPattern().Replace(File.ReadAllText(cssPath), string.Empty);
+        return FontUrlPattern().Replace(css, match =>
+        {
+            string font = Path.Combine(katexDirectory, "fonts", match.Groups[1].Value);
+            return File.Exists(font)
+                ? $"url(data:font/woff2;base64,{Convert.ToBase64String(File.ReadAllBytes(font))})"
+                : match.Value;
+        });
+    }
+
+    [GeneratedRegex(@"<script\b[^>]*>.*?</script>\s*", RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex ScriptPattern();
+
+    [GeneratedRegex(@"<link\b[^>]*href=""/katex/katex\.min\.css""[^>]*>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex KatexLinkPattern();
+
+    [GeneratedRegex(@"@media \(prefers-color-scheme: dark\)[^\n]*\n?", RegexOptions.CultureInvariant)]
+    private static partial Regex DarkSchemePattern();
+
+    [GeneratedRegex(@",url\(fonts/[^)]+\.(?:woff|ttf)\) format\(""[^""]+""\)", RegexOptions.CultureInvariant)]
+    private static partial Regex AlternativeFontPattern();
+
+    [GeneratedRegex(@"url\(fonts/([A-Za-z0-9_\-]+\.woff2)\)", RegexOptions.CultureInvariant)]
+    private static partial Regex FontUrlPattern();
 
     /// <summary>
     /// Resolves a request path such as <c>/katex/fonts/KaTeX_Main-Regular.woff2</c> to a file below

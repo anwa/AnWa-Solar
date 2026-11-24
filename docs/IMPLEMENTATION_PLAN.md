@@ -84,7 +84,27 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Datasheet viewer (WebView2) from the selection dialogs and the main window
 - [x] Manual page for the import
 
-## Later
+## M13 – Report export (`feature/report-export`)
 
-- Further calculations: battery storage, AC side, cable and fuse sizing
-- Report export (HTML/PDF)
+- [x] Report as a single HTML file: formulas rendered, KaTeX style and fonts embedded, light colours, no scripts
+- [x] Report as PDF (A4) from the preview with WebView2, header and page numbers
+- [x] Export buttons in the report toolbar; manual updated
+
+## M14 – AC side and grid connection (`feature/ac-side`)
+
+- [ ] Inverter AC datasheet values (rated AC power, max. apparent power, rated and max. AC current, phases, grid voltage) in master data and datasheet import
+- [ ] DC/AC ratio, AC current and grid connection checks with limits set by the user (unbalanced load, system size, feed-in limit)
+- [ ] Result card and report section
+
+## M15 – Cables and fuses (`feature/cables-fuses`)
+
+- [ ] Module datasheet value max. series fuse rating, with import
+- [ ] Standard tables (current-carrying capacity, correction factors, conductivity) as shipped data with sources, values given or confirmed by the user
+- [ ] Cross-section from current-carrying capacity and voltage drop for DC strings and the AC line; string fuses and AC line protection
+- [ ] Input dialog, result card and report section with formulas
+
+## M16 – Battery storage compatibility (`feature/battery`)
+
+- [ ] Battery master data with datasheet import; inverter battery values (voltage range, charge and discharge current)
+- [ ] Compatibility check of the battery bank against the hybrid inverter and usable capacity
+- [ ] Configuration card, result card, report section and manual page

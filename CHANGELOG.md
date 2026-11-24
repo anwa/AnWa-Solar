@@ -2,6 +2,11 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.14.0)
+
+- New: **Export HTML** saves the report as a single HTML file with rendered formulas and embedded fonts; it works offline and without scripts and always uses the light colours.
+- New: **Export PDF** saves the report as an A4 PDF with title, date and page numbers in light colours.
+
 ## v0.13.0 (2026-11-24)
 
 - New: Datasheet import. **Import datasheet** in the title bar and **Import…** in the module and inverter selection read a PDF datasheet, recognise the module or inverter values (German and English datasheets, several power classes or models per datasheet) and show them in a dialog to check, correct and complete. **Apply** saves the entry with a copy of the datasheet in your own master data in `%LOCALAPPDATA%\AnWa-Solar\Data`.
