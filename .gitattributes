@@ -1,3 +1,5 @@
 * text=auto eol=crlf
 *.png binary
 *.ico binary
+# Third-party files are kept byte for byte.
+src/AnWaSolar.App/Assets/katex/** -text

@@ -14,6 +14,7 @@
   <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Web.WebView2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- KaTeX 0.19.1 (MIT) for the formulas in the report preview. -->
+    <Content Include="Assets/katex/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
