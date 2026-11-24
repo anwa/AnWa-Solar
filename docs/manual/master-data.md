@@ -29,7 +29,7 @@ Enter only values from the manufacturer datasheets. Numbers use a dot as decimal
 }
 ```
 
-`"Temperature coefficient of Vmpp (%/°C)"` is optional. Without it the Pmax coefficient is used, see [How the Calculation Works](calculation.md#temperature-correction).
+`"Max. series fuse rating (A)"` is optional; it decides whether string fuses are needed, see [String Calculation](string-calculation.md#results). `"Temperature coefficient of Vmpp (%/°C)"` is optional. Without it the Pmax coefficient is used, see [How the Calculation Works](calculation.md#temperature-correction).
 
 ## Inverter
 

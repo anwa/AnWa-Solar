@@ -15,7 +15,11 @@ public static class ReportBuilder
     /// <param name="result">Calculation result; null when no inverter is selected.</param>
     /// <param name="parameters">Parameters shown in the report.</param>
     /// <param name="createdAt">Creation time printed in the header.</param>
-    public static string Build(StringCalculationResult? result, CalculationParameters parameters, DateTime createdAt)
+    public static string Build(StringCalculationResult? result, CalculationParameters parameters, DateTime createdAt) =>
+        Build(result, parameters, createdAt, cables: null, tables: null);
+
+    /// <summary>Report including the cable and fuse sizing.</summary>
+    public static string Build(StringCalculationResult? result, CalculationParameters parameters, DateTime createdAt, CableCalculationResult? cables, CableTables? tables)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
@@ -136,6 +140,42 @@ public static class ReportBuilder
 
                 md.AppendLine();
             }
+        }
+
+        if (cables is not null && tables is not null)
+        {
+            md.AppendLine("## Cables and fuses");
+            if (!cables.TablesConfirmed)
+            {
+                md.AppendLine($"> {CableTexts.Unconfirmed}");
+                md.AppendLine();
+            }
+
+            foreach (DcCableResult d in cables.Dc)
+            {
+                md.AppendLine($"- {CableTexts.Dc(d)}");
+                foreach (ResultNote note in d.Notes)
+                {
+                    md.AppendLine($"  - {note.Text}");
+                }
+            }
+
+            if (cables.Ac is { } acLine)
+            {
+                md.AppendLine($"- {CableTexts.Ac(acLine)}");
+                foreach (ResultNote note in acLine.Notes)
+                {
+                    md.AppendLine($"  - {note.Text}");
+                }
+            }
+
+            md.AppendLine();
+            md.AppendLine("Rules: design current of a string $I_B = 1.25 \\cdot I_{SC,STC}$; string fuses when $(N_p - 1) \\cdot 1.25 \\cdot I_{SC,STC} > I_{MOD,max,OCPR}$ with $1.5 \\cdot I_{SC} \\le I_n \\le 2.4 \\cdot I_{SC}$ and $I_n \\le I_{MOD,max,OCPR}$ (IEC 62548); AC $I_B \\le I_n \\le I_z$.");
+            md.AppendLine();
+            md.AppendLine("$$\\Delta u_{DC} = \\frac{2 \\cdot L \\cdot I_{MPP}}{\\kappa \\cdot A \\cdot U_{MPP}}, \\quad \\Delta u_{AC,3} = \\frac{\\sqrt{3} \\cdot L \\cdot I}{\\kappa \\cdot A \\cdot 400\\,\\mathrm{V}}, \\quad \\Delta u_{AC,1} = \\frac{2 \\cdot L \\cdot I}{\\kappa \\cdot A \\cdot 230\\,\\mathrm{V}}$$");
+            md.AppendLine();
+            md.AppendLine($"Sources: {tables.SolarCable.Source}; {tables.AcCable.Source}; {tables.Grouping.Source}; {tables.Protection.Source}; κ = {tables.CopperConductivity} m/(Ω·mm²).");
+            md.AppendLine();
         }
 
         return md.ToString();

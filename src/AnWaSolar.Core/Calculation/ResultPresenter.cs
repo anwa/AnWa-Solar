@@ -70,6 +70,9 @@ public sealed record AcRow(string Quantity, string Value, string Limit, ResultSt
 /// <summary>Presentation of the AC side and grid connection.</summary>
 public sealed record AcView(string Subtitle, ResultState State, string StatusText, IReadOnlyList<AcRow> Rows, IReadOnlyList<ResultNote> Notes);
 
+/// <summary>Presentation of the cable and fuse sizing.</summary>
+public sealed record CableView(string Subtitle, ResultState State, string StatusText, IReadOnlyList<AcRow> Rows, IReadOnlyList<ResultNote> Notes);
+
 /// <summary>An inverter limit from the datasheet and after applying the safety margin.</summary>
 public sealed record LimitRow(string Name, string Datasheet, string Effective);
 
@@ -81,7 +84,8 @@ public sealed record ResultOverview(
     IReadOnlyList<MpptView> Mppts,
     IReadOnlyList<LimitRow> Limits,
     string LimitsCaption,
-    AcView? Ac = null);
+    AcView? Ac = null,
+    CableView? Cables = null);
 
 /// <summary>
 /// Turns a <see cref="StringCalculationResult"/> into texts and states for the results area. It only formats values
@@ -91,7 +95,10 @@ public static class ResultPresenter
 {
     private const string None = "–";
 
-    public static ResultOverview Present(StringCalculationResult? result)
+    public static ResultOverview Present(StringCalculationResult? result) => Present(result, cables: null, settings: null);
+
+    /// <summary>Presentation including the cable and fuse sizing.</summary>
+    public static ResultOverview Present(StringCalculationResult? result, CableCalculationResult? cables, CableSettings? settings)
     {
         if (result is null)
         {
@@ -108,7 +115,9 @@ public static class ResultPresenter
 
         List<MpptView> mppts = result.Mppts.Select(m => PresentMppt(m, inv, limits)).ToList();
         AcView? ac = result.Ac is { } acResult ? PresentAc(acResult, inv, result.Parameters) : null;
-        int violations = result.Mppts.Sum(m => m.Violations.Count) + (result.Ac?.Checks.Count(c => c.State == ResultState.Error) ?? 0);
+        CableView? cableView = cables is not null && settings is not null ? PresentCables(cables, settings) : null;
+        int violations = result.Mppts.Sum(m => m.Violations.Count) + (result.Ac?.Checks.Count(c => c.State == ResultState.Error) ?? 0)
+            + (cables is null ? 0 : cables.Dc.Count(d => d.State == ResultState.Error) + (cables.Ac?.State == ResultState.Error ? 1 : 0));
         int[] withoutModule = result.Mppts.Where(m => m.Status == MpptStatus.NoModule).Select(m => m.MpptIndex).ToArray();
         int calculated = result.Mppts.Count(m => m.Status == MpptStatus.Calculated);
 
@@ -126,7 +135,7 @@ public static class ResultPresenter
         CalculationParameters p = result.Parameters;
         string details = $"{inv.Manufacturer} {inv.Model} · cell temperature {Number(p.MinTempC, "0.#")} … {Number(p.MaxTempC, "0.#")} °C · safety margin {Number(p.SafetyMarginPct, "0.#")} %";
 
-        return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits), Ac: ac, LimitsCaption:
+        return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits), Ac: ac, Cables: cableView, LimitsCaption:
             $"Datasheet values and the limits used by the calculation (safety margin {Number(p.SafetyMarginPct, "0.#")} %).");
     }
 
@@ -236,6 +245,46 @@ public static class ResultPresenter
         int issues = ac.Checks.Count(c => c.State is ResultState.Error or ResultState.Warning);
         string subtitle = $"{inv.Manufacturer} {inv.Model} · " + (ac.Phases is { } phases ? (phases == 1 ? "single-phase" : "three-phase") : "phases not stated");
         return new AcView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
+    }
+
+    private static CableView PresentCables(CableCalculationResult cables, CableSettings settings)
+    {
+        var rows = new List<AcRow>();
+        var notes = new List<ResultNote>();
+        if (!cables.TablesConfirmed)
+        {
+            notes.Add(new ResultNote(CableTexts.Unconfirmed, ResultState.Warning));
+        }
+
+        foreach (DcCableResult d in cables.Dc)
+        {
+            rows.Add(new AcRow($"MPPT {d.MpptIndex} string cables",
+                d.CrossSectionMm2 is { } a ? $"{Number(a, "0.#")} mm² · {Number(d.VoltageDropPct!.Value, "F2")} %" : "not sized",
+                $"≥ {Number(d.FuseRatingA ?? d.DesignCurrentA, "F1")} A · ≤ {Number(d.DropLimitPct, "0.##")} %",
+                d.CrossSectionMm2 is null ? (d.State == ResultState.Error ? ResultState.Error : ResultState.Neutral) : ResultState.Ok));
+            rows.Add(new AcRow($"MPPT {d.MpptIndex} string fuses",
+                d.FuseRequired ? (d.FuseRatingA is { } f ? $"gPV {Number(f, "F0")} A" : "no rating fits") : "not needed",
+                d.FuseRequired ? $"{Number(d.FuseMinA!.Value, "F1")} … {Number(d.FuseMaxA!.Value, "F1")} A" : None,
+                d.FuseRequired ? (d.FuseRatingA is null ? ResultState.Error : ResultState.Warning) : ResultState.Neutral));
+            notes.AddRange(d.Notes.Select(n => n with { Text = $"MPPT {d.MpptIndex}: {n.Text}" }));
+        }
+
+        if (cables.Ac is { } ac)
+        {
+            rows.Add(new AcRow("AC circuit breaker", ac.BreakerA is { } b ? $"{Number(b, "F0")} A" : "–",
+                ac.DesignCurrentA > 0 ? $"≥ {Number(ac.DesignCurrentA, "F1")} A (max. AC current)" : None,
+                ac.BreakerA is null ? ac.State : ResultState.Ok));
+            rows.Add(new AcRow("AC line",
+                ac.CrossSectionMm2 is { } area ? $"{Number(area, "0.#")} mm² · {Number(ac.VoltageDropPct!.Value, "F2")} %" : "not sized",
+                ac.BreakerA is { } breaker ? $"Iz ≥ {Number(breaker, "F0")} A · ≤ {Number(ac.DropLimitPct, "0.##")} %" : None,
+                ac.CrossSectionMm2 is null ? (ac.State == ResultState.Error ? ResultState.Error : ResultState.Neutral) : ResultState.Ok));
+            notes.AddRange(ac.Notes.Select(n => n with { Text = $"AC line: {n.Text}" }));
+        }
+
+        ResultState state = cables.State;
+        int issues = notes.Count(n => n.State is ResultState.Error or ResultState.Warning);
+        string subtitle = $"DC: {CableTexts.Installation(settings.DcInstallation)}, {Number(settings.DcAmbientC, "0.#")} °C · AC: method {settings.AcMethod}, {Number(settings.AcAmbientC, "0.#")} °C";
+        return new CableView(subtitle, state, issues == 0 ? (state == ResultState.Neutral ? "Lengths missing" : "OK") : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
     }
 
     private static MpptView Empty(MpptResult mppt, string title, ResultState state, string status, string note) =>

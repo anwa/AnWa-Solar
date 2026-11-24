@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
+using AnWaSolar.Core.Calculation;
+
 using Microsoft.Extensions.Logging;
 
 namespace AnWaSolar.Core.Services;
@@ -101,6 +103,9 @@ public sealed class UserSettings
 
     public LastSelection LastSelection { get; set; } = new();
 
+    /// <summary>Cable runs and installation conditions; optional.</summary>
+    public CableSettings Cables { get; set; } = new();
+
     /// <summary>Colour theme; optional, files without it use <see cref="AppTheme.System"/>.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
     public AppTheme Theme { get; set; } = AppTheme.System;
@@ -120,6 +125,10 @@ public enum AppTheme
 public interface ISettingsService
 {
     AppTheme LoadTheme();
+
+    CableSettings LoadCables();
+
+    bool SaveCables(CableSettings cables);
 
     bool SaveTheme(AppTheme theme);
 
@@ -241,6 +250,30 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public CableSettings LoadCables()
+    {
+        lock (_lock)
+        {
+            return EnsureLoaded().Cables.Clone();
+        }
+    }
+
+    public bool SaveCables(CableSettings cables)
+    {
+        ArgumentNullException.ThrowIfNull(cables);
+        lock (_lock)
+        {
+            EnsureLoaded().Cables = cables.Clone();
+            bool ok = TryWrite();
+            if (ok)
+            {
+                _logger.LogInformation("Cable settings saved to {Path}.", SettingsFilePath);
+            }
+
+            return ok;
+        }
+    }
+
     public AppTheme LoadTheme()
     {
         lock (_lock)
@@ -312,6 +345,19 @@ public sealed class SettingsService : ISettingsService
             if (Enum.TryParse(Text(root, "Theme"), ignoreCase: true, out AppTheme theme) && Enum.IsDefined(theme))
             {
                 settings.Theme = theme;
+            }
+
+            if (root["Cables"] is JsonObject cables)
+            {
+                try
+                {
+                    settings.Cables = cables.Deserialize<CableSettings>() ?? new CableSettings();
+                }
+                catch (JsonException ex)
+                {
+                    // Invalid cable settings do not discard the other settings.
+                    _logger.LogWarning(ex, "Cable settings in {Path} cannot be read; the defaults are used.", SettingsFilePath);
+                }
             }
 
             if (version < UserSettings.CurrentSchemaVersion)

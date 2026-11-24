@@ -48,6 +48,8 @@ public partial class MainWindow : ChromeWindow
     private readonly List<StringConfiguration> _stringConfigs = new();
     private readonly List<MpptUiRefs> _mpptRefs = new();
     private StringCalculationResult? _lastResult;
+    private CableCalculationResult? _lastCables;
+    private CableSettings _cableSettings = new();
 
     private CalculationParameters _parameters;
 
@@ -118,6 +120,7 @@ public partial class MainWindow : ChromeWindow
 
         // Load and show the parameters
         _parameters = _settings.LoadParameters();
+        _cableSettings = _settings.LoadCables();
         UpdateParametersSummary();
 
         // Restore the last selection
@@ -676,12 +679,46 @@ public partial class MainWindow : ChromeWindow
         TryRestoreLastSelection();
     }
 
+    private void OnEditCablesClick(object sender, RoutedEventArgs e)
+    {
+        if (_dataStore.CableTables is not { } tables)
+        {
+            MessageDialog.Show(this, "The cable tables (Data/CableTables.json) could not be loaded; cables and fuses cannot be sized.", "Cables", StatusKind.Warning);
+            return;
+        }
+
+        var win = new CableSettingsWindow(_cableSettings, tables, _selectedInverter?.MpptCount ?? 1) { Owner = this };
+        if (win.ShowDialog() == true)
+        {
+            _cableSettings = win.Settings;
+            if (!_settings.SaveCables(_cableSettings))
+            {
+                MessageDialog.Show(this, "The cable settings could not be saved. They apply until the application is closed.", "Cables", StatusKind.Warning);
+            }
+
+            Recalculate();
+        }
+    }
+
+    private void UpdateCableSummary()
+    {
+        CultureInfo c = CultureInfo.CurrentCulture;
+        int mppts = _selectedInverter?.MpptCount ?? 0;
+        string dc = mppts == 0
+            ? "DC: select an inverter"
+            : "DC " + string.Join(", ", Enumerable.Range(1, mppts).Select(i => _cableSettings.DcLength(i) > 0
+                ? string.Create(c, $"MPPT {i} {_cableSettings.DcLength(i):0.#} m")
+                : $"MPPT {i} –"));
+        string ac = _cableSettings.AcLengthM > 0 ? string.Create(c, $"AC {_cableSettings.AcLengthM:0.#} m, method {_cableSettings.AcMethod}") : "AC –";
+        CableSummaryText.Text = $"{dc} · {ac}";
+    }
+
     // Copies the results as plain text.
     private void OnCopyResultsClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            string text = _lastResult is null ? ResultPresenter.Present(null).Details : CalculationTextFormatter.Format(_lastResult);
+            string text = _lastResult is null ? ResultPresenter.Present(null).Details : CalculationTextFormatter.Format(_lastResult, _lastCables);
             Clipboard.SetText(text);
             Snackbar.MessageQueue?.Enqueue("Results copied to the clipboard.");
         }
@@ -817,7 +854,11 @@ public partial class MainWindow : ChromeWindow
             ? null
             : StringCalculator.Calculate(_selectedInverter, _stringConfigs, _parameters);
 
-        ResultOverview overview = ResultPresenter.Present(_lastResult);
+        _lastCables = _lastResult is { HasValidMpptRange: true } && _dataStore.CableTables is { } tables
+            ? CableCalculator.Calculate(_lastResult, _cableSettings, tables)
+            : null;
+        UpdateCableSummary();
+        ResultOverview overview = ResultPresenter.Present(_lastResult, _lastCables, _cableSettings);
         ResultsPanel.DataContext = overview;
         StatusBar.DataContext = overview;
         LimitsCard.Visibility = overview.Limits.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -913,7 +954,7 @@ public partial class MainWindow : ChromeWindow
     // Builds the Markdown report from the last calculation.
     private void BuildMarkdownReport()
     {
-        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now);
+        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now, _lastCables, _dataStore.CableTables);
         ReportMarkdownTextBox.Text = _reportMarkdown;
     }
 

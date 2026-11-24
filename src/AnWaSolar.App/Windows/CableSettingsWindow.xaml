@@ -1,0 +1,113 @@
+<aw:ChromeWindow x:Class="AnWaSolar.Windows.CableSettingsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:aw="https://anwa-soft.de/design/wpf"
+                 Style="{StaticResource AppDialog}"
+                 WindowStartupLocation="CenterOwner"
+                 Title="Cables and fuses"
+                 Width="900"
+                 SizeToContent="Height">
+    <DockPanel>
+        <Border Style="{StaticResource AnWaSoft.DialogButtonBar}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        MinWidth="96"
+                        Margin="0,0,8,0"
+                        IsCancel="True" />
+                <Button Content="Save"
+                        MinWidth="96"
+                        IsDefault="True"
+                        Click="OnSaveClick" />
+            </StackPanel>
+        </Border>
+
+        <Grid Margin="24,20,24,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="32" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- DC string cables -->
+            <StackPanel>
+                <TextBlock Text="DC string cables" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,0,0,6" />
+                <TextBlock Style="{StaticResource AnWaSoft.Text.Muted}" Margin="0,0,0,16"
+                           Text="Solar cable H1Z2Z2-K (EN 50618), copper. Each string has its own cable pair; enter the one-way length from the modules to the inverter." />
+                <ComboBox x:Name="DcInstallationCombo"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Installation"
+                          Margin="0,0,0,20" />
+                <StackPanel x:Name="DcLengthsPanel" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="DcAmbientInput"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Ambient temperature"
+                             materialDesign:HintAssist.HelperText="On a roof often 60 °C or more"
+                             materialDesign:TextFieldAssist.SuffixText="°C"
+                             Margin="0,0,0,26" />
+                    <TextBox x:Name="DcGroupingInput"
+                             Grid.Column="2"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Circuits laid together"
+                             materialDesign:HintAssist.HelperText="Grouping, 1 to 9"
+                             Margin="0,0,0,26" />
+                </Grid>
+                <TextBox x:Name="DcDropInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Max. voltage drop DC"
+                         materialDesign:HintAssist.HelperText="Of the string voltage at the MPP"
+                         materialDesign:TextFieldAssist.SuffixText="%"
+                         Margin="0,0,0,20" />
+            </StackPanel>
+
+            <!-- AC line -->
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="AC line" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,0,0,6" />
+                <TextBlock Style="{StaticResource AnWaSoft.Text.Muted}" Margin="0,0,0,16"
+                           Text="PVC-insulated copper cable (for example NYM) from the inverter to the distribution board; enter the one-way length." />
+                <ComboBox x:Name="AcMethodCombo"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Installation method"
+                          Margin="0,0,0,20" />
+                <TextBox x:Name="AcLengthInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Length of the AC line"
+                         materialDesign:HintAssist.HelperText="One way; 0 = not entered"
+                         materialDesign:TextFieldAssist.SuffixText="m"
+                         Margin="0,0,0,26" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="AcAmbientInput"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Ambient temperature"
+                             materialDesign:HintAssist.HelperText="Reference 30 °C"
+                             materialDesign:TextFieldAssist.SuffixText="°C"
+                             Margin="0,0,0,26" />
+                    <TextBox x:Name="AcGroupingInput"
+                             Grid.Column="2"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Circuits laid together"
+                             materialDesign:HintAssist.HelperText="Grouping, 1 to 9"
+                             Margin="0,0,0,26" />
+                </Grid>
+                <TextBox x:Name="AcDropInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Max. voltage drop AC"
+                         materialDesign:HintAssist.HelperText="Of 400 V (three-phase) or 230 V (single-phase)"
+                         materialDesign:TextFieldAssist.SuffixText="%"
+                         Margin="0,0,0,20" />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</aw:ChromeWindow>
