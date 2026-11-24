@@ -39,7 +39,7 @@ public sealed class StringCalculatorTests
         EfficiencyPct = 22.6,
         PmaxTempCoeffPctPerC = -0.26,
         VocTempCoeffPctPerC = -0.22,
-        IscTempCoeffPctPerC = -0.05,
+        IscTempCoeffPctPerC = 0.05,
         OperatingTempMinC = -40,
         OperatingTempMaxC = 85,
     };
@@ -110,8 +110,8 @@ public sealed class StringCalculatorTests
 
         Assert.Equal(558.5, t.PmaxAtTminW, Precision);
         Assert.Equal(441.5, t.PmaxAtTmaxW, Precision);
-        Assert.Equal(14.05 * 1.0225, t.IscAtTminA, Precision);
-        Assert.Equal(14.05 * 0.9775, t.IscAtTmaxA, Precision);
+        Assert.Equal(14.05 * 0.9775, t.IscAtTminA, Precision);
+        Assert.Equal(14.05 * 1.0225, t.IscAtTmaxA, Precision);
 
         // With equal PMAX and VMPP coefficients IMPP stays at PMAX / VMPP at 25 °C.
         Assert.Equal(500 / 37.9, t.ImppAtTminA, Precision);

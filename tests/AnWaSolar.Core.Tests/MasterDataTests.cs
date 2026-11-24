@@ -40,6 +40,7 @@ public sealed class MasterDataTests
             Assert.True(module.VocV > module.VmppV, $"{name}: UOC must exceed UMPP");
             Assert.True(module.IscA > module.ImppA, $"{name}: ISC must exceed IMPP");
             Assert.True(module.VocTempCoeffPctPerC < 0, $"{name}: VOC coefficient must be negative");
+            Assert.True(module.IscTempCoeffPctPerC > 0, $"{name}: ISC coefficient must be positive (the current rises with the temperature)");
         }
     }
 

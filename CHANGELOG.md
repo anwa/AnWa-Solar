@@ -2,6 +2,11 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.15.0)
+
+- New master data: inverter Deye SUN-10K-G06P3-EU-AM2, modules Ja-Solar JAM54D40-460/LB and Trina TSM-450-NEG9R.25.
+- Fixed: The temperature coefficient of Isc of all shipped modules (Ja-Solar JAM54D40-460/LB, Trina TSM-455-NEG9R.28 and TSM-450-NEG9R.25, AIKO-A500-MAH60Db) had a wrong minus sign; Isc rises with the temperature, as the datasheets state. With the default cell temperatures (-20 and 70 °C, both 45 K from 25 °C) the highest current was the same; with other temperatures the current when hot was too low. A test now requires a positive Isc coefficient for every shipped module.
+
 ## v0.14.0 (2026-11-24)
 
 - New: **Export HTML** saves the report as a single HTML file with rendered formulas and embedded fonts; it works offline and without scripts and always uses the light colours.
