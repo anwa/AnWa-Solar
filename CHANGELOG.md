@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.11.0)
+## v0.11.0 (2026-11-24)
 
 - Changed: New user interface. All windows have their own title bar in the application colours with a thin accent line instead of the Windows title bar.
 - Changed: The main window shows the configuration on the left and the results on the right. The results start with an overall status, followed by one card per MPPT with a voltage window graphic, a table of the lowest and highest values against the limits, the allowed module count and the notes; the inverter limits are listed from the datasheet and with the safety margin. A status bar shows the overall result.

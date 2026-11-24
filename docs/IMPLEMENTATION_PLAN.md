@@ -61,7 +61,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] About window with version, build, runtime, folders, contact and license
 - [x] User manual in `docs/manual`, embedded into the executable, shown with WebView2 (page tree, search, links, formulas)
 
-## M10 – Modern user interface (`feature/modern-ui`)
+## M10 – Modern user interface (`feature/modern-ui`, v0.11.0)
 
 - [x] Own title bar in all windows (icon, title, window buttons) with an accent line, instead of the Windows title bar
 - [x] Main window in two columns: configuration on the left, structured results on the right
