@@ -6,16 +6,15 @@ Battery storage, AC-side and cable/fuse calculations are planned (see [Roadmap](
 
 ## Features
 
-- **String calculation** tab with four sections:
-  - **Inverter**: selection dialog with manufacturer and model and the datasheet values.
-  - **Strings**: one section per MPPT with module selection, sliders for modules per string and parallel strings, and a switch that disables a string without losing its values. The module slider marks the allowed range.
-  - **Results**: recalculated on every change, with violated limits and recommended module and string counts.
-  - **Parameters**: minimum and maximum cell temperature (Tmin, default −20 °C; Tmax, default 70 °C) and the safety margin.
+- **String calculation** tab in two columns:
+  - **Configuration**: the inverter with its datasheet values, the parameters (minimum and maximum cell temperature, Tmin default −20 °C and Tmax default 70 °C, and the safety margin) and one card per MPPT with module selection, sliders for modules per string and parallel strings, and a switch that disables an MPPT without losing its values. The module slider marks the allowed range.
+  - **Results**: recalculated on every change. An overall status banner, one card per MPPT with a voltage window graphic, a table of the lowest and highest values against the limits, the allowed module count and the notes with recommendations, and the inverter limits from the datasheet and with the safety margin.
 - **Report** tab: Markdown report of the current configuration with a preview (Microsoft Edge WebView2) that renders the formulas with KaTeX; the Markdown can be copied or saved. The preview works offline; KaTeX is shipped with the application. WebView2 keeps its data in `%LOCALAPPDATA%\AnWa-Solar\WebView2`. The Microsoft Edge WebView2 Runtime is part of Windows 11; without it the report tab shows the Markdown source.
 - Master data of PV modules and inverters in JSON files; invalid entries are skipped and reported.
-- Light and dark mode: the theme button in the top bar switches System → Light → Dark; System follows the Windows app theme. The choice is saved.
+- Light and dark mode: the theme button in the title bar switches System → Light → Dark; System follows the Windows app theme. The choice is saved.
 - User manual (F1 or the book button) with page tree, search and formulas; the pages are in [docs/manual](docs/manual) and embedded into the application.
 - About window with version, build, runtime, installation and data folders, contact (Andreas Wansner, andreas@anwa-soft.de) and license.
+- Own title bar and dialogs in the application style, in light and dark mode.
 - Structured JSONL logging.
 
 ## Requirements for Building
@@ -91,8 +90,8 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 
 ## Architecture
 
-- `src/AnWaSolar.Core`: models, master data (`JsonDataStore`), string calculation (`Calculation/StringCalculator`), results text and Markdown report, settings (`SettingsService`) and the JSONL logger, without WPF references. The live results and the report use the same calculation result.
-- `src/AnWaSolar.App`: WPF application (windows, theme service, dependency injection through Microsoft.Extensions.Hosting). The report preview and the manual share one WebView2 setup.
+- `src/AnWaSolar.Core`: models, master data (`JsonDataStore`), string calculation (`Calculation/StringCalculator`), results text and presentation (`ResultPresenter`), Markdown report, settings (`SettingsService`) and the JSONL logger, without WPF references. The live results and the report use the same calculation result.
+- `src/AnWaSolar.App`: WPF application (windows with a shared title bar in `ChromeWindow`, theme service, dependency injection through Microsoft.Extensions.Hosting). The report preview and the manual share one WebView2 setup.
 - `docs/manual`: user manual (Markdown and `toc.json`), embedded into the executable; `ManualIndex` in Core builds the page tree and the search.
 - `tests/AnWaSolar.Core.Tests`: xUnit tests for Core.
 - `installer/AnWaSolar.Installer`: WiX 5 MSI project; `tools/Build-Installer.ps1` builds the MSI (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
@@ -100,7 +99,6 @@ Values come from the manufacturer datasheets and may be decimal numbers. Every e
 
 ## Roadmap
 
-- Results as a table with OK/warning states.
 - Further calculations: battery storage, AC side, cable and fuse sizing.
 - Report export as HTML or PDF, and a report preview that renders formulas.
 

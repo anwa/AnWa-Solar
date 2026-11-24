@@ -61,6 +61,14 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] About window with version, build, runtime, folders, contact and license
 - [x] User manual in `docs/manual`, embedded into the executable, shown with WebView2 (page tree, search, links, formulas)
 
+## M10 – Modern user interface (`feature/modern-ui`, v0.11.0)
+
+- [x] Own title bar in all windows (icon, title, window buttons) with an accent line, instead of the Windows title bar
+- [x] Main window in two columns: configuration on the left, structured results on the right
+- [x] Results per MPPT as cards: status, values at Tmin and Tmax against the effective limits, voltage window, notes
+- [x] Overall status and status bar; messages in app-styled dialogs and short confirmations as snackbar
+- [x] Selection and parameter dialogs in the same style; manual updated to the new GUI texts
+
 ## Later
 
 - Further calculations: battery storage, AC side, cable and fuse sizing

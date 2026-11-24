@@ -20,7 +20,7 @@ namespace AnWaSolar.Windows;
 /// The user manual: the Markdown pages embedded in the executable, shown with WebView2. Pages, links between pages
 /// and KaTeX are served from a local host name; web and mail links open in the default application.
 /// </summary>
-public partial class ManualWindow : Window
+public partial class ManualWindow : ChromeWindow
 {
     private const string Host = "manual.anwasolar.invalid";
     private static readonly string s_katexDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "katex");
@@ -42,7 +42,6 @@ public partial class ManualWindow : Window
 
         _index = new ManualIndex(ManualResources.Load(typeof(ManualWindow).Assembly));
         Title = _index.Title;
-        HeaderText.Text = _index.Title;
         PageTree.ItemsSource = _index.Tree;
 
         InputBindings.Add(new KeyBinding(new ActionCommand(() => SearchBox.Focus()), Key.F, ModifierKeys.Control));
@@ -149,7 +148,7 @@ public partial class ManualWindow : Window
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             _logger.LogWarning(ex, "Link {Uri} could not be opened.", uri);
-            MessageBox.Show(this, $"The link could not be opened: {ex.Message}", "Manual", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Show(this, $"The link could not be opened: {ex.Message}", "Manual", DialogKind.Warning);
         }
     }
 

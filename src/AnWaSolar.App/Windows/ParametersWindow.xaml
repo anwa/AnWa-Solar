@@ -1,74 +1,53 @@
-﻿<Window x:Class="AnWaSolar.Windows.ParametersWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Style="{StaticResource AppWindow}"
-        Title="Calculation parameters"
-        Width="520"
-        Height="360"
-        WindowStartupLocation="CenterOwner"
-        ResizeMode="CanResize">
-    <Grid>
-        <DockPanel>
-            <materialDesign:ColorZone Mode="PrimaryMid"
-                                      DockPanel.Dock="Top"
-                                      Padding="12">
-                <TextBlock Text="Calculation parameters"
-                           Foreground="White"
-                           FontSize="16"
-                           VerticalAlignment="Center" />
-            </materialDesign:ColorZone>
-
-            <StackPanel Margin="12"
-                        Orientation="Vertical">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="240" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Row="0"
-                               Grid.Column="0"
-                               Text="Min. cell temperature (°C)" />
-                    <TextBox Grid.Row="0"
-                             Grid.Column="1"
-                             x:Name="MinTempInput"
-                             Text="-20"
-                             materialDesign:HintAssist.Hint="e.g. -20" />
-                    <TextBlock Grid.Row="1"
-                               Grid.Column="0"
-                               Text="Max. cell temperature (°C)" />
-                    <TextBox Grid.Row="1"
-                             Grid.Column="1"
-                             x:Name="MaxTempInput"
-                             Text="70"
-                             materialDesign:HintAssist.Hint="e.g. 70" />
-                    <TextBlock Grid.Row="2"
-                               Grid.Column="0"
-                               Text="Safety margin (%)" />
-                    <TextBox Grid.Row="2"
-                             Grid.Column="1"
-                             x:Name="SafetyMarginInput"
-                             Text="10"
-                             materialDesign:HintAssist.Hint="e.g. 10" />
-                </Grid>
-
-                <StackPanel Orientation="Horizontal"
-                            HorizontalAlignment="Right"
-                            Margin="0,12,0,0">
-                    <Button Content="Cancel"
-                            Margin="0,0,8,0"
-                            IsCancel="True" />
-                    <Button Content="Save"
-                            IsDefault="True"
-                            Click="OnSaveClick" />
-                </StackPanel>
+﻿<w:ChromeWindow x:Class="AnWaSolar.Windows.ParametersWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                xmlns:w="clr-namespace:AnWaSolar.Windows"
+                Style="{StaticResource AppDialog}"
+                WindowStartupLocation="CenterOwner"
+                Title="Calculation parameters"
+                Width="520"
+                SizeToContent="Height">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom"
+                Padding="20,12"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource MaterialDesign.Brush.Separator}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        MinWidth="96"
+                        Margin="0,0,8,0"
+                        IsCancel="True" />
+                <Button Content="Save"
+                        MinWidth="96"
+                        IsDefault="True"
+                        Click="OnSaveClick" />
             </StackPanel>
-        </DockPanel>
-    </Grid>
-</Window>
+        </Border>
+
+        <StackPanel Margin="24,20,24,16">
+            <TextBlock Style="{StaticResource MutedText}"
+                       Margin="0,0,0,16"
+                       Text="Tmin and Tmax are module (cell) temperatures. The safety margin reduces maximum limits and raises minimum limits." />
+            <TextBox x:Name="MinTempInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Min. cell temperature (°C)"
+                     materialDesign:HintAssist.HelperText="Coldest expected cell temperature, for example -20"
+                     materialDesign:TextFieldAssist.SuffixText="°C"
+                     Margin="0,0,0,26" />
+            <TextBox x:Name="MaxTempInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Max. cell temperature (°C)"
+                     materialDesign:HintAssist.HelperText="Hottest expected cell temperature, for example 70"
+                     materialDesign:TextFieldAssist.SuffixText="°C"
+                     Margin="0,0,0,26" />
+            <TextBox x:Name="SafetyMarginInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Safety margin (%)"
+                     materialDesign:HintAssist.HelperText="0 to 50 %, for example 10"
+                     materialDesign:TextFieldAssist.SuffixText="%"
+                     Margin="0,0,0,20" />
+        </StackPanel>
+    </DockPanel>
+</w:ChromeWindow>

@@ -13,7 +13,7 @@ Disabled MPPTs are listed as "Disabled" without values.
 
 ## Markdown and preview
 
-**Switch view (Markdown/preview)** switches between the Markdown source and a formatted preview. The preview shows formulas typeset; it works without an internet connection and follows the light or dark mode of the application.
+**Preview** and **Markdown** above the report switch between the formatted preview (shown first) and the Markdown source. The preview shows formulas typeset; it works without an internet connection and follows the light or dark mode of the application.
 
 ## Copy and save
 

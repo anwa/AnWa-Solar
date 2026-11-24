@@ -7,7 +7,7 @@ using AnWaSolar.Core.Models;
 
 namespace AnWaSolar.Windows;
 
-public partial class SelectInverterWindow : Window
+public partial class SelectInverterWindow : ChromeWindow
 {
     private readonly Inverter[] _all;
 
@@ -57,7 +57,7 @@ public partial class SelectInverterWindow : Window
     {
         if (Selected is null)
         {
-            MessageBox.Show("Please select a manufacturer and a model.", "Note", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Show(this, "Please select a manufacturer and a model.", Title);
             return;
         }
         DialogResult = true;

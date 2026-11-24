@@ -10,7 +10,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace AnWaSolar.Windows;
 
-public partial class AboutWindow : Window
+public partial class AboutWindow : ChromeWindow
 {
     private readonly AboutFacts _facts;
 

@@ -5,7 +5,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -24,7 +26,7 @@ using Microsoft.Win32;
 
 namespace AnWaSolar.Windows;
 
-public partial class MainWindow : Window
+public partial class MainWindow : ChromeWindow
 {
     #region Fields
 
@@ -39,12 +41,14 @@ public partial class MainWindow : Window
 
     private Inverter? _selectedInverter;
     private readonly List<StringConfiguration> _stringConfigs = new();
+    private readonly List<MpptUiRefs> _mpptRefs = new();
+    private StringCalculationResult? _lastResult;
 
     private CalculationParameters _parameters;
 
     // Report
     private string _reportMarkdown = string.Empty;
-    private bool _reportPreviewMode = false;
+    private bool _reportPreviewMode = true;
     private string _previewHtml = string.Empty;
     private Task? _previewInit;
     private ManualWindow? _manualWindow;
@@ -87,6 +91,7 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         Title = $"AnWa-Solar {AppVersion.Current}";
+        CopyrightText.Text = AppInfo.Copyright(typeof(MainWindow).Assembly);
         _logger = logger;
         _markdown = markdown;
         _dataStore = dataStore;
@@ -112,253 +117,278 @@ public partial class MainWindow : Window
         // No inverter could be restored
         if (_selectedInverter is null)
         {
-            InverterSummaryText.Text = "No inverter selected.";
-            SelectInverterButton.Content = "Select inverter";
-            StringsCard.Visibility = System.Windows.Visibility.Collapsed;
-            ResultsOutput.Text = "No calculation yet.";
+            ShowInverter();
+            Recalculate();
         }
-
-        // Create the initial report
-        BuildMarkdownReport();
-        UpdateReportView();
     }
 
     #endregion
 
     #region String sections
 
-    // Creates one section per MPPT of _selectedInverter
+    // Creates one configuration card per MPPT of _selectedInverter
     private void BuildStringsUi()
     {
         StringsPanel.Children.Clear();
         _stringConfigs.Clear();
+        _mpptRefs.Clear();
 
-        if (_selectedInverter is null) return;
+        if (_selectedInverter is null)
+        {
+            StringsLabel.Visibility = Visibility.Collapsed;
+            return;
+        }
 
-        var mpptCount = Math.Max(1, _selectedInverter.MpptCount);
+        int mpptCount = Math.Max(1, _selectedInverter.MpptCount);
+        int specMaxStrings = _selectedInverter.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
 
         for (int i = 0; i < mpptCount; i++)
         {
             var cfg = new StringConfiguration { MpptIndex = i + 1, ModulesPerString = 10, ParallelStrings = 1, IsEnabled = true };
             _stringConfigs.Add(cfg);
 
-            var card = new Card { Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 12) };
-            var sp = new StackPanel { Orientation = Orientation.Vertical };
-            card.Content = sp;
+            var root = new StackPanel();
+            var card = new Card { Content = root, Style = (Style)FindResource("ContentCard") };
+            AutomationProperties.SetName(card, $"MPPT {cfg.MpptIndex} configuration");
 
-            // Header: title on the left, toggle and module buttons on the right
+            // Header: title and the enable switch
             var header = new DockPanel();
-
-            var title = new TextBlock { Text = $"MPPT {cfg.MpptIndex}", FontWeight = FontWeights.Bold, FontSize = 14 };
-            DockPanel.SetDock(title, Dock.Left);
-            header.Children.Add(title);
-
-            var rightHeaderPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            DockPanel.SetDock(rightHeaderPanel, Dock.Right);
-
-            var toggle = new System.Windows.Controls.Primitives.ToggleButton
+            var toggle = new ToggleButton
             {
-                ToolTip = "Enable or disable the string"
+                ToolTip = "Enable or disable this MPPT",
+                Style = (Style)FindResource("MaterialDesignSwitchToggleButton"),
             };
-            try
+            AutomationProperties.SetName(toggle, $"MPPT {cfg.MpptIndex} enabled");
+            DockPanel.SetDock(toggle, Dock.Right);
+            header.Children.Add(toggle);
+            var icon = new PackIcon { Kind = PackIconKind.SolarPanel, Width = 22, Height = 22, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+            icon.SetResourceReference(ForegroundProperty, "MaterialDesign.Brush.Primary");
+            header.Children.Add(icon);
+            header.Children.Add(new TextBlock { Text = $"MPPT {cfg.MpptIndex}", Style = (Style)FindResource("CardTitle") });
+            root.Children.Add(header);
+
+            var body = new StackPanel();
+            root.Children.Add(body);
+
+            // Module: name and key values, select and remove buttons
+            var moduleBox = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 8, 10), Margin = new Thickness(0, 12, 0, 0) };
+            moduleBox.SetResourceReference(Border.BackgroundProperty, "App.PanelBackground");
+            var moduleRow = new DockPanel();
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(buttons, Dock.Right);
+            var selectText = new TextBlock { Text = "Select module", VerticalAlignment = VerticalAlignment.Center };
+            var btnSelect = new Button
             {
-                var style = FindResource("MaterialDesignSwitchLightToggleButton") as Style;
-                if (style is not null) toggle.Style = style;
-            }
-            catch { }
-            toggle.Checked += (s, e) =>
-            {
-                if (_suppressToggleEvents) return;
-                cfg.IsEnabled = true;
-                var refs = sp.Tag as MpptUiRefs;
-                UpdateMpptUiState(cfg, refs);
-                PersistLastSelection();
-                Recalculate();
+                Style = (Style)FindResource("MaterialDesignOutlinedButton"),
+                Height = 32,
+                Padding = new Thickness(12, 0, 12, 0),
+                Content = IconText(PackIconKind.SwapHorizontal, selectText),
             };
-            toggle.Unchecked += (s, e) =>
+            AutomationProperties.SetName(btnSelect, $"Select PV module for MPPT {cfg.MpptIndex}");
+            btnSelect.Click += (_, _) => OnSelectModuleForMppt(cfg);
+            var btnRemove = new Button
             {
-                if (_suppressToggleEvents) return;
-                cfg.IsEnabled = false;
-                var refs = sp.Tag as MpptUiRefs;
-                UpdateMpptUiState(cfg, refs);
-                PersistLastSelection();
-                Recalculate();
+                Style = (Style)FindResource("MaterialDesignIconButton"),
+                Width = 32,
+                Height = 32,
+                Margin = new Thickness(4, 0, 0, 0),
+                ToolTip = "Remove the PV module",
+                Content = new PackIcon { Kind = PackIconKind.DeleteOutline, Width = 18, Height = 18 },
+                Visibility = Visibility.Collapsed,
             };
-            rightHeaderPanel.Children.Add(toggle);
+            AutomationProperties.SetName(btnRemove, $"Remove PV module from MPPT {cfg.MpptIndex}");
+            btnRemove.Click += (_, _) => OnRemoveModuleForMppt(cfg);
+            buttons.Children.Add(btnSelect);
+            buttons.Children.Add(btnRemove);
+            moduleRow.Children.Add(buttons);
+            var moduleText = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            var moduleName = new TextBlock { FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
+            var moduleSpecs = Muted(string.Empty, 12);
+            moduleText.Children.Add(moduleName);
+            moduleText.Children.Add(moduleSpecs);
+            moduleRow.Children.Add(moduleText);
+            moduleBox.Child = moduleRow;
+            body.Children.Add(moduleBox);
 
-            var btnSelect = new Button { Content = "Select PV module", Margin = new Thickness(8, 0, 0, 0) };
-            btnSelect.Click += (s, e) => OnSelectModuleForMppt(cfg, sp);
-            rightHeaderPanel.Children.Add(btnSelect);
+            // Modules per string
+            (DockPanel nRow, TextBlock nValue) = SliderHeader("Modules per string");
+            nRow.Margin = new Thickness(0, 14, 0, 0);
+            var nSlider = new Slider { Minimum = 1, Maximum = 30, TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ModulesPerString };
+            AutomationProperties.SetName(nSlider, $"Modules per string, MPPT {cfg.MpptIndex}");
+            var nAllowed = Muted(string.Empty, 12);
+            body.Children.Add(nRow);
+            body.Children.Add(nSlider);
+            body.Children.Add(nAllowed);
 
-            // Remove button: hidden until a module is selected
-            var btnRemove = new Button { Content = "Remove module", Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
-            btnRemove.Click += (s, e) => OnRemoveModuleForMppt(cfg, sp);
-            rightHeaderPanel.Children.Add(btnRemove);
+            // Parallel strings
+            (DockPanel sRow, TextBlock sValue) = SliderHeader("Parallel strings");
+            sRow.Margin = new Thickness(0, 12, 0, 0);
+            var sSlider = new Slider { Minimum = 1, Maximum = Math.Max(1, specMaxStrings), TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ParallelStrings };
+            AutomationProperties.SetName(sSlider, $"Parallel strings, MPPT {cfg.MpptIndex}");
+            var sAllowed = Muted(_selectedInverter.MaxStringsPerMppt > 0
+                ? $"The inverter allows up to {_selectedInverter.MaxStringsPerMppt} strings per MPPT."
+                : "The datasheet states no maximum number of strings per MPPT.", 12);
+            body.Children.Add(sRow);
+            body.Children.Add(sSlider);
+            body.Children.Add(sAllowed);
 
-            header.Children.Add(rightHeaderPanel);
-            sp.Children.Add(header);
+            var refs = new MpptUiRefs(toggle, body, moduleName, moduleSpecs, selectText, btnSelect, btnRemove, nSlider, nValue, nAllowed, sSlider, sValue);
+            _mpptRefs.Add(refs);
 
-            // Summary text
-            var summary = new TextBlock { Text = "No PV module selected.", Margin = new Thickness(0, 6, 0, 8) };
-            sp.Children.Add(summary);
-
-            // Slider grid (3/4 left, 1/4 right)
-            var grid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            // Left column: modules per string
-            var leftPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 8, 0) };
-            var lblN = new TextBlock { Text = "Modules per string" };
-            var nSlider = new Slider
+            toggle.Checked += (_, _) => OnMpptToggled(cfg, refs, true);
+            toggle.Unchecked += (_, _) => OnMpptToggled(cfg, refs, false);
+            nSlider.ValueChanged += (_, _) =>
             {
-                Minimum = 1,
-                Maximum = 30, // initial value; set by the calculation
-                TickFrequency = 1,
-                IsSnapToTickEnabled = true,
-                IsSelectionRangeEnabled = false
-            };
-            try
-            {
-                var s = FindResource("MaterialDesign3.MaterialDesignDiscreteSlider") as Style;
-                if (s is not null) nSlider.Style = s;
-            }
-            catch { }
-            nSlider.Value = cfg.ModulesPerString;
-            nSlider.ValueChanged += (s, e) =>
-            {
+                nValue.Text = ((int)Math.Round(nSlider.Value)).ToString(CultureInfo.CurrentCulture);
                 if (_suppressSliderEvents) return;
-                var val = (int)Math.Round(nSlider.Value);
-                if (val < 1) val = 1;
-                cfg.ModulesPerString = val;
+                cfg.ModulesPerString = Math.Max(1, (int)Math.Round(nSlider.Value));
                 PersistLastSelection();
                 Recalculate();
             };
-            leftPanel.Children.Add(lblN);
-            leftPanel.Children.Add(nSlider);
-
-            // Right column: parallel strings
-            var rightPanel2 = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(8, 0, 0, 0) };
-            var lblS = new TextBlock { Text = "Parallel strings" };
-            var specMaxStrings = _selectedInverter.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
-            var sSlider = new Slider
+            sSlider.ValueChanged += (_, _) =>
             {
-                Minimum = 1,
-                Maximum = Math.Max(1, specMaxStrings),
-                TickFrequency = 1,
-                IsSnapToTickEnabled = true
-            };
-            try
-            {
-                var s2 = FindResource("MaterialDesign3.MaterialDesignDiscreteSlider") as Style;
-                if (s2 is not null) sSlider.Style = s2;
-            }
-            catch { }
-            sSlider.Value = cfg.ParallelStrings;
-            sSlider.ValueChanged += (ss, ee) =>
-            {
+                sValue.Text = ((int)Math.Round(sSlider.Value)).ToString(CultureInfo.CurrentCulture);
                 if (_suppressSliderEvents) return;
-                var val = (int)Math.Round(sSlider.Value);
-                if (val < 1) val = 1;
-                var maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? int.MaxValue;
+                int val = Math.Max(1, (int)Math.Round(sSlider.Value));
+                int maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? int.MaxValue;
                 if (maxBySpec > 0 && val > maxBySpec) val = maxBySpec;
                 cfg.ParallelStrings = val;
                 PersistLastSelection();
                 Recalculate();
             };
-            rightPanel2.Children.Add(lblS);
-            rightPanel2.Children.Add(sSlider);
+            nValue.Text = cfg.ModulesPerString.ToString(CultureInfo.CurrentCulture);
+            sValue.Text = cfg.ParallelStrings.ToString(CultureInfo.CurrentCulture);
 
-            grid.Children.Add(leftPanel);
-            grid.Children.Add(rightPanel2);
-            Grid.SetColumn(leftPanel, 0);
-            Grid.SetColumn(rightPanel2, 1);
-            sp.Children.Add(grid);
-
-            // Keep references to the controls
-            sp.Tag = new MpptUiRefs
-            {
-                SummaryText = summary,
-                Toggle = toggle,
-                SelectButton = btnSelect,
-                RemoveButton = btnRemove,
-                NSlider = nSlider,
-                SSlider = sSlider
-            };
-
-            // Set the toggle from the configuration without raising events
-            _suppressToggleEvents = true;
-            toggle.IsChecked = cfg.IsEnabled;
-            _suppressToggleEvents = false;
-
-            // Initial control state
-            UpdateMpptUiState(cfg, sp.Tag as MpptUiRefs);
-
+            UpdateMpptUiState(cfg, refs);
             StringsPanel.Children.Add(card);
         }
 
-        StringsCard.Visibility = Visibility.Visible;
+        StringsLabel.Visibility = Visibility.Visible;
     }
 
-    // Controls of one MPPT section, so that sliders and toggle can be updated
-    private sealed class MpptUiRefs
+    private void OnMpptToggled(StringConfiguration cfg, MpptUiRefs refs, bool enabled)
     {
-        public TextBlock SummaryText { get; set; } = new TextBlock();
-        public System.Windows.Controls.Primitives.ToggleButton Toggle { get; set; } = new System.Windows.Controls.Primitives.ToggleButton();
-        public Button SelectButton { get; set; } = new Button();
-        public Button RemoveButton { get; set; } = new Button();
-        public Slider NSlider { get; set; } = new Slider();
-        public Slider SSlider { get; set; } = new Slider();
+        if (_suppressToggleEvents) return;
+        cfg.IsEnabled = enabled;
+        UpdateMpptUiState(cfg, refs);
+        PersistLastSelection();
+        Recalculate();
     }
 
-    // Updates buttons and summary of one MPPT section
+    // Controls of one MPPT card, so that sliders, texts and the switch can be updated
+    private sealed record MpptUiRefs(
+        ToggleButton Toggle,
+        FrameworkElement Body,
+        TextBlock ModuleName,
+        TextBlock ModuleSpecs,
+        TextBlock SelectText,
+        Button SelectButton,
+        Button RemoveButton,
+        Slider NSlider,
+        TextBlock NValue,
+        TextBlock NAllowed,
+        Slider SSlider,
+        TextBlock SValue);
+
+    // Updates switch, module texts and buttons of one MPPT card
     private void UpdateMpptUiState(StringConfiguration cfg, MpptUiRefs? refs)
     {
         if (refs is null) return;
 
-        // Sync the toggle without raising events
         _suppressToggleEvents = true;
         refs.Toggle.IsChecked = cfg.IsEnabled;
         _suppressToggleEvents = false;
 
-        // Summary
-        refs.SummaryText.Text = cfg.SelectedModule is null
-            ? "No PV module selected."
-            : $"{cfg.SelectedModule.Manufacturer} {cfg.SelectedModule.Model} ({cfg.SelectedModule.PmaxW} W, Vmpp={cfg.SelectedModule.VmppV:F2} V, Impp={cfg.SelectedModule.ImppA:F2} A)";
+        PVModule? module = cfg.SelectedModule;
+        refs.ModuleName.Text = module is null ? "No PV module selected" : $"{module.Manufacturer} {module.Model}";
+        refs.ModuleSpecs.Text = module is null
+            ? "Select a module from the master data."
+            : string.Create(CultureInfo.CurrentCulture, $"{module.PmaxW} W · Voc {module.VocV:F2} V · Vmpp {module.VmppV:F2} V · Impp {module.ImppA:F2} A");
+        refs.SelectText.Text = module is null ? "Select module" : "Change";
+        refs.RemoveButton.Visibility = module is null ? Visibility.Collapsed : Visibility.Visible;
 
-        // Button texts and visibility
-        refs.SelectButton.Content = cfg.SelectedModule is null ? "Select PV module" : "Change PV module";
-
-        // The remove button is only visible when a module is selected
-        refs.RemoveButton.Visibility = cfg.SelectedModule is null ? Visibility.Collapsed : Visibility.Visible;
-
-        // Buttons follow the toggle state
-        var enabled = cfg.IsEnabled;
-        // The toggle itself stays enabled so the string can be enabled again
-        refs.SelectButton.IsEnabled = enabled;
-        refs.RemoveButton.IsEnabled = enabled && refs.RemoveButton.Visibility == Visibility.Visible;
-    }
-
-    #endregion
-
-    #region String sections
-    private void RefreshStringsUiSummaries()
-    {
-        if (_selectedInverter is null) return;
-        var mpptCount = Math.Max(1, _selectedInverter.MpptCount);
-
-        for (int i = 0; i < mpptCount; i++)
+        // The switch stays enabled so that the MPPT can be enabled again
+        bool enabled = cfg.IsEnabled;
+        refs.Body.IsEnabled = enabled;
+        refs.Body.Opacity = enabled ? 1.0 : 0.45;
+        if (module is null)
         {
-            var cfg = _stringConfigs.ElementAtOrDefault(i);
-            var card = StringsPanel.Children[i] as Card;
-            var sp = card?.Content as StackPanel;
-            var refs = sp?.Tag as MpptUiRefs;
-            if (cfg is not null && refs is not null)
-            {
-                UpdateMpptUiState(cfg, refs);
-            }
+            refs.NAllowed.Text = "The allowed range is shown once a module is selected.";
         }
     }
+
+    private static StackPanel IconText(PackIconKind kind, TextBlock text)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(new PackIcon { Kind = kind, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+        panel.Children.Add(text);
+        return panel;
+    }
+
+    private TextBlock Muted(string text, double fontSize)
+    {
+        return new TextBlock { Text = text, FontSize = fontSize, Style = (Style)FindResource("MutedText") };
+    }
+
+    private static (DockPanel Row, TextBlock Value) SliderHeader(string label)
+    {
+        var row = new DockPanel();
+        var value = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(value, Dock.Right);
+        row.Children.Add(value);
+        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+        return (row, value);
+    }
+
+    // Label and value of an inverter or parameter value; a tile has a tinted background and a larger value.
+    private FrameworkElement ValueTile(string label, string value, bool tile)
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(Muted(label, 11));
+        panel.Children.Add(new TextBlock
+        {
+            Text = value,
+            FontSize = tile ? 18 : 13,
+            FontWeight = FontWeights.SemiBold,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            ToolTip = value,
+        });
+        if (!tile)
+        {
+            panel.Margin = new Thickness(0, 8, 8, 0);
+            return panel;
+        }
+
+        var border = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 8, 12, 8), Margin = new Thickness(0, 0, 8, 0), Child = panel };
+        border.SetResourceReference(Border.BackgroundProperty, "App.PanelBackground");
+        return border;
+    }
+
+    // Shows the selected inverter with its datasheet values.
+    private void ShowInverter()
+    {
+        InverterSpecs.Children.Clear();
+        if (_selectedInverter is not { } inv)
+        {
+            InverterNameText.Text = "No inverter selected";
+            SelectInverterText.Text = "Select";
+            InverterSpecs.Children.Add(Muted("Select an inverter from the master data to start.", 13));
+            InverterSpecs.Columns = 1;
+            return;
+        }
+
+        InverterNameText.Text = $"{inv.Manufacturer} {inv.Model}";
+        SelectInverterText.Text = "Change";
+        InverterSpecs.Columns = 3;
+        CultureInfo c = CultureInfo.CurrentCulture;
+        InverterSpecs.Children.Add(ValueTile("Max. DC voltage", string.Create(c, $"{inv.MaxDcInputVoltageV} V"), false));
+        InverterSpecs.Children.Add(ValueTile("MPPT range", $"{inv.MpptVoltageRangeV} V", false));
+        InverterSpecs.Children.Add(ValueTile("Start voltage", string.Create(c, $"{inv.StartVoltageV} V"), false));
+        InverterSpecs.Children.Add(ValueTile("Max. input current", string.Create(c, $"{inv.MaxInputCurrentA} A"), false));
+        InverterSpecs.Children.Add(ValueTile("Max. Isc", string.Create(c, $"{inv.MaxShortCircuitCurrentA} A"), false));
+        InverterSpecs.Children.Add(ValueTile("MPPTs / strings", string.Create(c, $"{inv.MpptCount} / {(inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(c) : "n/a")}"), false));
+    }
+
     #endregion
 
     #region Top bar
@@ -458,23 +488,18 @@ public partial class MainWindow : Window
             text.AppendLine($"• … and {issues.Count - MaxShown} more (see log).");
         }
 
-        MessageBox.Show(this, text.ToString(), "Master data", MessageBoxButton.OK, MessageBoxImage.Warning);
+        AppDialog.Show(this, text.ToString().TrimEnd(), "Master data", DialogKind.Warning);
     }
 
     private void OnSelectInverterClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            var win = new SelectInverterWindow(_dataStore.Inverters);
-            win.Owner = this;
-            var res = win.ShowDialog();
-            if (res == true && win.Selected is not null)
+            var win = new SelectInverterWindow(_dataStore.Inverters) { Owner = this };
+            if (win.ShowDialog() == true && win.Selected is not null)
             {
                 _selectedInverter = win.Selected;
-                InverterSummaryText.Text =
-                    $"{_selectedInverter.Manufacturer} {_selectedInverter.Model} | {CalculationTextFormatter.FormatInverterSummary(_selectedInverter)}";
-                SelectInverterButton.Content = "Change inverter";
-
+                ShowInverter();
                 _logger.LogInformation("Inverter selected: {Manufacturer} {Model}.", _selectedInverter.Manufacturer, _selectedInverter.Model);
 
                 BuildStringsUi();
@@ -485,24 +510,19 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the inverter selection.");
-            MessageBox.Show("Error in the inverter selection. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error in the inverter selection. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
-    private void OnSelectModuleForMppt(StringConfiguration cfg, StackPanel container)
+    private void OnSelectModuleForMppt(StringConfiguration cfg)
     {
         try
         {
-            var win = new SelectModuleWindow(_dataStore.Modules);
-            win.Owner = this;
-            var res = win.ShowDialog();
-            if (res == true && win.Selected is not null)
+            var win = new SelectModuleWindow(_dataStore.Modules) { Owner = this };
+            if (win.ShowDialog() == true && win.Selected is not null)
             {
                 cfg.SelectedModule = win.Selected;
-
-                var refs = container.Tag as MpptUiRefs;
-                UpdateMpptUiState(cfg, refs);
+                UpdateMpptUiState(cfg, RefsOf(cfg));
 
                 _logger.LogInformation("PV module selected for MPPT {Mppt}: {Manufacturer} {Model}.", cfg.MpptIndex, cfg.SelectedModule.Manufacturer, cfg.SelectedModule.Model);
                 PersistLastSelection();
@@ -512,32 +532,28 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the module selection.");
-            MessageBox.Show("Error in the module selection. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error in the module selection. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
-    private void OnRemoveModuleForMppt(StringConfiguration cfg, StackPanel container)
+    private void OnRemoveModuleForMppt(StringConfiguration cfg)
     {
         try
         {
             cfg.SelectedModule = null;
 
-            var refs = container.Tag as MpptUiRefs;
-            if (refs is not null)
+            if (RefsOf(cfg) is { } refs)
             {
-                // Hide the remove button and update the select button
                 UpdateMpptUiState(cfg, refs);
 
-                // Reset the sliders (modules 1..30, no allowed range)
+                // Reset the sliders (modules 1..30, no allowed range); the string slider keeps the inverter specification
                 _suppressSliderEvents = true;
                 refs.NSlider.Minimum = 1;
                 refs.NSlider.Maximum = 30;
                 refs.NSlider.IsSelectionRangeEnabled = false;
                 refs.NSlider.Value = Math.Max(1, cfg.ModulesPerString);
 
-                // The string slider keeps the inverter specification
-                var maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? 10;
+                int maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? 10;
                 refs.SSlider.Minimum = 1;
                 refs.SSlider.Maximum = Math.Max(1, maxBySpec);
                 refs.SSlider.Value = Math.Max(1, Math.Min(cfg.ParallelStrings, (int)refs.SSlider.Maximum));
@@ -550,8 +566,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing the module.");
-            MessageBox.Show("Error removing the module. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error removing the module. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
@@ -559,17 +574,14 @@ public partial class MainWindow : Window
     {
         try
         {
-            var win = new ParametersWindow(_parameters);
-            win.Owner = this;
-            var res = win.ShowDialog();
-            if (res == true)
+            var win = new ParametersWindow(_parameters) { Owner = this };
+            if (win.ShowDialog() == true)
             {
-                var saved = _settings.SaveParameters(win.Parameters);
-                if (!saved)
+                if (!_settings.SaveParameters(win.Parameters))
                 {
-                    MessageBox.Show("The parameters could not be saved. They apply until the application is closed.", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppDialog.Show(this, "The parameters could not be saved. They apply until the application is closed.", "Parameters", DialogKind.Warning);
                 }
+
                 _parameters = win.Parameters;
                 _logger.LogInformation("Calculation parameters applied: Tmin={Tmin}, Tmax={Tmax}, safety margin={Margin} %.",
                     _parameters.MinTempC, _parameters.MaxTempC, _parameters.SafetyMarginPct);
@@ -580,8 +592,23 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the parameter dialog.");
-            MessageBox.Show("Error in the parameter dialog. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error in the parameter dialog. See the log for details.", "Error", DialogKind.Error);
+        }
+    }
+
+    // Copies the results as plain text.
+    private void OnCopyResultsClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string text = _lastResult is null ? ResultPresenter.Present(null).Details : CalculationTextFormatter.Format(_lastResult);
+            Clipboard.SetText(text);
+            Snackbar.MessageQueue?.Enqueue("Results copied to the clipboard.");
+        }
+        catch (Exception ex) when (ex is COMException or ExternalException)
+        {
+            _logger.LogError(ex, "Error copying the results.");
+            AppDialog.Show(this, "The results could not be copied. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
@@ -591,7 +618,11 @@ public partial class MainWindow : Window
 
     private void UpdateParametersSummary()
     {
-        ParametersSummaryText.Text = $"Cell temperature Tmin={_parameters.MinTempC} °C, Tmax={_parameters.MaxTempC} °C, safety margin={_parameters.SafetyMarginPct} %";
+        ParameterTiles.Children.Clear();
+        CultureInfo c = CultureInfo.CurrentCulture;
+        ParameterTiles.Children.Add(ValueTile("Min. cell temp.", string.Create(c, $"{_parameters.MinTempC} °C"), true));
+        ParameterTiles.Children.Add(ValueTile("Max. cell temp.", string.Create(c, $"{_parameters.MaxTempC} °C"), true));
+        ParameterTiles.Children.Add(ValueTile("Safety margin", string.Create(c, $"{_parameters.SafetyMarginPct} %"), true));
     }
 
     private void TryRestoreLastSelection()
@@ -607,10 +638,7 @@ public partial class MainWindow : Window
             if (wr is null) return;
 
             _selectedInverter = wr;
-            InverterSummaryText.Text =
-                $"{_selectedInverter.Manufacturer} {_selectedInverter.Model} | {CalculationTextFormatter.FormatInverterSummary(_selectedInverter)}";
-            SelectInverterButton.Content = "Change inverter";
-
+            ShowInverter();
             BuildStringsUi();
 
             foreach (var sel in last.Strings)
@@ -634,9 +662,10 @@ public partial class MainWindow : Window
                         string.Equals(x.Model, sel.Module.Model, StringComparison.OrdinalIgnoreCase));
                     cfg.SelectedModule = mod;
                 }
+
+                UpdateMpptUiState(cfg, RefsOf(cfg));
             }
 
-            RefreshStringsUiSummaries();
             Recalculate();
         }
         catch (Exception ex)
@@ -690,8 +719,7 @@ public partial class MainWindow : Window
                 }).ToList()
             };
 
-            var ok = _settings.SaveLastSelection(sel);
-            if (!ok)
+            if (!_settings.SaveLastSelection(sel))
             {
                 _logger.LogWarning("The last selection could not be saved.");
             }
@@ -702,20 +730,19 @@ public partial class MainWindow : Window
         }
     }
 
+    // Runs the calculation and shows the result, the MPPT controls and the report.
     private void Recalculate()
     {
-        if (_selectedInverter is null)
-        {
-            ResultsOutput.Text = "Please select an inverter first.";
-            BuildMarkdownReport();
-            UpdateReportView();
-            return;
-        }
+        _lastResult = _selectedInverter is null
+            ? null
+            : StringCalculator.Calculate(_selectedInverter, _stringConfigs, _parameters);
 
-        StringCalculationResult result = StringCalculator.Calculate(_selectedInverter, _stringConfigs, _parameters);
-        ResultsOutput.Text = CalculationTextFormatter.Format(result);
+        ResultOverview overview = ResultPresenter.Present(_lastResult);
+        ResultsPanel.DataContext = overview;
+        StatusBar.DataContext = overview;
+        LimitsCard.Visibility = overview.Limits.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        if (result.HasValidMpptRange)
+        if (_lastResult is { HasValidMpptRange: true } result)
         {
             UpdateMpptControls(result);
 
@@ -730,7 +757,7 @@ public partial class MainWindow : Window
         UpdateReportView();
     }
 
-    // Adjusts buttons and sliders of every MPPT section to the calculation result.
+    // Adjusts sliders and texts of every MPPT card to the calculation result.
     private void UpdateMpptControls(StringCalculationResult result)
     {
         _suppressSliderEvents = true;
@@ -743,28 +770,19 @@ public partial class MainWindow : Window
                     continue;
                 }
 
-                MpptUiRefs? refs = GetMpptUiRefs(mppt.MpptIndex - 1);
+                MpptUiRefs? refs = RefsOf(cfg);
                 UpdateMpptUiState(cfg, refs);
-                if (refs is null)
-                {
-                    continue;
-                }
-
-                bool enabled = mppt.Status != MpptStatus.Disabled;
-                refs.NSlider.IsEnabled = enabled;
-                refs.SSlider.IsEnabled = enabled;
-                if (!enabled)
+                if (refs is null || mppt.Status == MpptStatus.Disabled)
                 {
                     continue;
                 }
 
                 // Module slider: 1 .. (highest allowed count + 5), allowed range marked; without module 1 .. 30.
-                int moduleMax = mppt.Status == MpptStatus.Calculated && mppt.MaxModulesPerString >= 1
-                    ? mppt.MaxModulesPerString + 5
-                    : 30;
+                bool calculated = mppt.Status == MpptStatus.Calculated;
+                int moduleMax = calculated && mppt.MaxModulesPerString >= 1 ? mppt.MaxModulesPerString + 5 : 30;
                 refs.NSlider.Minimum = 1;
                 refs.NSlider.Maximum = Math.Max(1, moduleMax);
-                if (mppt.Status == MpptStatus.Calculated && mppt.HasValidModuleRange && mppt.MaxModulesPerString >= 1)
+                if (calculated && mppt.HasValidModuleRange && mppt.MaxModulesPerString >= 1)
                 {
                     refs.NSlider.IsSelectionRangeEnabled = true;
                     refs.NSlider.SelectionStart = mppt.MinModulesPerString;
@@ -775,9 +793,17 @@ public partial class MainWindow : Window
                     refs.NSlider.IsSelectionRangeEnabled = false;
                 }
 
+                if (calculated)
+                {
+                    refs.NAllowed.Text = mppt.HasValidModuleRange
+                        ? $"Allowed: {mppt.MinModulesPerString} … {mppt.MaxModulesPerString} modules per string"
+                        : "No module count per string meets all voltage limits.";
+                }
+
                 // The value is only kept inside the slider range, not clamped to the allowed range.
                 cfg.ModulesPerString = Math.Clamp(cfg.ModulesPerString, 1, (int)refs.NSlider.Maximum);
                 refs.NSlider.Value = cfg.ModulesPerString;
+                refs.NValue.Text = cfg.ModulesPerString.ToString(CultureInfo.CurrentCulture);
 
                 // String slider: 1 .. inverter specification.
                 int specMax = _selectedInverter?.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
@@ -785,6 +811,7 @@ public partial class MainWindow : Window
                 refs.SSlider.Maximum = Math.Max(1, specMax);
                 cfg.ParallelStrings = Math.Clamp(cfg.ParallelStrings, 1, (int)refs.SSlider.Maximum);
                 refs.SSlider.Value = cfg.ParallelStrings;
+                refs.SValue.Text = cfg.ParallelStrings.ToString(CultureInfo.CurrentCulture);
             }
         }
         finally
@@ -793,43 +820,47 @@ public partial class MainWindow : Window
         }
     }
 
-    private MpptUiRefs? GetMpptUiRefs(int index)
+    private MpptUiRefs? RefsOf(StringConfiguration cfg)
     {
-        if (index < 0 || index >= StringsPanel.Children.Count)
-        {
-            return null;
-        }
-
-        return ((StringsPanel.Children[index] as Card)?.Content as StackPanel)?.Tag as MpptUiRefs;
+        int index = _stringConfigs.IndexOf(cfg);
+        return index >= 0 && index < _mpptRefs.Count ? _mpptRefs[index] : null;
     }
 
     #endregion
 
     #region Report
 
-    // Builds the Markdown report from the current configuration.
+    // Builds the Markdown report from the last calculation.
     private void BuildMarkdownReport()
     {
-        StringCalculationResult? result = _selectedInverter is null
-            ? null
-            : StringCalculator.Calculate(_selectedInverter, _stringConfigs, _parameters);
-        _reportMarkdown = ReportBuilder.Build(result, _parameters, DateTime.Now);
+        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now);
         ReportMarkdownTextBox.Text = _reportMarkdown;
     }
 
-    // Shows the Markdown source or the HTML preview.
+    // Shows the Markdown source or the HTML preview. The preview is only rendered while the report tab is shown.
     private void UpdateReportView()
     {
         if (_reportPreviewMode)
         {
             ReportMarkdownTextBox.Visibility = Visibility.Collapsed;
             ReportPreviewContainer.Visibility = Visibility.Visible;
-            _ = ShowPreviewAsync();
+            if (ReportTab.IsSelected)
+            {
+                _ = ShowPreviewAsync();
+            }
         }
         else
         {
             ReportPreviewContainer.Visibility = Visibility.Collapsed;
             ReportMarkdownTextBox.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, MainTabs) && ReportTab.IsSelected)
+        {
+            UpdateReportView();
         }
     }
 
@@ -852,8 +883,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating the report preview.");
-            MessageBox.Show("Error updating the report preview. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error updating the report preview. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
@@ -877,10 +907,9 @@ public partial class MainWindow : Window
             _previewInit = null;
             WebViewSupport.ResetEnvironment();
             _logger.LogError(ex, "The report preview (WebView2) could not be started.");
-            _reportPreviewMode = false;
-            UpdateReportView();
-            MessageBox.Show("The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details.",
-                "Report preview", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ReportViewSelector.SelectedIndex = 1;
+            AppDialog.Show(this, "The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details.",
+                "Report preview", DialogKind.Warning);
             return false;
         }
     }
@@ -926,10 +955,21 @@ public partial class MainWindow : Window
         }
     }
 
-    // Switches between Markdown and preview
-    private void OnToggleReportViewClick(object sender, RoutedEventArgs e)
+    // Switches between preview (index 0) and Markdown source (index 1). Also raised while the window is created.
+    private void OnReportViewChanged(object sender, SelectionChangedEventArgs e)
     {
-        _reportPreviewMode = !_reportPreviewMode;
+        if (_logger is null || ReportMarkdownTextBox is null)
+        {
+            return;
+        }
+
+        bool preview = ReportViewSelector.SelectedIndex != 1;
+        if (preview == _reportPreviewMode)
+        {
+            return;
+        }
+
+        _reportPreviewMode = preview;
         UpdateReportView();
         _logger.LogInformation("Report view switched: {Mode}.", _reportPreviewMode ? "preview" : "Markdown");
     }
@@ -941,14 +981,12 @@ public partial class MainWindow : Window
         {
             Clipboard.SetText(_reportMarkdown ?? string.Empty);
             _logger.LogInformation("Markdown report copied to the clipboard. Length={Length}.", (_reportMarkdown ?? string.Empty).Length);
-            MessageBox.Show("The Markdown report was copied to the clipboard.", "Info",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            Snackbar.MessageQueue?.Enqueue("Markdown report copied to the clipboard.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error copying the Markdown report.");
-            MessageBox.Show("Error copying the report. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error copying the report. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
@@ -965,20 +1003,17 @@ public partial class MainWindow : Window
                 AddExtension = true,
                 OverwritePrompt = true
             };
-            var ok = dlg.ShowDialog(this);
-            if (ok == true)
+            if (dlg.ShowDialog(this) == true)
             {
-                System.IO.File.WriteAllText(dlg.FileName, _reportMarkdown ?? string.Empty, new System.Text.UTF8Encoding(false));
+                File.WriteAllText(dlg.FileName, _reportMarkdown ?? string.Empty, new UTF8Encoding(false));
                 _logger.LogInformation("Markdown report saved: {Path}.", dlg.FileName);
-                MessageBox.Show("The Markdown report was saved.", "Info",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                Snackbar.MessageQueue?.Enqueue($"Report saved: {Path.GetFileName(dlg.FileName)}");
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving the Markdown report.");
-            MessageBox.Show("Error saving the report. See the log for details.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Show(this, "Error saving the report. See the log for details.", "Error", DialogKind.Error);
         }
     }
 
