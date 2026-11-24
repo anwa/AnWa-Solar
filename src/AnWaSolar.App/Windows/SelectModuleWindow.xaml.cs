@@ -5,26 +5,44 @@ using System.Windows;
 
 using AnWaSoft.Design.Wpf.Controls;
 
+using AnWaSolar.Core.Datasheets;
 using AnWaSolar.Core.Models;
+using AnWaSolar.Services;
 
 namespace AnWaSolar.Windows;
 
 public partial class SelectModuleWindow : ChromeWindow
 {
-    private readonly PVModule[] _all;
+    private readonly DatasheetService _datasheets;
+    private PVModule[] _all = [];
 
     public PVModule? Selected { get; private set; }
 
+    /// <summary>True when a datasheet was imported in this dialog; the master data was reloaded.</summary>
+    public bool Imported { get; private set; }
+
     #region Constructor
 
-    public SelectModuleWindow(System.Collections.Generic.IEnumerable<PVModule> modules)
+    public SelectModuleWindow(DatasheetService datasheets)
     {
+        _datasheets = datasheets;
         InitializeComponent();
-        _all = modules?.ToArray() ?? Array.Empty<PVModule>();
+        LoadList(null);
+    }
 
-        var manufacturers = _all.Select(x => x.Manufacturer).Distinct().OrderBy(x => x).ToArray();
+    // Fills the manufacturer list and selects the given entry, or the first manufacturer.
+    private void LoadList(PVModule? select)
+    {
+        _all = [.. _datasheets.Store.Modules];
+        var manufacturers = _all.Select(x => x.Manufacturer).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
         ManufacturerCombo.ItemsSource = manufacturers;
-        if (manufacturers.Length > 0) ManufacturerCombo.SelectedItem = manufacturers[0];
+        string? manufacturer = select is null ? manufacturers.FirstOrDefault() : manufacturers.FirstOrDefault(m => string.Equals(m, select.Manufacturer, StringComparison.OrdinalIgnoreCase));
+        ManufacturerCombo.SelectedItem = null;
+        ManufacturerCombo.SelectedItem = manufacturer;
+        if (select is not null)
+        {
+            ModelCombo.SelectedItem = (ModelCombo.ItemsSource as IEnumerable<string>)?.FirstOrDefault(m => string.Equals(m, select.Model, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     #endregion
@@ -55,6 +73,23 @@ public partial class SelectModuleWindow : ChromeWindow
         UpdateDetails(mod);
     }
 
+    private async void OnImportClick(object sender, RoutedEventArgs e)
+    {
+        if (await _datasheets.ImportAsync(this, DatasheetKind.Module) is { } entry)
+        {
+            Imported = true;
+            LoadList(entry as PVModule);
+        }
+    }
+
+    private void OnDatasheetClick(object sender, RoutedEventArgs e)
+    {
+        if (Selected is not null)
+        {
+            _datasheets.Show(this, Selected);
+        }
+    }
+
     private void OnAcceptClick(object sender, RoutedEventArgs e)
     {
         if (Selected is null)
@@ -72,6 +107,10 @@ public partial class SelectModuleWindow : ChromeWindow
 
     private void UpdateDetails(PVModule? mod)
     {
+        DatasheetButton.IsEnabled = _datasheets.HasDatasheet(mod);
+        DetailSource.Text = mod is null ? "-" : mod.IsUserEntry
+            ? DatasheetButton.IsEnabled ? "Own master data, with datasheet" : "Own master data"
+            : "Shipped master data";
         if (mod is null)
         {
             DetailManufacturer.Text = "-";

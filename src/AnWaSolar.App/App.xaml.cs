@@ -61,6 +61,7 @@ public partial class App : Application
         // Master data
         builder.Services.AddSingleton<IDataPathProvider, DataPathProvider>();
         builder.Services.AddSingleton<IDataStore, JsonDataStore>();
+        builder.Services.AddSingleton<DatasheetService>();
 
         // Theme
         builder.Services.AddSingleton<ThemeService>();

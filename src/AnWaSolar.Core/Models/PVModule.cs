@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace AnWaSolar.Core.Models;
 
 /// <summary>PV module datasheet values (STC, 25 °C) from <c>Data/Modules.json</c>.</summary>
-public class PVModule
+public class PVModule : IMasterDataEntry
 {
     [JsonPropertyName("Manufacturer")]
     public string Manufacturer { get; set; } = string.Empty;
@@ -50,6 +50,17 @@ public class PVModule
 
     [JsonPropertyName("Operating temperature max (°C)")]
     public double OperatingTempMaxC { get; set; }
+
+    /// <summary>
+    /// Imported datasheet, relative to the user data folder (for example <c>Datasheets/Trina TSM-445.pdf</c>); only own
+    /// entries have one.
+    /// </summary>
+    [JsonPropertyName("Datasheet file")]
+    public string? DatasheetFile { get; set; }
+
+    /// <summary>True for an entry from the own master data in the user data folder.</summary>
+    [JsonIgnore]
+    public bool IsUserEntry { get; set; }
 
     [JsonIgnore]
     public string DisplayName => $"{Manufacturer} {Model} ({PmaxW} W)";

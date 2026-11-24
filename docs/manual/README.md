@@ -8,6 +8,7 @@ AnWa-Solar helps you design the PV strings of a photovoltaic system. You select 
 - [String Calculation](string-calculation.md): inverter, strings, results and parameters in detail.
 - [How the Calculation Works](calculation.md): formulas, checks and the safety margin.
 - [Report](report.md): the Markdown report and its preview.
+- [Datasheet Import](datasheet-import.md): read module and inverter values from a PDF datasheet and show stored datasheets.
 - [Master Data](master-data.md): the module and inverter data and how to add entries.
 - [Settings, Theme and Files](settings.md): where AnWa-Solar keeps its data, light and dark mode.
 - [Troubleshooting](troubleshooting.md): messages and what to do.

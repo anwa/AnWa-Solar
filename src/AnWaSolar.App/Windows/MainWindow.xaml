@@ -17,6 +17,12 @@
     <!-- Theme, manual and about in the title bar -->
     <aw:ChromeWindow.TitleBarContent>
         <StackPanel Orientation="Horizontal">
+            <Button Style="{StaticResource AnWaSoft.TitleBarButton}"
+                    Click="OnImportDatasheetClick"
+                    ToolTip="Import a PDF datasheet of a PV module or inverter"
+                    AutomationProperties.Name="Import datasheet">
+                <materialDesign:PackIcon Kind="Import" Width="22" Height="22" />
+            </Button>
             <Button x:Name="ThemeButton"
                     Style="{StaticResource AnWaSoft.TitleBarButton}"
                     Click="OnThemeClick"
@@ -229,6 +235,18 @@
                                                     <materialDesign:PackIcon Kind="SwapHorizontal" Margin="0,0,6,0" VerticalAlignment="Center" />
                                                     <TextBlock x:Name="SelectInverterText" Text="Select" VerticalAlignment="Center" />
                                                 </StackPanel>
+                                            </Button>
+                                            <Button x:Name="InverterDatasheetButton"
+                                                    DockPanel.Dock="Right"
+                                                    Style="{StaticResource MaterialDesignIconButton}"
+                                                    Width="36"
+                                                    Height="36"
+                                                    Margin="0,0,4,0"
+                                                    Visibility="Collapsed"
+                                                    Click="OnInverterDatasheetClick"
+                                                    ToolTip="Show the datasheet of the inverter"
+                                                    AutomationProperties.Name="Inverter datasheet">
+                                                <materialDesign:PackIcon Kind="FilePdfBox" Width="20" Height="20" />
                                             </Button>
                                             <materialDesign:PackIcon DockPanel.Dock="Left" Kind="FlashOutline" Width="22" Height="22"
                                                                      Margin="0,0,10,0" VerticalAlignment="Center"

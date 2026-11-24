@@ -42,6 +42,7 @@ public partial class MainWindow : ChromeWindow
     private readonly ILogFilePathProvider _logPaths;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ThemeService _theme;
+    private readonly DatasheetService _datasheets;
 
     private Inverter? _selectedInverter;
     private readonly List<StringConfiguration> _stringConfigs = new();
@@ -82,8 +83,10 @@ public partial class MainWindow : ChromeWindow
         ISettingsService settings,
         IUserDataLocation userData,
         ILogFilePathProvider logPaths,
-        ThemeService theme)
+        ThemeService theme,
+        DatasheetService datasheets)
     {
+        _datasheets = datasheets;
         _persistTimer = new DispatcherTimer { Interval = s_persistDelay };
         _persistTimer.Tick += (_, _) =>
         {
@@ -202,7 +205,26 @@ public partial class MainWindow : ChromeWindow
             };
             AutomationProperties.SetName(btnRemove, $"Remove PV module from MPPT {cfg.MpptIndex}");
             btnRemove.Click += (_, _) => OnRemoveModuleForMppt(cfg);
+            var btnDatasheet = new Button
+            {
+                Style = (Style)FindResource("MaterialDesignIconButton"),
+                Width = 32,
+                Height = 32,
+                Margin = new Thickness(4, 0, 0, 0),
+                ToolTip = "Show the datasheet of the module",
+                Content = new PackIcon { Kind = PackIconKind.FilePdfBox, Width = 18, Height = 18 },
+                Visibility = Visibility.Collapsed,
+            };
+            AutomationProperties.SetName(btnDatasheet, $"Datasheet of the PV module of MPPT {cfg.MpptIndex}");
+            btnDatasheet.Click += (_, _) =>
+            {
+                if (cfg.SelectedModule is { } selected)
+                {
+                    _datasheets.Show(this, selected);
+                }
+            };
             buttons.Children.Add(btnSelect);
+            buttons.Children.Add(btnDatasheet);
             buttons.Children.Add(btnRemove);
             moduleRow.Children.Add(buttons);
             var moduleText = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
@@ -236,7 +258,7 @@ public partial class MainWindow : ChromeWindow
             body.Children.Add(sSlider);
             body.Children.Add(sAllowed);
 
-            var refs = new MpptUiRefs(toggle, body, moduleName, moduleSpecs, selectText, btnSelect, btnRemove, nSlider, nValue, nAllowed, sSlider, sValue);
+            var refs = new MpptUiRefs(toggle, body, moduleName, moduleSpecs, selectText, btnSelect, btnRemove, btnDatasheet, nSlider, nValue, nAllowed, sSlider, sValue);
             _mpptRefs.Add(refs);
 
             toggle.Checked += (_, _) => OnMpptToggled(cfg, refs, true);
@@ -288,6 +310,7 @@ public partial class MainWindow : ChromeWindow
         TextBlock SelectText,
         Button SelectButton,
         Button RemoveButton,
+        Button DatasheetButton,
         Slider NSlider,
         TextBlock NValue,
         TextBlock NAllowed,
@@ -310,6 +333,7 @@ public partial class MainWindow : ChromeWindow
             : string.Create(CultureInfo.CurrentCulture, $"{module.PmaxW} W · Voc {module.VocV:F2} V · Vmpp {module.VmppV:F2} V · Impp {module.ImppA:F2} A");
         refs.SelectText.Text = module is null ? "Select module" : "Change";
         refs.RemoveButton.Visibility = module is null ? Visibility.Collapsed : Visibility.Visible;
+        refs.DatasheetButton.Visibility = _datasheets.HasDatasheet(module) ? Visibility.Visible : Visibility.Collapsed;
 
         // The switch stays enabled so that the MPPT can be enabled again
         bool enabled = cfg.IsEnabled;
@@ -372,6 +396,7 @@ public partial class MainWindow : ChromeWindow
     private void ShowInverter()
     {
         InverterSpecs.Children.Clear();
+        InverterDatasheetButton.Visibility = _datasheets.HasDatasheet(_selectedInverter) ? Visibility.Visible : Visibility.Collapsed;
         if (_selectedInverter is not { } inv)
         {
             InverterNameText.Text = "No inverter selected";
@@ -494,8 +519,14 @@ public partial class MainWindow : ChromeWindow
     {
         try
         {
-            var win = new SelectInverterWindow(_dataStore.Inverters) { Owner = this };
-            if (win.ShowDialog() == true && win.Selected is not null)
+            var win = new SelectInverterWindow(_datasheets) { Owner = this };
+            bool accepted = win.ShowDialog() == true;
+            if (win.Imported)
+            {
+                ReloadMasterData();
+            }
+
+            if (accepted && win.Selected is not null)
             {
                 _selectedInverter = win.Selected;
                 ShowInverter();
@@ -517,8 +548,14 @@ public partial class MainWindow : ChromeWindow
     {
         try
         {
-            var win = new SelectModuleWindow(_dataStore.Modules) { Owner = this };
-            if (win.ShowDialog() == true && win.Selected is not null)
+            var win = new SelectModuleWindow(_datasheets) { Owner = this };
+            bool accepted = win.ShowDialog() == true;
+            if (win.Imported)
+            {
+                ReloadMasterData();
+            }
+
+            if (accepted && win.Selected is not null)
             {
                 cfg.SelectedModule = win.Selected;
                 UpdateMpptUiState(cfg, RefsOf(cfg));
@@ -593,6 +630,45 @@ public partial class MainWindow : ChromeWindow
             _logger.LogError(ex, "Error in the parameter dialog.");
             MessageDialog.Show(this, "Error in the parameter dialog. See the log for details.", "Error", StatusKind.Error);
         }
+    }
+
+    // Imports a PDF datasheet into the own master data.
+    private async void OnImportDatasheetClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (await _datasheets.ImportAsync(this, preferredKind: null) is { } entry)
+            {
+                ReloadMasterData();
+                Snackbar.MessageQueue?.Enqueue($"{entry.Manufacturer} {entry.Model} was saved and can be selected now.");
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Error importing a datasheet.");
+            MessageDialog.Show(this, "The datasheet could not be imported. See the log for details.", "Error", StatusKind.Error);
+        }
+    }
+
+    private void OnInverterDatasheetClick(object sender, RoutedEventArgs e)
+    {
+        if (_selectedInverter is not null)
+        {
+            _datasheets.Show(this, _selectedInverter);
+        }
+    }
+
+    // The master data changed (import): the selection is resolved again, so that the calculation uses the saved values.
+    private void ReloadMasterData()
+    {
+        if (_selectedInverter is null)
+        {
+            return;
+        }
+
+        _persistTimer.Stop();
+        WriteLastSelection();
+        TryRestoreLastSelection();
     }
 
     // Copies the results as plain text.

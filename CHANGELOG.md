@@ -2,6 +2,13 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.13.0)
+
+- New: Datasheet import. **Import datasheet** in the title bar and **Import…** in the module and inverter selection read a PDF datasheet, recognise the module or inverter values (German and English datasheets, several power classes or models per datasheet) and show them in a dialog to check, correct and complete. **Apply** saves the entry with a copy of the datasheet in your own master data in `%LOCALAPPDATA%\AnWa-Solar\Data`.
+- New: Own master data. Entries in `%LOCALAPPDATA%\AnWa-Solar\Data\Modules.json` and `Inverters.json` are loaded with the shipped data; an own entry replaces a shipped entry with the same manufacturer and model.
+- New: Stored datasheets open in a viewer from the selection dialogs and from the main window (next to the inverter and each module).
+- New: The import requires negative temperature coefficients of Pmax and Voc and an MPPT range below the max. DC input voltage.
+
 ## v0.12.0 (2026-11-24)
 
 - Changed: The user interface uses the AnWa-Soft design library (`AnWaSoft.Design.Wpf` 0.1.0). The look stays the same; four colours were adjusted to reach the WCAG AA contrast: warning text in light mode (`#B26A00` → `#9C5C00`), error text in dark mode (`#EF9A9A` → `#F2A5A5`), neutral and secondary text in dark mode (`#A9AEB8` → `#B3B8C1`), and the primary colour in dark mode (Indigo 300 `#7986CB` → Indigo 200 `#9FA8DA`).

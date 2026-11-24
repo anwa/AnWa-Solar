@@ -5,6 +5,8 @@ AnWa-Solar reads the PV modules and inverters from two JSON files in the `Data` 
 - `Modules.json` with the list `Modules`,
 - `Inverters.json` with the list `Inverters`.
 
+Your own entries, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in files of the same format. An own entry replaces a shipped entry with the same manufacturer and model.
+
 Enter only values from the manufacturer datasheets. Numbers use a dot as decimal separator and may be decimal numbers, for example `12.5`.
 
 ## PV module
@@ -60,6 +62,6 @@ Every entry is checked on its own. An entry is skipped when
 - the MPPT voltage range is not in the form `"160-650"`,
 - manufacturer and model appear twice.
 
-Skipped entries and unreadable files are listed in the **Master data** message after the start and in the log. The other entries are loaded normally.
+Skipped entries and unreadable files are listed in the **Master data** message after the start and in the log; problems in your own files are marked "(own data)". The other entries are loaded normally.
 
-> Changes in the installation folder need administrator rights and are replaced by the next update. Keep a copy of your own entries.
+> Changes in the installation folder need administrator rights and are replaced by the next update. Add your own entries through the [datasheet import](datasheet-import.md) instead; they are kept on updates.
