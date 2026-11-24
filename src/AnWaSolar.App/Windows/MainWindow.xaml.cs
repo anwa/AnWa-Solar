@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 using AnWaSolar.Core;
 using AnWaSolar.Core.Calculation;
@@ -40,12 +41,24 @@ public partial class MainWindow : Window
     private bool _suppressSliderEvents = false;
     private bool _suppressToggleEvents = false;
 
+    // Debounced saving of the last selection
+    private static readonly TimeSpan s_persistDelay = TimeSpan.FromMilliseconds(500);
+    private readonly DispatcherTimer _persistTimer;
+
     #endregion
 
     #region Konstruktor
 
     public MainWindow(ILogger<MainWindow> logger, IMarkdownService markdown, IDataStore dataStore, ISettingsService settings)
     {
+        _persistTimer = new DispatcherTimer { Interval = s_persistDelay };
+        _persistTimer.Tick += (_, _) =>
+        {
+            _persistTimer.Stop();
+            WriteLastSelection();
+        };
+        Closing += (_, _) => FlushPendingPersist();
+
         InitializeComponent();
         Title = $"AnWa-Solar {AppVersion.Current}";
         _logger = logger;
@@ -500,7 +513,25 @@ public partial class MainWindow : Window
         }
     }
 
+    // Schedules saving the last selection. Slider drags change the configuration many times per second, so the
+    // settings file is written once the input has been idle for the debounce interval, and on closing.
     private void PersistLastSelection()
+    {
+        if (_selectedInverter is null) return;
+
+        _persistTimer.Stop();
+        _persistTimer.Start();
+    }
+
+    private void FlushPendingPersist()
+    {
+        if (!_persistTimer.IsEnabled) return;
+
+        _persistTimer.Stop();
+        WriteLastSelection();
+    }
+
+    private void WriteLastSelection()
     {
         try
         {

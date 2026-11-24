@@ -1,6 +1,6 @@
 # AnWa-Solar
 
-AnWa-Solar ist eine WPF-Anwendung zur Auslegung und Berechnung von PV-Strings inklusive Wechselrichter- und Modul-Auswahl. Die App setzt auf Material Design 3, bietet umfangreiches Logging und speichert sowohl Berechnungsparameter als auch die letzte Auswahl in appsettings.json.
+AnWa-Solar ist eine WPF-Anwendung zur Auslegung und Berechnung von PV-Strings inklusive Wechselrichter- und Modul-Auswahl. Die App setzt auf Material Design 3 und bietet umfangreiches Logging. Calculation parameters and the last selection are stored per user in `%LOCALAPPDATA%\AnWa-Solar\settings.json`.
 
 ## Inhalt
 - Überblick
@@ -24,7 +24,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
   - Wechselrichter: Auswahl per Dialog mit Hersteller-/Modell-Filter und Detailprüfung.
   - Strings: Dynamische Anzeige pro MPPT, Modulwahl pro MPPT, Anzahl Module pro String und parallele Strings mit Grenzprüfung.
   - Ergebnisse: Sofortige Live-Berechnung mit klaren Hinweisen und empfohlenen Bereichen.
-  - Parameters: dialog for the minimum and maximum cell temperature (Tmin, default −20 °C; Tmax, default 70 °C) and the safety margin; stored in appsettings.json.
+  - Parameters: dialog for the minimum and maximum cell temperature (Tmin, default −20 °C; Tmax, default 70 °C) and the safety margin; stored in the user settings.
 - Markdown-Vorschau: Markdown zu HTML-Konvertierung für Berichte.
 - Persistenz:
   - Berechnungsparameter werden gespeichert und beim App-Start geladen.
@@ -70,13 +70,13 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
   - Werte werden gespeichert und gelten beim nächsten Start.
 
 ## Einstellungen und Persistenz
-- appsettings.json (Ausgabeverzeichnis):
-  - AnWaSolar.Markdown.UseAdvancedExtensions
-  - AnWaSolar.LogDirectory
-  - AnWaSolar.Parameters: MinTempC, MaxTempC, SicherheitsmargePct
-  - AnWaSolar.LastSelection: Inverter (Hersteller/Model), Strings (je MPPT: Modul-Referenz, ModuleProString, ParalleleStrings)
-- Beim Ändern von Wechselrichter, Modul oder String-Konfiguration werden die Angaben gespeichert.
-- Hinweis: Das Schreiben in appsettings.json erfordert Schreibrechte im Ausgabeverzeichnis. Für produktive Umgebungen kann alternativ ein benutzerspezifischer Speicherpfad (z. B. %LOCALAPPDATA%/AnWa-Solar/user-settings.json) verwendet werden.
+- User settings live in `%LOCALAPPDATA%\AnWa-Solar\settings.json`:
+  - `Parameters`: MinTempC, MaxTempC, SicherheitsmargePct
+  - `LastSelection`: inverter (Hersteller/Model) and per MPPT the module reference, ModuleProString, ParalleleStrings and IsEnabled
+- Changes to inverter, modules and strings are saved automatically, at the latest 0.5 s after the last change and when the window closes. The file is written atomically.
+- An unreadable `settings.json` is kept as `settings.json.invalid-<timestamp>` and the defaults are used.
+- On the first start without `settings.json`, parameters and last selection are taken over once from the `appsettings.json` next to the executable, where versions up to 0.4.0 stored them.
+- `appsettings.json` next to the executable only holds application defaults and is never written: `AnWaSolar:Markdown:UseAdvancedExtensions`, optionally `AnWaSolar:LogDirectory`.
 
 ## Logging
 - Strukturierte JSONL-Dateien unter %LOCALAPPDATA%/AnWa-Solar/logs (konfigurierbar).
@@ -99,7 +99,7 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - Services:
   - JsonDataStore: Laden der Stammdaten (System.Text.Json).
   - MarkdownService: Markdown→HTML via Markdig.
-  - SettingsService: Laden/Speichern von Parametern und letzter Auswahl in appsettings.json.
+  - SettingsService: loads and saves parameters and the last selection in the user settings file.
 - Logging:
   - Eigenes JsonFileLoggerProvider zur JSONL-Ausgabe.
 - Modelle:
@@ -109,7 +109,6 @@ Ziel der App ist es, alle wesentlichen Berechnungen rund um Solaranlagen bereitz
 - Erweiterte Ergebnisdarstellung (tabellarisch, farbliche Status für OK/WARN).
 - Weitere Berechnungen (Batteriespeicher, AC-seitige Betrachtung, Kabel-/Sicherungsdimensionierung).
 - Exportfunktionen (Markdown/HTML/PDF-Bericht).
-- Benutzerbezogene Settings-Datei im User-Profil (optional, produktionsgeeignet).
 
 $$V_{oc} (T_{STC}) * (1 + ((T_{min} - 25°C) * Temperaturkoeffizient))$$
 

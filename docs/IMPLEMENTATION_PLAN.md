@@ -24,12 +24,12 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Tests with worked examples from real datasheets for every check
 - [x] Tmin and Tmax are cell temperatures (default Tmax 70 °C); optional VMPP temperature coefficient with the PMAX coefficient as fallback
 
-## M4 – Settings and logging (`feature/user-settings`)
+## M4 – Settings and logging (`feature/user-settings`, v0.5.0)
 
-- [ ] Parameters and last selection in `%LOCALAPPDATA%\AnWa-Solar\settings.json`, written atomically and debounced; `appsettings.json` keeps only application defaults and is no longer written at runtime
-- [ ] One-time import of an existing selection from the old `appsettings.json` next to the executable
-- [ ] File logger serializes concurrent writes
-- [ ] Remove the committed personal selection from `appsettings.json`
+- [x] Parameters and last selection in `%LOCALAPPDATA%\AnWa-Solar\settings.json`, written atomically and debounced; `appsettings.json` keeps only application defaults and is no longer written at runtime
+- [x] One-time import of an existing selection from the old `appsettings.json` next to the executable
+- [x] File logger serializes concurrent writes
+- [x] Remove the committed personal selection from `appsettings.json`
 
 ## M5 – Master data robustness (`fix/master-data`)
 

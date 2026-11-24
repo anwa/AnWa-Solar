@@ -52,6 +52,7 @@ public partial class App : Application
 
         // Services
         builder.Services.AddSingleton<IMarkdownService, MarkdownService>();
+        builder.Services.AddSingleton<IUserDataLocation, UserDataLocation>();
         builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
         // Data-Services registrieren
