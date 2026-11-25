@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.18.1)
+## v0.18.1 (2026-11-25)
 
 - Changed: The battery cable values in `Data/CableTables.json` (section `BatteryCable`) are checked by the user and marked confirmed; the cable card, the report and the copied text no longer show the note about unconfirmed battery cable values. The values themselves are unchanged.
 
