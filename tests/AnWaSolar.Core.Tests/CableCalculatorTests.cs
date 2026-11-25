@@ -28,10 +28,10 @@ public sealed class CableCalculatorTests
         CableCalculator.Calculate(StringCalculator.Calculate(Deye18K(), strings, Parameters()), settings, s_tables);
 
     [Fact]
-    public void Shipped_tables_are_complete_and_marked_unconfirmed()
+    public void Shipped_tables_are_complete_and_confirmed_by_the_user()
     {
         Assert.NotNull(s_tables);
-        Assert.False(s_tables.Confirmed);
+        Assert.True(s_tables.Confirmed);
         Assert.Equal(56, s_tables.CopperConductivity);
         Assert.Equal(["A1", "B1", "B2", "C", "E"], s_tables.AcMethods);
     }
@@ -127,15 +127,30 @@ public sealed class CableCalculatorTests
     public void Unconfirmed_tables_make_the_card_a_warning_and_the_report_says_so()
     {
         StringCalculationResult result = StringCalculator.Calculate(Deye18K(), [Aiko(1, 11), Aiko(2, 11)], Parameters());
-        CableCalculationResult cables = CableCalculator.Calculate(result, Settings(), s_tables);
+        CableTables unconfirmed = CableTables.Load(Path.Combine(AppContext.BaseDirectory, "Data", CableTables.FileName), out _)!;
+        unconfirmed.Confirmed = false;
+        CableCalculationResult cables = CableCalculator.Calculate(result, Settings(), unconfirmed);
 
         CableView view = ResultPresenter.Present(result, cables, Settings()).Cables!;
-        string report = ReportBuilder.Build(result, Parameters(), new DateTime(2026, 11, 24), cables, s_tables);
+        string report = ReportBuilder.Build(result, Parameters(), new DateTime(2026, 11, 24), cables, unconfirmed);
 
         Assert.Equal(ResultState.Warning, view.State);
         Assert.Contains(view.Notes, n => n.Text == CableTexts.Unconfirmed);
         Assert.Contains("## Cables and fuses", report, StringComparison.Ordinal);
         Assert.Contains(CableTexts.Unconfirmed, report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Confirmed_tables_give_no_note()
+    {
+        StringCalculationResult result = StringCalculator.Calculate(Deye18K(), [Aiko(1, 11), Aiko(2, 11)], Parameters());
+        CableCalculationResult cables = CableCalculator.Calculate(result, Settings(), s_tables);
+
+        CableView view = ResultPresenter.Present(result, cables, Settings()).Cables!;
+
+        Assert.Equal(ResultState.Ok, view.State);
+        Assert.DoesNotContain(view.Notes, n => n.Text == CableTexts.Unconfirmed);
+        Assert.DoesNotContain(CableTexts.Unconfirmed, ReportBuilder.Build(result, Parameters(), new DateTime(2026, 11, 25), cables, s_tables), StringComparison.Ordinal);
     }
 
     [Theory]

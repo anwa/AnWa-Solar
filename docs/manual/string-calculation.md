@@ -62,7 +62,7 @@ The **Cables and fuses** card sizes the string cables of each MPPT and the AC li
 | AC circuit breaker | Next standard rating at or above the max. AC current of the inverter. |
 | AC line | Smallest cross-section whose current-carrying capacity (installation method, temperature, grouping) is at least the breaker rating and whose voltage drop stays below the limit. |
 
-The values come from the standard tables in `Data\CableTables.json` in the installation folder, with their sources. As long as these values are not confirmed (`"Confirmed": false`), the card shows a note. A cable is only sized when its length is entered. The result is a design aid; the installer remains responsible for the choice of cables and protective devices.
+The values come from the standard tables in `Data\CableTables.json` in the installation folder, with their sources. The values have been checked (`"Confirmed": true`); a table marked `"Confirmed": false`, for example after a value was changed, makes the card show a note. A cable is only sized when its length is entered. The result is a design aid; the installer remains responsible for the choice of cables and protective devices.
 
 The **Inverter limits** card lists every limit from the datasheet and with the safety margin. **Copy** above the results copies them as text.
 

@@ -1,6 +1,6 @@
 {
-  "Confirmed": false,
-  "Note": "Common standard values, entered by the agent on 2026-11-24 at the user's request. Set Confirmed to true after checking every value against the standards.",
+  "Confirmed": true,
+  "Note": "Common standard values, entered by the agent on 2026-11-24 at the user's request and checked by the user on 2026-11-25. A changed value needs the user's check again; set Confirmed to false until then.",
   "Copper conductivity (m/(Ohm*mm2))": 56,
   "Cross-sections (mm2)": [ 1.5, 2.5, 4, 6, 10, 16, 25, 35 ],
   "SolarCable": {
