@@ -11,6 +11,7 @@ AnWa-Solar kann die Werte eines PV-Moduls, eines Wechselrichters oder einer Batt
    - **Modell oder Leistungsklasse im Datenblatt**: Viele Datenblätter beschreiben mehrere Leistungsklassen oder Modelle in Spalten. Wähle eine Leistungsklasse, um ihre Werte zu sehen und zu korrigieren; deine Änderungen bleiben erhalten, wenn du zu einer anderen wechselst.
    - **Serie**: der Name der Serie, vorgeschlagen aus den Modellnamen (zum Beispiel `SUN-SG05LP3-EU-SM2` für SUN-14K … SUN-20K-SG05LP3-EU-SM2) oder aus dem Dateinamen. Alle gespeicherten Leistungsklassen bilden diese Serie.
    - **Diese Leistungsklasse speichern**: Nimm den Haken bei Leistungsklassen heraus, die du nicht behalten willst; die Zeile darunter zählt die gespeicherten. Der Hersteller gilt für die ganze Serie.
+   - **Sprache des Datenblatts**: Deutsch oder Englisch, vorgeschlagen aus dem Text des PDFs (sonst die Sprache der Anwendung). Eine Serie hat ein deutsches und ein englisches Datenblatt, siehe [Datenblätter in zwei Sprachen](#datenblätter-in-zwei-sprachen).
    - Jeder Wert hat rechts eine Markierung:
 
      | Markierung | Bedeutung |
@@ -57,9 +58,18 @@ Importierte Einträge werden je Windows-Benutzer in `%LOCALAPPDATA%\AnWa-Solar\D
 | Datei | Inhalt |
 |---|---|
 | `Modules\<Hersteller>\<Serie>.json` (und `Inverters`, `Batteries`) | Deine Serien, im selben Format wie die mitgelieferten [Stammdaten](master-data.md) |
-| `…\<Serie>.pdf` | Das importierte Datenblatt, neben seiner Seriendatei |
+| `…\<Serie> (de).pdf`, `…\<Serie> (en).pdf` | Das deutsche und das englische Datenblatt, neben ihrer Seriendatei |
+| `…\<Serie>.pdf` | Ein Datenblatt einer Version vor 1.0.0 ohne angegebene Sprache |
 
-Eine eigene Serie mit gleichem Hersteller und Namen wie eine mitgelieferte ersetzt diese in der Auswahl; die mitgelieferten Dateien werden nicht geändert. Ein erneuter Import der Serie ersetzt deine Serie und ihr Datenblatt.
+Eine eigene Serie mit gleichem Hersteller und Namen wie eine mitgelieferte ersetzt diese in der Auswahl; die mitgelieferten Dateien werden nicht geändert. Ein erneuter Import der Serie ersetzt deine Serie und ihr Datenblatt in der gewählten Sprache; das Datenblatt der anderen Sprache bleibt.
+
+## Datenblätter in zwei Sprachen
+
+Viele Hersteller veröffentlichen ein deutsches und ein englisches Datenblatt. Eine Serie hat je eines: Importiere die Serie ein zweites Mal mit dem anderen Datenblatt und wähle seine Sprache, oder hänge es in der [Komponentendatenbank](component-database.md) an.
+
+- Gibt es beide, zeigt und exportiert AnWa-Solar das Datenblatt in der Sprache der Anwendung (siehe [Einstellungen](settings.md#einstellungsseite)).
+- Gibt es nur ein Datenblatt, wird es unabhängig von seiner Sprache verwendet.
+- Ein Datenblatt einer Version vor 1.0.0 hat keine angegebene Sprache; es wird verwendet, wenn es keines in der Sprache der Anwendung gibt.
 
 ## Ein Datenblatt anzeigen
 

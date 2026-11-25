@@ -35,11 +35,11 @@ public partial class ComponentDatabaseWindow : ChromeWindow
     private readonly DatasheetService _datasheets;
     private readonly List<Dictionary<string, TextBox>> _columns = [];
 
-    // The series in the editor: its kind, its key when it exists, whether it is own, and an attached datasheet.
+    // The series in the editor: its kind, its key when it exists, whether it is own, and attached datasheets by language.
     private DatasheetKind _kind = DatasheetKind.Module;
     private SeriesKey? _shown;
     private bool _isOwn;
-    private string? _pendingDatasheet;
+    private readonly Dictionary<string, string> _pendingDatasheets = new(StringComparer.Ordinal);
     private bool _dirty;
     private bool _loading;
     private TreeViewItem? _selectedItem;
@@ -180,7 +180,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         _kind = kind;
         _shown = null;
         _isOwn = false;
-        _pendingDatasheet = null;
+        _pendingDatasheets.Clear();
         Fill(string.Empty, string.Empty, []);
         SourceText.Text = L.F($"Select a series on the left, or create a new series of {Noun(kind)}.");
         UpdateButtons();
@@ -192,10 +192,10 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         _kind = key.Kind;
         _shown = key;
         _isOwn = variants.Any(v => v.IsUserEntry);
-        _pendingDatasheet = null;
+        _pendingDatasheets.Clear();
         Fill(key.Manufacturer, key.Series, [.. variants.Select(ValuesOf)]);
         SourceText.Text = _isOwn
-            ? L.T("Own series in your master data.") + (DatasheetPath() is null ? L.T(" No datasheet attached.") : string.Empty)
+            ? L.T("Own series in your master data.") + DatasheetSummary()
             : L.T("Shipped series. Saving creates an own copy that replaces it; the shipped data stays unchanged.");
         UpdateButtons();
     }
@@ -355,7 +355,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         SaveButton.IsEnabled = _dirty;
         DiscardButton.IsEnabled = _dirty;
         DeleteButton.IsEnabled = _isOwn && _shown is not null;
-        ShowDatasheetButton.IsEnabled = _pendingDatasheet is not null || DatasheetPath() is not null;
+        ShowDatasheetButton.IsEnabled = Datasheets().Count > 0;
     }
 
     // Asks before changes are lost; true when there are none or they may be discarded.
@@ -379,26 +379,82 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     #region Datasheet
 
-    private string? DatasheetPath() =>
-        _shown is { } key ? VariantsOf(key).Select(v => Store.GetDatasheetPath(v)).FirstOrDefault(p => p is not null) : null;
+    // The saved datasheets of the shown own series by language.
+    private IReadOnlyDictionary<string, string> SavedDatasheets() => _isOwn && _shown is { } key
+        ? key.Kind switch
+        {
+            DatasheetKind.Inverter => Store.GetSeriesDatasheets<Inverter>(key.Manufacturer, key.Series),
+            DatasheetKind.Battery => Store.GetSeriesDatasheets<Battery>(key.Manufacturer, key.Series),
+            _ => Store.GetSeriesDatasheets<PVModule>(key.Manufacturer, key.Series),
+        }
+        : new Dictionary<string, string>();
 
+    // The saved datasheets with the attached ones in their place.
+    private Dictionary<string, string> Datasheets()
+    {
+        var all = new Dictionary<string, string>(SavedDatasheets(), StringComparer.Ordinal);
+        foreach ((string language, string path) in _pendingDatasheets)
+        {
+            all[language] = path;
+        }
+
+        return all;
+    }
+
+    private string DatasheetSummary()
+    {
+        IReadOnlyDictionary<string, string> saved = SavedDatasheets();
+        return saved.Count == 0
+            ? L.T(" No datasheet attached.")
+            : " " + L.F($"Datasheets: {string.Join(", ", DatasheetLanguage.All.Where(saved.ContainsKey).Select(DatasheetLanguage.DisplayName))}.");
+    }
+
+    // Asks for the language first: a series keeps one German and one English datasheet.
     private void OnAttachDatasheetClick(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (string language in new[] { L.German, L.English })
+        {
+            var item = new MenuItem { Header = language == L.German ? L.T("German datasheet…") : L.T("English datasheet…") };
+            item.Click += (_, _) => AttachDatasheet(language);
+            menu.Items.Add(item);
+        }
+
+        menu.IsOpen = true;
+    }
+
+    private void AttachDatasheet(string language)
     {
         var dialog = new OpenFileDialog { Title = L.T("Attach datasheet"), Filter = "PDF datasheet (*.pdf)|*.pdf", CheckFileExists = true };
         if (dialog.ShowDialog(this) == true)
         {
-            _pendingDatasheet = dialog.FileName;
-            SourceText.Text = L.F($"Datasheet {Path.GetFileName(dialog.FileName)} is attached when you save.");
+            _pendingDatasheets[language] = dialog.FileName;
+            SourceText.Text = L.F($"{DatasheetLanguage.DisplayName(language)} datasheet {Path.GetFileName(dialog.FileName)} is attached when you save.");
             MarkDirty();
         }
     }
 
+    // One datasheet opens at once; with several, a menu offers them by language.
     private void OnShowDatasheetClick(object sender, RoutedEventArgs e)
     {
-        if ((_pendingDatasheet ?? DatasheetPath()) is { } path)
+        Dictionary<string, string> all = Datasheets();
+        string title = $"{ManufacturerInput.Text} {SeriesInput.Text}".Trim();
+        if (all.Count == 1)
         {
-            _datasheets.ShowFile(this, path, $"{ManufacturerInput.Text} {SeriesInput.Text}".Trim());
+            _datasheets.ShowFile(this, all.Values.Single(), title);
+            return;
         }
+
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (string language in DatasheetLanguage.All.Where(all.ContainsKey))
+        {
+            string path = all[language];
+            var item = new MenuItem { Header = DatasheetLanguage.DisplayName(language) };
+            item.Click += (_, _) => _datasheets.ShowFile(this, path, title);
+            menu.Items.Add(item);
+        }
+
+        menu.IsOpen = menu.Items.Count > 0;
     }
 
     private async void OnImportClick(object sender, RoutedEventArgs e)
@@ -444,7 +500,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
         _shown = null;
         _isOwn = false;
-        _pendingDatasheet = null;
+        _pendingDatasheets.Clear();
         string manufacturer = SeriesTree.SelectedItem is TreeViewItem { Tag: SeriesKey selected } ? selected.Manufacturer : string.Empty;
         Fill(manufacturer, string.Empty, [new Dictionary<string, string?>()]);
         SourceText.Text = L.F($"New series of {Noun(_kind)}. Enter the values from the datasheet.");
@@ -480,14 +536,13 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
         try
         {
-            // A renamed own series replaces its old file; its datasheet moves with it.
+            // A renamed own series replaces its old file; its datasheets move with it.
             (string, string)? replaces = _isOwn && _shown is { } old ? (old.Manufacturer, old.Series) : null;
-            string? datasheet = _pendingDatasheet ?? (_isOwn && _shown is { } renamed && (!Same(renamed.Manufacturer, manufacturer) || !Same(renamed.Series, series)) ? DatasheetPath() : null);
             bool saved = _kind switch
             {
-                DatasheetKind.Inverter => Save<Inverter>(DatasheetEntryBuilder.TryBuildInverter, manufacturer, series, datasheet, replaces, errors),
-                DatasheetKind.Battery => Save<Battery>(DatasheetEntryBuilder.TryBuildBattery, manufacturer, series, datasheet, replaces, errors),
-                _ => Save<PVModule>(DatasheetEntryBuilder.TryBuildModule, manufacturer, series, datasheet, replaces, errors),
+                DatasheetKind.Inverter => Save<Inverter>(DatasheetEntryBuilder.TryBuildInverter, manufacturer, series, replaces, errors),
+                DatasheetKind.Battery => Save<Battery>(DatasheetEntryBuilder.TryBuildBattery, manufacturer, series, replaces, errors),
+                _ => Save<PVModule>(DatasheetEntryBuilder.TryBuildModule, manufacturer, series, replaces, errors),
             };
             if (!saved)
             {
@@ -508,7 +563,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     private delegate IReadOnlyList<string> BuildEntry<T>(IReadOnlyDictionary<string, string?> values, out T? entry);
 
-    private bool Save<T>(BuildEntry<T> build, string manufacturer, string series, string? datasheet, (string, string)? replaces, List<string> errors)
+    private bool Save<T>(BuildEntry<T> build, string manufacturer, string series, (string, string)? replaces, List<string> errors)
         where T : class, IMasterDataEntry
     {
         var variants = new List<T>();
@@ -533,7 +588,16 @@ public partial class ComponentDatabaseWindow : ChromeWindow
             return false;
         }
 
-        Store.SaveSeries(new ComponentSeries<T> { Manufacturer = manufacturer, Series = series, Variants = variants }, datasheet, replaces);
+        // The first save writes the series (and replaces a renamed one); each further attached datasheet is added to it.
+        KeyValuePair<string, string>[] attached = [.. _pendingDatasheets];
+        Store.SaveSeries(new ComponentSeries<T> { Manufacturer = manufacturer, Series = series, Variants = variants },
+            attached.Length > 0 ? attached[0].Value : null, replaces, attached.Length > 0 ? attached[0].Key : DatasheetLanguage.NotStated);
+        foreach ((string language, string path) in attached.Skip(1))
+        {
+            Store.SaveSeries(new ComponentSeries<T> { Manufacturer = manufacturer, Series = series, Variants = variants }, path, null, language);
+        }
+
+        _pendingDatasheets.Clear();
         return true;
     }
 

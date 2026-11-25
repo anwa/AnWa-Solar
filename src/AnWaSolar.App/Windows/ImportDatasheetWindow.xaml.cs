@@ -43,6 +43,16 @@ public partial class ImportDatasheetWindow : ChromeWindow
 
         int pages = words.Count == 0 ? 0 : words.Max(w => w.Page);
         FileText.Text = L.F($"{Path.GetFileName(path)} · {words.Count} words on {pages} page(s)");
+
+        // The language is suggested from the text; without a clear result, the application language.
+        string detected = DatasheetLanguage.Detect(words.Select(w => w.Text));
+        foreach (string language in new[] { L.German, L.English })
+        {
+            LanguageCombo.Items.Add(new ComboBoxItem { Content = DatasheetLanguage.DisplayName(language), Tag = language });
+        }
+
+        string suggested = detected == DatasheetLanguage.NotStated ? L.Language : detected;
+        LanguageCombo.SelectedIndex = suggested == L.German ? 0 : 1;
         KindSelector.SelectedIndex = (int)kind;
     }
 
@@ -302,7 +312,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
             Series = SeriesInput.Text.Trim(),
             Variants = variants,
         };
-        return _store.SaveSeries(series, _path);
+        return _store.SaveSeries(series, _path, datasheetLanguage: LanguageCombo.SelectedItem is ComboBoxItem { Tag: string language } ? language : L.Language);
     }
 
     private void OnApplyClick(object sender, RoutedEventArgs e)

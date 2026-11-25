@@ -11,6 +11,7 @@ AnWa-Solar can read the values of a PV module, an inverter or a battery from its
    - **Model or power class in the datasheet**: many datasheets describe several power classes or models in columns. Choose a power class to see and correct its values; your changes are kept when you switch to another one.
    - **Series**: the name of the series, suggested from the model names (for example `SUN-SG05LP3-EU-SM2` for SUN-14K … SUN-20K-SG05LP3-EU-SM2) or from the file name. All saved power classes form this series.
    - **Save this power class**: clear it for power classes you do not want to keep; the line below counts the saved ones. The manufacturer applies to the whole series.
+   - **Datasheet language**: German or English, suggested from the text of the PDF (otherwise the language of the application). A series keeps one German and one English datasheet, see [Datasheets in two languages](#datasheets-in-two-languages).
    - Each value has a mark on the right:
 
      | Mark | Meaning |
@@ -57,9 +58,18 @@ Imported entries are stored per Windows user in `%LOCALAPPDATA%\AnWa-Solar\Data`
 | File | Content |
 |---|---|
 | `Modules\<Manufacturer>\<Series>.json` (and `Inverters`, `Batteries`) | Your series, in the same format as the shipped [master data](master-data.md) |
-| `…\<Series>.pdf` | The imported datasheet, next to its series file |
+| `…\<Series> (de).pdf`, `…\<Series> (en).pdf` | The German and the English datasheet, next to their series file |
+| `…\<Series>.pdf` | A datasheet of a version before 1.0.0, whose language is not stated |
 
-An own series with the same manufacturer and name as a shipped one replaces it in the selection; the shipped files are not changed. Importing the series again replaces your series and its datasheet.
+An own series with the same manufacturer and name as a shipped one replaces it in the selection; the shipped files are not changed. Importing the series again replaces your series and its datasheet in the chosen language; the datasheet in the other language stays.
+
+## Datasheets in two languages
+
+Many manufacturers publish a datasheet in German and one in English. A series keeps one of each: import the series a second time with the other datasheet and choose its language, or attach it in the [component database](component-database.md).
+
+- When both exist, AnWa-Solar shows and exports the datasheet in the language of the application (see [Settings](settings.md#settings-page)).
+- When there is only one datasheet, it is used whatever its language.
+- A datasheet of a version before 1.0.0 has no stated language; it is used when there is none in the language of the application.
 
 ## Showing a datasheet
 

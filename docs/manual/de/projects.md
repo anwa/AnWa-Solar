@@ -38,6 +38,6 @@ Für den Wechselrichter, jedes Modul und die Batterie speichert das Projekt Hers
 | Datei | Inhalt |
 |---|---|
 | `<Projekt> - Bericht.pdf` | Der Bericht als A4-PDF, beim Export erstellt. Ohne Berichtsvorschau (Microsoft Edge WebView2) kommt der Bericht stattdessen als Markdown ins ZIP. |
-| `Datenblätter\<Hersteller> <Modell>.pdf` | Die Datenblätter des Wechselrichters, der Module und der Batterie, soweit sie importiert wurden. |
+| `Datenblätter\<Hersteller> <Modell>.pdf` | Die Datenblätter des Wechselrichters, der Module und der Batterie, soweit sie importiert wurden: das in der Sprache der Anwendung, sonst das einzige. |
 | `<Projekt>.json` | Die Projektdatei; **Andere…** im Projektdialog öffnet sie wieder. |
 | `Fehlende Datenblätter.txt` | Nur wenn ein Eintrag kein Datenblatt hat, zum Beispiel bei mitgelieferten Stammdaten. |

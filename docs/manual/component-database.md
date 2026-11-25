@@ -9,7 +9,7 @@ On the left, a tree lists the kinds (**PV modules**, **Inverters**, **Batteries*
 On the right, the editor shows the selected series:
 
 - **Manufacturer** and **Series** of the series.
-- A line that tells whether it is a shipped or an own series and whether a datasheet is attached.
+- A line that tells whether it is a shipped or an own series and which datasheets are attached (German, English).
 - A table with one row per value and one column per power class, the way datasheets are laid out. Bold rows are required values; the tooltip of a row explains it.
 
 | Button | Function |
@@ -18,8 +18,8 @@ On the right, the editor shows the selected series:
 | Copy above a column | Adds a copy of this power class; enter its model. |
 | Delete above a column | Removes this power class. |
 | Add power class | Adds a power class with the values of the last one. |
-| Attach PDF… | Attaches a datasheet to the series; it is stored next to the series file when you save. |
-| Datasheet | Shows the attached datasheet. |
+| Attach PDF… | Attaches a **German** or **English** datasheet to the series; it is stored next to the series file when you save and replaces the datasheet in that language. See [Datasheets in two languages](datasheet-import.md#datasheets-in-two-languages). |
+| Datasheet | Shows the attached datasheet; with several, a menu offers them by language. |
 
 ## Creating, changing and deleting
 
@@ -27,8 +27,8 @@ On the right, the editor shows the selected series:
 - **Import…** reads a PDF datasheet as a new series, see [Datasheet Import](datasheet-import.md).
 - **Save** checks every power class with the same rules as the import and saves the series in your own master data. The list of problems names the power class.
 - A **shipped series** cannot be changed in the installation folder: saving creates an own copy that replaces it in the selection.
-- Renaming a series or its manufacturer moves your series with its datasheet to the new name.
-- **Delete series** deletes an own series with its datasheet after a confirmation. When it replaced a shipped series, the shipped series comes back.
+- Renaming a series or its manufacturer moves your series with its datasheets to the new name.
+- **Delete series** deletes an own series with its datasheets after a confirmation. When it replaced a shipped series, the shipped series comes back.
 - **Discard changes** returns to the saved values. Before you switch to another series or close the window with unsaved changes, AnWa-Solar asks.
 
 After the window is closed, the main window uses the changed values; inverter, modules and battery of the open project are resolved again.

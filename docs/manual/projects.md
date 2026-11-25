@@ -38,6 +38,6 @@ For the inverter, every module and the battery, the project stores manufacturer 
 | File | Content |
 |---|---|
 | `<Project> - Report.pdf` | The report as A4 PDF, created at the export. Without the report preview (Microsoft Edge WebView2) the report is included as Markdown instead. |
-| `Datasheets\<Manufacturer> <Model>.pdf` | The datasheets of the inverter, the modules and the battery, as far as they were imported. |
+| `Datasheets\<Manufacturer> <Model>.pdf` | The datasheets of the inverter, the modules and the battery, as far as they were imported: the one in the language of the application, otherwise the only one. |
 | `<Project>.json` | The project file; **Other…** in the project dialog opens it again. |
 | `Missing datasheets.txt` | Only when an entry has no datasheet, for example shipped master data. |
