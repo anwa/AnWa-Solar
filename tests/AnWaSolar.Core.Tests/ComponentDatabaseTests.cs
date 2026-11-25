@@ -94,6 +94,23 @@ public sealed class ComponentDatabaseTests : IDisposable
     }
 
     [Fact]
+    public void Power_classes_are_ordered_by_ascending_power()
+    {
+        JsonDataStore store = Store();
+        Inverter[] deye = [.. store.Inverters.Where(i => i.Series == "SUN-SG05LP3-EU-SM2")];
+        Assert.Equal([15000, 18000, 20000], deye.Select(i => i.RatedAcPowerW));
+        Assert.All(store.Batteries.Where(b => b.Series == "SE-F").Zip(store.Batteries.Where(b => b.Series == "SE-F").Skip(1)),
+            pair => Assert.True(pair.First.NominalEnergyKWh <= pair.Second.NominalEnergyKWh));
+
+        store.SaveSeries(new ComponentSeries<Inverter> { Manufacturer = "Deye", Series = "SUN-SG05LP3-EU-SM2", Variants = [.. deye.Reverse()] }, null);
+
+        Assert.Equal(["SUN-15K-SG05LP3-EU-SM2", "SUN-18K-SG05LP3-EU-SM2", "SUN-20K-SG05LP3-EU-SM2"],
+            store.Inverters.Where(i => i.Series == "SUN-SG05LP3-EU-SM2").Select(i => i.Model));
+        string json = File.ReadAllText(Path.Combine(_root, "Data", "Inverters", "Deye", "SUN-SG05LP3-EU-SM2.json"));
+        Assert.True(json.IndexOf("SUN-15K", StringComparison.Ordinal) < json.IndexOf("SUN-20K", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Deleting_an_own_copy_brings_back_the_shipped_series()
     {
         JsonDataStore store = Store();

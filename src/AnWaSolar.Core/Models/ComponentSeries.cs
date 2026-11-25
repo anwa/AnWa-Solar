@@ -74,6 +74,22 @@ public static partial class SeriesNames
         return kept.Length == 0 ? names[0] : string.Join("-", kept);
     }
 
+    /// <summary>
+    /// The power that orders the power classes of a series: Pmax of a module, the rated AC power of an inverter (the
+    /// max. DC input power when it is not stated) and the nominal energy of a battery.
+    /// </summary>
+    public static double PowerOf(IMasterDataEntry entry) => entry switch
+    {
+        PVModule module => module.PmaxW,
+        Inverter inverter => inverter.RatedAcPowerW > 0 ? inverter.RatedAcPowerW : inverter.MaxDcInputPowerW,
+        Battery battery => battery.NominalEnergyKWh,
+        _ => 0,
+    };
+
+    /// <summary>Power classes in ascending power; classes of equal power keep their order.</summary>
+    public static IEnumerable<T> ByPower<T>(IEnumerable<T> variants)
+        where T : IMasterDataEntry => variants.OrderBy(v => PowerOf(v));
+
     /// <summary>Type of an inverter from its values: phases and whether it has a battery input.</summary>
     public static string InverterType(Inverter inverter)
     {

@@ -79,8 +79,8 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     private static string Noun(DatasheetKind kind) => kind switch
     {
-        DatasheetKind.Inverter => "inverters",
-        DatasheetKind.Battery => "batteries",
+        DatasheetKind.Inverter => L.T("inverters"),
+        DatasheetKind.Battery => L.T("batteries"),
         _ => L.T("PV modules"),
     };
 

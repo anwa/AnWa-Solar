@@ -10,7 +10,7 @@ On the right, the editor shows the selected series:
 
 - **Manufacturer** and **Series** of the series.
 - A line that tells whether it is a shipped or an own series and which datasheets are attached (German, English).
-- A table with one row per value and one column per power class, the way datasheets are laid out. Bold rows are required values; the tooltip of a row explains it.
+- A table with one row per value and one column per power class, the way datasheets are laid out. The power classes are ordered from left to right by ascending power (modules by Pmax, inverters by the rated AC power, batteries by the nominal energy), also in the selection dialogs and when saved. Bold rows are required values; the tooltip of a row explains it.
 
 | Button | Function |
 |---|---|

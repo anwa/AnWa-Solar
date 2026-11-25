@@ -2,6 +2,11 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v1.0.1 (2026-11-25)
+
+- Changed: The power classes of a series are ordered by ascending power in the component database, the selection dialogs and the saved series files: modules by Pmax, inverters by the rated AC power (the max. DC input power when it is not stated), batteries by the nominal energy.
+- Fixed: The hint of the component database named inverters and batteries in English in the German user interface.
+
 ## v1.0.0 (2026-11-25)
 
 - New: Datasheets in German and English. A series keeps one German and one English datasheet (`<Series> (de).pdf`, `<Series> (en).pdf`, series file properties `Datasheet file (de)` and `Datasheet file (en)`). The datasheet viewer and the ZIP export use the datasheet in the language of the application, otherwise the only one; a datasheet of an earlier version has no stated language and is used when there is none in the language of the application.
