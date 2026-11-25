@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.19.1)
+## v0.19.1 (2026-11-25)
 
 - Fixed: The ZIP export of a project could contain the report as Markdown instead of PDF: switching to the report tab started a second preview navigation that ended the export early. The export now renders the preview once, and only the latest preview navigation reports its result.
 
