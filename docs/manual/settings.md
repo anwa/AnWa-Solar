@@ -14,15 +14,14 @@ The tooltip of the button shows the current mode. The report preview and this ma
 
 AnWa-Solar saves your settings per Windows user in `%LOCALAPPDATA%\AnWa-Solar\settings.json`:
 
-- the calculation parameters (Tmin, Tmax, safety margin),
-- the last selection: inverter, and per MPPT the module, the counts and whether the string is enabled,
-- the cable lengths and installation conditions,
-- the planned battery (module and the numbers in series and in parallel),
-- the theme.
+- the theme,
+- the five most recently opened projects.
+
+Your design (parameters, inverter, strings, cables, battery) is saved in the open [project](projects.md).
 
 Changes are saved automatically, at the latest half a second after the last change and when you close the window. When the file cannot be read, AnWa-Solar keeps it as `settings.json.invalid-<date>` and starts with the default values.
 
-Settings of older versions are taken over automatically on the first start.
+Settings of older versions are taken over automatically on the first start; the design they contained becomes the project **My project**.
 
 ## Files and folders
 
@@ -30,6 +29,7 @@ Settings of older versions are taken over automatically on the first start.
 |---|---|
 | `C:\Program Files\AnWa-Solar` | Program, `Data\Modules.json`, `Data\Inverters.json`, `Data\Batteries.json`, `Data\CableTables.json` (standard tables for cables and fuses), `appsettings.json` |
 | `%LOCALAPPDATA%\AnWa-Solar\settings.json` | Your settings |
+| `%LOCALAPPDATA%\AnWa-Solar\Projects` | Your projects, one JSON file each, see [Projects](projects.md) |
 | `%LOCALAPPDATA%\AnWa-Solar\Data` | Your own master data and imported datasheets, see [Datasheet Import](datasheet-import.md#your-own-master-data) |
 | `%LOCALAPPDATA%\AnWa-Solar\logs` | Log files, one per day (`log-YYYY-MM-DD.jsonl`) |
 | `%LOCALAPPDATA%\AnWa-Solar\WebView2` | Data of the report preview and of this manual |

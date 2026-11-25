@@ -5,6 +5,7 @@ AnWa-Solar helps you design the PV strings of a photovoltaic system. You select 
 ## Contents
 
 - [Getting Started](getting-started.md): installation, the main window and a first design in five steps.
+- [Projects](projects.md): choose a project at the start, project data, automatic saving and the ZIP export.
 - [String Calculation](string-calculation.md): inverter, strings, results and parameters in detail.
 - [How the Calculation Works](calculation.md): formulas, checks and the safety margin.
 - [Battery Storage](battery.md): check a battery bank against the battery input of a hybrid inverter.

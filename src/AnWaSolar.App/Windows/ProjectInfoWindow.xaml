@@ -1,0 +1,59 @@
+<aw:ChromeWindow x:Class="AnWaSolar.Windows.ProjectInfoWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:aw="https://anwa-soft.de/design/wpf"
+                 Style="{StaticResource AppDialog}"
+                 WindowStartupLocation="CenterOwner"
+                 Title="Project"
+                 Width="560"
+                 SizeToContent="Height">
+    <DockPanel>
+        <Border Style="{StaticResource AnWaSoft.DialogButtonBar}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        MinWidth="96"
+                        Margin="0,0,8,0"
+                        IsCancel="True" />
+                <Button x:Name="SaveButton"
+                        Content="Save"
+                        MinWidth="96"
+                        IsDefault="True"
+                        Click="OnSaveClick" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Margin="24,20,24,16">
+            <TextBox x:Name="NameInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Project name"
+                     AutomationProperties.Name="Project name"
+                     Margin="0,0,0,20" />
+            <TextBox x:Name="CustomerInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Customer (optional)"
+                     AutomationProperties.Name="Customer"
+                     Margin="0,0,0,20" />
+            <TextBox x:Name="AddressInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Address of the PV system (optional)"
+                     AutomationProperties.Name="Address"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     MinLines="2"
+                     Margin="0,0,0,20" />
+            <TextBox x:Name="NotesInput"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="Notes (optional)"
+                     materialDesign:HintAssist.HelperText="Shown in the report"
+                     AutomationProperties.Name="Notes"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     MinLines="3"
+                     VerticalScrollBarVisibility="Auto"
+                     MaxHeight="160"
+                     Margin="0,0,0,20" />
+        </StackPanel>
+    </DockPanel>
+</aw:ChromeWindow>

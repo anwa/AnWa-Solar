@@ -2,6 +2,13 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.19.0)
+
+- New: Projects. Every design is a JSON file in `%LOCALAPPDATA%\AnWa-Solar\Projects` with name, customer, address and notes, the parameters, the inverter, the strings, the cable settings and the battery. Inverter, modules and battery are stored with their key, datasheet file and a copy of their values; the master data entry is used when it exists, otherwise the copy, with a message. Changes are saved automatically.
+- New: At the start, a dialog opens the last project (preselected, Enter), one of the five most recent projects, another project file or a new project. The design of the previous version becomes the project "My project".
+- New: Project card with Edit, Projects (switch or create) and Export ZIP; the window title and the report show the project. The ZIP contains one folder with the report as PDF, the imported datasheets, the project file and a list of entries without datasheet.
+- Changed: The settings file keeps only the theme and the recent projects; the design moved into the project.
+
 ## v0.18.1 (2026-11-25)
 
 - Changed: The battery cable values in `Data/CableTables.json` (section `BatteryCable`) are checked by the user and marked confirmed; the cable card, the report and the copied text no longer show the note about unconfirmed battery cable values. The values themselves are unchanged.

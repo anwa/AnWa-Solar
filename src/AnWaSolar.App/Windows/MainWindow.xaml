@@ -432,6 +432,49 @@
                             <StackPanel Margin="20,16,10,8">
                                 <TextBlock Text="CONFIGURATION" Style="{StaticResource AnWaSoft.Text.SectionLabel}" />
 
+                                <!-- Project -->
+                                <materialDesign:Card Style="{StaticResource AnWaSoft.Card}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <materialDesign:PackIcon DockPanel.Dock="Left" Kind="FolderOutline" Width="22" Height="22"
+                                                                     Margin="0,0,10,0" VerticalAlignment="Center"
+                                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                            <TextBlock x:Name="ProjectNameText" Style="{StaticResource AnWaSoft.Text.CardTitle}" TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                        <TextBlock x:Name="ProjectDetailsText" Margin="0,6,0,0" TextWrapping="Wrap" Style="{StaticResource AnWaSoft.Text.Muted}" />
+                                        <WrapPanel Margin="0,12,0,0">
+                                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    Click="OnEditProjectClick"
+                                                    Margin="0,0,8,0"
+                                                    AutomationProperties.Name="Edit project">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="PencilOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Edit" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    Click="OnSwitchProjectClick"
+                                                    Margin="0,0,8,0"
+                                                    ToolTip="Open another project or create a new one"
+                                                    AutomationProperties.Name="Projects">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="FolderOpenOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Projects" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    Click="OnExportProjectClick"
+                                                    ToolTip="ZIP file with the report as PDF, the datasheets and the project file"
+                                                    AutomationProperties.Name="Export project">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="FolderZipOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Export ZIP" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </materialDesign:Card>
+
                                 <!-- Inverter -->
                                 <materialDesign:Card Style="{StaticResource AnWaSoft.Card}">
                                     <StackPanel>

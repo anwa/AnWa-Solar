@@ -6,7 +6,9 @@ Install `AnWaSolar-Setup-X.Y.Z.msi`. AnWa-Solar is installed for all users into 
 
 ## The main window
 
-The blue title bar shows the version. On its right are four buttons, followed by the window buttons (minimize, maximize, close):
+At the start, the **Open project** dialog asks for the project: press **Enter** to continue with the last one, or create a new project, see [Projects](projects.md).
+
+The blue title bar shows the version and the name of the open project. On its right are four buttons, followed by the window buttons (minimize, maximize, close):
 
 | Button | Function |
 |---|---|
@@ -17,7 +19,7 @@ The blue title bar shows the version. On its right are four buttons, followed by
 
 The main window has two tabs:
 
-- **String calculation**: on the left the **Configuration** (inverter, parameters and one card per MPPT), on the right the **Results**.
+- **String calculation**: on the left the **Configuration** (project, inverter, parameters, cables, battery and one card per MPPT), on the right the **Results**.
 - **Report**: a Markdown report of the current design, see [Report](report.md).
 
 ## A first design in five steps
@@ -30,4 +32,4 @@ The main window has two tabs:
 
 The status bar at the bottom always shows the overall result.
 
-AnWa-Solar saves your design automatically and restores it at the next start.
+AnWa-Solar saves your design automatically in the open project.

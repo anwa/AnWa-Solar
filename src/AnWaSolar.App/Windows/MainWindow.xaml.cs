@@ -19,6 +19,7 @@ using AnWaSolar.Core;
 using AnWaSolar.Core.Calculation;
 using AnWaSolar.Core.Logging;
 using AnWaSolar.Core.Models;
+using AnWaSolar.Core.Projects;
 using AnWaSolar.Core.Services;
 using AnWaSolar.Services;
 
@@ -57,6 +58,14 @@ public partial class MainWindow : ChromeWindow
     private BatteryCalculationResult? _lastBattery;
     private BatterySettings _batterySettings = new();
 
+    // The open project: everything entered is saved into it automatically.
+    private readonly IProjectService _projects;
+    private Project _project = new() { Name = "Project" };
+    private string? _projectPath;
+
+    // Entries that are missing in the master data and come from the copy in the project.
+    private readonly List<string> _fromProjectCopy = [];
+
     private CalculationParameters _parameters;
 
     // Report
@@ -94,14 +103,16 @@ public partial class MainWindow : ChromeWindow
         IUserDataLocation userData,
         ILogFilePathProvider logPaths,
         ThemeService theme,
-        DatasheetService datasheets)
+        DatasheetService datasheets,
+        IProjectService projects)
     {
         _datasheets = datasheets;
+        _projects = projects;
         _persistTimer = new DispatcherTimer { Interval = s_persistDelay };
         _persistTimer.Tick += (_, _) =>
         {
             _persistTimer.Stop();
-            WriteLastSelection();
+            WriteProject();
         };
         Closing += (_, _) => FlushPendingPersist();
         Loaded += (_, _) => ShowDataIssues();
@@ -124,21 +135,55 @@ public partial class MainWindow : ChromeWindow
 
         _logger.LogInformation("Main window initialized.");
 
-        // Load and show the parameters
-        _parameters = _settings.LoadParameters();
-        _cableSettings = _settings.LoadCables();
-        _batterySettings = _settings.LoadBattery();
+        // The project is opened by OpenProject before the window is shown.
+        _parameters = new CalculationParameters();
+    }
+
+    /// <summary>Shows a project; the previous project is saved first.</summary>
+    public void OpenProject(string path, Project project)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        FlushPendingPersist();
+
+        _projectPath = path;
+        _project = project;
+        _parameters = project.Parameters.Clone();
+        _cableSettings = project.Cables.Clone();
+        _batterySettings = project.Battery.Clone();
+        _selectedInverter = null;
+        _stringConfigs.Clear();
+        _parkedConfigs.Clear();
         UpdateParametersSummary();
+        UpdateProjectCard();
+        if (!_settings.AddRecentProject(path))
+        {
+            _logger.LogWarning("The list of recent projects could not be saved.");
+        }
 
-        // Restore the last selection
-        TryRestoreLastSelection();
-
-        // No inverter could be restored
+        RestoreFromProject();
         if (_selectedInverter is null)
         {
             ShowInverter();
+            BuildStringsUi();
             Recalculate();
         }
+
+        _logger.LogInformation("Project {Name} opened from {Path}.", project.Name, path);
+        if (_fromProjectCopy.Count > 0)
+        {
+            Dispatcher.BeginInvoke(new Action(() => MessageDialog.Show(this,
+                "These entries are not in the master data; the values saved in the project are used:\n\n• " + string.Join("\n• ", _fromProjectCopy)
+                + "\n\nImport their datasheets to add them to the master data.", "Project", StatusKind.Warning)), DispatcherPriority.ApplicationIdle);
+        }
+    }
+
+    private void UpdateProjectCard()
+    {
+        Title = $"AnWa-Solar {AppVersion.Current} – {_project.Name}";
+        ProjectNameText.Text = _project.Name;
+        string details = string.Join(" · ", new[] { _project.Customer, _project.Address?.ReplaceLineEndings(", ") }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        ProjectDetailsText.Text = details;
+        ProjectDetailsText.Visibility = details.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     #endregion
@@ -640,12 +685,8 @@ public partial class MainWindow : ChromeWindow
             var win = new ParametersWindow(_parameters) { Owner = this };
             if (win.ShowDialog() == true)
             {
-                if (!_settings.SaveParameters(win.Parameters))
-                {
-                    MessageDialog.Show(this, "The parameters could not be saved. They apply until the application is closed.", "Parameters", StatusKind.Warning);
-                }
-
                 _parameters = win.Parameters;
+                PersistLastSelection();
                 _logger.LogInformation("Calculation parameters applied: Tmin={Tmin}, Tmax={Tmax}, safety margin={Margin} %.",
                     _parameters.MinTempC, _parameters.MaxTempC, _parameters.SafetyMarginPct);
                 UpdateParametersSummary();
@@ -688,14 +729,9 @@ public partial class MainWindow : ChromeWindow
     // The master data changed (import): the selection is resolved again, so that the calculation uses the saved values.
     private void ReloadMasterData()
     {
-        if (_selectedInverter is null)
-        {
-            return;
-        }
-
         _persistTimer.Stop();
-        WriteLastSelection();
-        TryRestoreLastSelection();
+        WriteProject();
+        RestoreFromProject();
     }
 
     private void OnEditCablesClick(object sender, RoutedEventArgs e)
@@ -710,11 +746,7 @@ public partial class MainWindow : ChromeWindow
         if (win.ShowDialog() == true)
         {
             _cableSettings = win.Settings;
-            if (!_settings.SaveCables(_cableSettings))
-            {
-                MessageDialog.Show(this, "The cable settings could not be saved. They apply until the application is closed.", "Cables", StatusKind.Warning);
-            }
-
+            PersistLastSelection();
             Recalculate();
         }
     }
@@ -751,11 +783,7 @@ public partial class MainWindow : ChromeWindow
             if (accepted)
             {
                 _batterySettings = win.Settings;
-                if (!_settings.SaveBattery(_batterySettings))
-                {
-                    MessageDialog.Show(this, "The battery settings could not be saved. They apply until the application is closed.", "Battery", StatusKind.Warning);
-                }
-
+                PersistLastSelection();
                 Recalculate();
             }
         }
@@ -771,9 +799,38 @@ public partial class MainWindow : ChromeWindow
         string.Equals(m.Manufacturer, module.Manufacturer, StringComparison.OrdinalIgnoreCase)
         && string.Equals(m.Model, module.Model, StringComparison.OrdinalIgnoreCase));
 
-    private Battery? FindBattery(SelectedRef? reference) => reference is null ? null : _dataStore.Batteries.FirstOrDefault(b =>
-        string.Equals(b.Manufacturer, reference.Manufacturer, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(b.Model, reference.Model, StringComparison.OrdinalIgnoreCase));
+    // The master data entry of the battery, or the copy in the project when the master data lacks it.
+    private Battery? FindBattery(SelectedRef? reference)
+    {
+        if (reference is null)
+        {
+            return null;
+        }
+
+        static bool Same(IMasterDataEntry e, SelectedRef r) => string.Equals(e.Manufacturer, r.Manufacturer, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(e.Model, r.Model, StringComparison.OrdinalIgnoreCase);
+        return _dataStore.Batteries.FirstOrDefault(b => Same(b, reference))
+            ?? (_project.BatteryData is { } copy && Same(copy, reference) ? copy : null);
+    }
+
+    // The master data entry with the key of a copy, or the copy itself (noted) when the master data lacks it.
+    private T? Resolve<T>(IEnumerable<T> entries, T? copy, string kind)
+        where T : class, IMasterDataEntry
+    {
+        if (copy is null)
+        {
+            return null;
+        }
+
+        T? entry = entries.FirstOrDefault(e => string.Equals(e.Manufacturer, copy.Manufacturer, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(e.Model, copy.Model, StringComparison.OrdinalIgnoreCase));
+        if (entry is null && !_fromProjectCopy.Contains($"{kind} {copy.Manufacturer} {copy.Model}"))
+        {
+            _fromProjectCopy.Add($"{kind} {copy.Manufacturer} {copy.Model}");
+        }
+
+        return entry ?? copy;
+    }
 
     // The battery card is shown for hybrid inverters and while a battery is planned.
     private void UpdateBatterySummary()
@@ -816,23 +873,24 @@ public partial class MainWindow : ChromeWindow
         ParameterTiles.Children.Add(ValueTile("Safety margin", string.Create(c, $"{_parameters.SafetyMarginPct} %"), true));
     }
 
-    private void TryRestoreLastSelection()
+    // Shows the design of the project: master data entries by their key, the copies in the project when missing.
+    private void RestoreFromProject()
     {
         try
         {
-            var last = _settings.LoadLastSelection();
-            if (last.Inverter is null) return;
+            _fromProjectCopy.Clear();
+            if (Resolve(_dataStore.Batteries, _project.BatteryData, "Battery") is { } battery && _batterySettings.Battery is null)
+            {
+                _batterySettings.Battery = new SelectedRef { Manufacturer = battery.Manufacturer, Model = battery.Model };
+            }
 
-            var wr = _dataStore.Inverters.FirstOrDefault(x =>
-                string.Equals(x.Manufacturer, last.Inverter.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(x.Model, last.Inverter.Model, StringComparison.OrdinalIgnoreCase));
-            if (wr is null) return;
+            if (Resolve(_dataStore.Inverters, _project.Inverter, "Inverter") is not { } wr) return;
 
             _selectedInverter = wr;
             ShowInverter();
             BuildStringsUi();
 
-            foreach (var sel in last.Strings)
+            foreach (ProjectString sel in _project.Strings)
             {
                 var cfg = _stringConfigs.FirstOrDefault(c => c.MpptIndex == sel.MpptIndex);
                 if (cfg is null) continue;
@@ -844,14 +902,8 @@ public partial class MainWindow : ChromeWindow
                 cfg.ModulesPerString = Math.Max(1, sel.ModulesPerString);
                 cfg.ParallelStrings = Math.Max(1, sel.ParallelStrings);
 
-                // Module reference
-                if (sel.Module is not null)
-                {
-                    var mod = _dataStore.Modules.FirstOrDefault(x =>
-                        string.Equals(x.Manufacturer, sel.Module.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(x.Model, sel.Module.Model, StringComparison.OrdinalIgnoreCase));
-                    cfg.SelectedModule = mod;
-                }
+                // Module: the master data entry, or the copy in the project
+                cfg.SelectedModule = Resolve(_dataStore.Modules, sel.Module, "PV module");
 
                 UpdateMpptUiState(cfg, RefsOf(cfg));
             }
@@ -860,15 +912,15 @@ public partial class MainWindow : ChromeWindow
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring the last selection.");
+            _logger.LogError(ex, "Error restoring the project.");
         }
     }
 
-    // Schedules saving the last selection. Slider drags change the configuration many times per second, so the
-    // settings file is written once the input has been idle for the debounce interval, and on closing.
+    // Schedules saving the project. Slider drags change the configuration many times per second, so the project file
+    // is written once the input has been idle for the debounce interval, and on closing or switching the project.
     private void PersistLastSelection()
     {
-        if (_selectedInverter is null) return;
+        if (_projectPath is null) return;
 
         _persistTimer.Stop();
         _persistTimer.Start();
@@ -879,44 +931,39 @@ public partial class MainWindow : ChromeWindow
         if (!_persistTimer.IsEnabled) return;
 
         _persistTimer.Stop();
-        WriteLastSelection();
+        WriteProject();
     }
 
-    private void WriteLastSelection()
+    // Writes the current design with copies of the selected master data entries into the project file.
+    private void WriteProject()
     {
+        if (_projectPath is null) return;
+
         try
         {
-            if (_selectedInverter is null) return;
-
-            var sel = new LastSelection
+            _project.Parameters = _parameters.Clone();
+            _project.Cables = _cableSettings.Clone();
+            _project.Battery = _batterySettings.Clone();
+            _project.BatteryData = _batterySettings.Battery is null ? null : FindBattery(_batterySettings.Battery);
+            if (_selectedInverter is not null)
             {
-                Inverter = new SelectedRef
-                {
-                    Manufacturer = _selectedInverter.Manufacturer,
-                    Model = _selectedInverter.Model
-                },
-                Strings = _stringConfigs.Select(c => new MpptStringSelection
+                _project.Inverter = _selectedInverter;
+                _project.Strings = [.. _stringConfigs.Select(c => new ProjectString
                 {
                     MpptIndex = c.MpptIndex,
+                    Module = c.SelectedModule,
                     ModulesPerString = c.ModulesPerString,
                     ParallelStrings = c.ParallelStrings,
                     IsEnabled = c.IsEnabled,
-                    Module = c.SelectedModule is null ? null : new SelectedRef
-                    {
-                        Manufacturer = c.SelectedModule.Manufacturer,
-                        Model = c.SelectedModule.Model
-                    }
-                }).ToList()
-            };
-
-            if (!_settings.SaveLastSelection(sel))
-            {
-                _logger.LogWarning("The last selection could not be saved.");
+                })];
             }
+
+            _projects.Save(_projectPath, _project);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogError(ex, "Error saving the last selection.");
+            _logger.LogError(ex, "Error saving the project {Path}.", _projectPath);
+            Snackbar.MessageQueue?.Enqueue("The project could not be saved. See the log for details.");
         }
     }
 
@@ -1030,7 +1077,8 @@ public partial class MainWindow : ChromeWindow
     // Builds the Markdown report from the last calculation.
     private void BuildMarkdownReport()
     {
-        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now, _lastCables, _dataStore.CableTables, _lastBattery);
+        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now, _lastCables, _dataStore.CableTables, _lastBattery,
+            _projectPath is null ? null : _project.Info(_projectPath));
         ReportMarkdownTextBox.Text = _reportMarkdown;
     }
 
@@ -1227,39 +1275,16 @@ public partial class MainWindow : ChromeWindow
 
         try
         {
-            if (!await RenderPreviewForExportAsync())
+            switch (await PrintReportPdfAsync(dlg.FileName))
             {
-                MessageDialog.Show(this, "The PDF export needs the report preview (Microsoft Edge WebView2 Runtime), which is not available.", "Export PDF", StatusKind.Warning);
-                return;
-            }
-
-            CoreWebView2 core = ReportPreviewBrowser.CoreWebView2;
-            CoreWebView2PrintSettings settings = core.Environment.CreatePrintSettings();
-            settings.Orientation = CoreWebView2PrintOrientation.Portrait;
-            settings.PageWidth = 8.27; // A4 in inches
-            settings.PageHeight = 11.69;
-            settings.MarginTop = settings.MarginBottom = 0.6;
-            settings.MarginLeft = settings.MarginRight = 0.6;
-            settings.ShouldPrintBackgrounds = true;
-            settings.ShouldPrintHeaderAndFooter = true;
-            settings.HeaderTitle = ReportTitle;
-            settings.FooterUri = string.Empty;
-
-            bool saved;
-            WebViewSupport.ApplyColorScheme(core, dark: false);
-            try
-            {
-                saved = await core.PrintToPdfAsync(dlg.FileName, settings);
-            }
-            finally
-            {
-                WebViewSupport.ApplyColorScheme(core, _theme.IsDark);
-            }
-
-            if (!saved)
-            {
-                MessageDialog.Show(this, "The PDF file could not be written.", "Export PDF", StatusKind.Error);
-                return;
+                case null:
+                    MessageDialog.Show(this, "The PDF export needs the report preview (Microsoft Edge WebView2 Runtime), which is not available.", "Export PDF", StatusKind.Warning);
+                    return;
+                case false:
+                    MessageDialog.Show(this, "The PDF file could not be written.", "Export PDF", StatusKind.Error);
+                    return;
+                default:
+                    break;
             }
 
             _logger.LogInformation("Report exported as PDF: {Path}.", dlg.FileName);
@@ -1271,6 +1296,156 @@ public partial class MainWindow : ChromeWindow
             MessageDialog.Show(this, "The report could not be exported. See the log for details.", "Error", StatusKind.Error);
         }
     }
+
+    // Prints the report as an A4 PDF; null without report preview (WebView2), false when the file was not written.
+    private async Task<bool?> PrintReportPdfAsync(string path)
+    {
+        // The preview lives in the report tab and is only created while the tab is shown (project export from the
+        // string calculation tab); the previous tab comes back afterwards.
+        object previousTab = MainTabs.SelectedItem;
+        if (!ReportTab.IsSelected)
+        {
+            ReportTab.IsSelected = true;
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+        }
+
+        try
+        {
+            return await PrintLoadedReportPdfAsync(path);
+        }
+        finally
+        {
+            MainTabs.SelectedItem = previousTab;
+        }
+    }
+
+    private async Task<bool?> PrintLoadedReportPdfAsync(string path)
+    {
+        if (!await RenderPreviewForExportAsync())
+        {
+            return null;
+        }
+
+        {
+            CoreWebView2 core = ReportPreviewBrowser.CoreWebView2;
+            CoreWebView2PrintSettings settings = core.Environment.CreatePrintSettings();
+            settings.Orientation = CoreWebView2PrintOrientation.Portrait;
+            settings.PageWidth = 8.27; // A4 in inches
+            settings.PageHeight = 11.69;
+            settings.MarginTop = settings.MarginBottom = 0.6;
+            settings.MarginLeft = settings.MarginRight = 0.6;
+            settings.ShouldPrintBackgrounds = true;
+            settings.ShouldPrintHeaderAndFooter = true;
+            settings.HeaderTitle = _projectPath is null ? ReportTitle : $"{ReportTitle} – {_project.Name}";
+            settings.FooterUri = string.Empty;
+
+            bool saved;
+            WebViewSupport.ApplyColorScheme(core, dark: false);
+            try
+            {
+                saved = await core.PrintToPdfAsync(path, settings);
+            }
+            finally
+            {
+                WebViewSupport.ApplyColorScheme(core, _theme.IsDark);
+            }
+
+            return saved;
+        }
+    }
+
+    #region Project
+
+    private void OnEditProjectClick(object sender, RoutedEventArgs e)
+    {
+        var win = new ProjectInfoWindow(_project.Name, _project.Customer, _project.Address, _project.Notes, isNew: false) { Owner = this };
+        if (win.ShowDialog() == true)
+        {
+            _project.Name = win.ProjectName;
+            _project.Customer = win.Customer;
+            _project.Address = win.Address;
+            _project.Notes = win.Notes;
+            UpdateProjectCard();
+            PersistLastSelection();
+            Recalculate();
+        }
+    }
+
+    // Opens another project or creates a new one; the current project is saved first.
+    private void OnSwitchProjectClick(object sender, RoutedEventArgs e)
+    {
+        FlushPendingPersist();
+        WriteProject();
+        if (StartProjectWindow.Choose(this, _projects, _settings, _logger) is { } chosen)
+        {
+            OpenProject(chosen.Path, chosen.Project);
+        }
+    }
+
+    // Exports the project as a ZIP file: the report as PDF, the datasheets and the project file in one folder.
+    private async void OnExportProjectClick(object sender, RoutedEventArgs e)
+    {
+        string folder = ProjectService.FileNameOf(_project.Name);
+        var dlg = new SaveFileDialog
+        {
+            Title = "Export project",
+            Filter = "ZIP file (*.zip)|*.zip",
+            FileName = folder + ".zip",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        string tempPdf = Path.Combine(Path.GetTempPath(), $"AnWa-Solar-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            FlushPendingPersist();
+            WriteProject();
+            bool? printed = await PrintReportPdfAsync(tempPdf);
+            var datasheets = new List<ExportDatasheet>();
+            void Add(IMasterDataEntry? entry)
+            {
+                if (entry is not null)
+                {
+                    datasheets.Add(new ExportDatasheet($"{entry.Manufacturer} {entry.Model}", _dataStore.GetDatasheetPath(entry)));
+                }
+            }
+
+            Add(_selectedInverter);
+            foreach (StringConfiguration cfg in _stringConfigs.Where(c => c.IsEnabled))
+            {
+                Add(cfg.SelectedModule);
+            }
+
+            if (_batterySettings.Enabled)
+            {
+                Add(FindBattery(_batterySettings.Battery));
+            }
+
+            IReadOnlyList<string> files = ProjectExporter.WriteZip(dlg.FileName, _project, printed == true ? tempPdf : null, _reportMarkdown, datasheets);
+            _logger.LogInformation("Project exported to {Path}: {Files}.", dlg.FileName, string.Join(", ", files));
+            Snackbar.MessageQueue?.Enqueue(printed == true
+                ? $"Project exported: {Path.GetFileName(dlg.FileName)}"
+                : $"Project exported without PDF report (no report preview): {Path.GetFileName(dlg.FileName)}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Error exporting the project.");
+            MessageDialog.Show(this, "The project could not be exported. See the log for details.", "Error", StatusKind.Error);
+        }
+        finally
+        {
+            if (File.Exists(tempPdf))
+            {
+                File.Delete(tempPdf);
+            }
+        }
+    }
+
+    #endregion
 
     private void OnPreviewResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
     {

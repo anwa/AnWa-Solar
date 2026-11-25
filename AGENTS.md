@@ -33,7 +33,7 @@ AnWa-Solar is a Windows desktop tool for designing photovoltaic systems. It curr
 - Projects: a Core library without WPF references (models, master data loading, calculations, report generation, settings), the WPF application, and an xUnit test project for Core. Calculation logic has exactly one owner in Core; the live results and the report both consume the same calculation result.
 - `Nullable` and `ImplicitUsings` are enabled; build warnings are treated as errors.
 - Package versions are pinned centrally in `Directory.Packages.props`. Use the newest stable version that supports the target framework; when the newest version needs a newer framework, stop and ask instead of raising the framework. Add a new dependency only when it is needed and name it in the commit body.
-- User settings (calculation parameters, last selection) live in the per-user application data folder `%LOCALAPPDATA%\AnWa-Solar`, never next to the executable. Files are written atomically (write a temporary file, then replace). Writes triggered by continuous input such as sliders are debounced.
+- User settings (theme, recent projects) and the projects (`Projects\*.json`, one design each, with copies of the master data entries it uses) live in the per-user application data folder `%LOCALAPPDATA%\AnWa-Solar`, never next to the executable. Files are written atomically (write a temporary file, then replace). Writes triggered by continuous input such as sliders are debounced.
 - Logs are structured JSONL files in `%LOCALAPPDATA%\AnWa-Solar\logs`. The file logger serializes concurrent writes.
 
 ## Version
