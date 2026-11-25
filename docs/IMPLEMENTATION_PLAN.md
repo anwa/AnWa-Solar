@@ -116,7 +116,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Battery cables with or without busbar, main cable and fuses; battery cable table values entered at the user's request, unconfirmed until checked
 - [x] Cable dialog, result card, report and manual
 
-## M18 – Projects (`feature/projects`)
+## M18 – Projects (`feature/projects`, v0.19.0)
 
 - [x] Project file in the user data folder with project data, all entries and copies of the master data entries; automatic saving
 - [x] Start dialog: last project preselected (Enter), five most recent projects, new project, other project file; migration of the previous design
