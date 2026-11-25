@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.17.0)
+## v0.17.0 (2026-11-25)
 
 - New: Battery storage compatibility. A configuration card for hybrid inverters with a battery dialog (battery module, modules in series and in parallel), a result card and a report section check the bank voltage against the battery voltage range of the inverter (outside the range is an error; a lower bank voltage that the inverter cannot use is a warning), the module counts against the battery datasheet, and show the charge and discharge current (the lower of bank and inverter) with the power and the nominal and usable energy. A manual page describes it.
 - New: Battery master data `Data/Batteries.json` with the Deye SE-F12, SE-F12 Max, SE-F16, SE-F16 Max and the Felicity FLA48314-EU from their datasheets; own batteries through the datasheet import, which now reads battery datasheets (also with model names as graphics and ranges like "44,8 V ~ 57,6 V").
