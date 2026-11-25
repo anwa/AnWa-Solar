@@ -20,7 +20,7 @@ The MSI installs per machine into `C:\Program Files\AnWa-Solar` with a Start men
 
 ## GitHub Release
 
-After the user has approved the push and `main` and the tag are on GitHub, create the GitHub release of the tag with the section of the version from `CHANGELOG.md` as notes and the MSI with its `.sha256` file as assets:
+After the user has approved the push and `main` and the tag are on GitHub, create the GitHub release of a minor or major version (`X.Y.0`; a patch version only with the user's explicit approval for that version) for its tag with the section of the version from `CHANGELOG.md` as notes and the MSI with its `.sha256` file as assets:
 
 ```powershell
 gh release create vX.Y.Z dist\installer\AnWaSolar-Setup-X.Y.Z.msi dist\installer\AnWaSolar-Setup-X.Y.Z.msi.sha256 --title "AnWa-Solar X.Y.Z" --notes-file <scratch>\notes-vX.Y.Z.md --verify-tag
