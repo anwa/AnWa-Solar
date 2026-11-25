@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.21.0)
+
+- New: Component database. A window, opened from the title bar, lists the module, inverter and battery series in a tree (kind, manufacturer, series) and edits a series in a table with one column per power class: copy a value to all power classes, copy or remove a power class, add one, attach and show the datasheet, import a datasheet. Saving checks every power class like the import; a shipped series is saved as an own copy that replaces it; renaming moves the own series with its datasheet; deleting an own series brings back the shipped one. Unsaved changes are confirmed before switching or closing.
+
 ## v0.20.0 (2026-11-25)
 
 - New: Master data in series. Modules, inverters and batteries are organised the way datasheets describe them: one JSON file per series (manufacturer, series, datasheet, power classes) in `Data\<Kind>\<Manufacturer>\`. The shipped data is converted (for example Deye SUN-SG05LP3-EU-SM2 with SUN-15K/18K/20K, Deye SE-F with four batteries).

@@ -10,6 +10,7 @@
     { "path": "battery.md", "title": "Battery Storage" },
     { "path": "report.md", "title": "Report" },
     { "path": "master-data.md", "title": "Master Data" },
+    { "path": "component-database.md", "title": "Component Database" },
     { "path": "datasheet-import.md", "title": "Datasheet Import" },
     { "path": "settings.md", "title": "Settings, Theme and Files" },
     { "path": "troubleshooting.md", "title": "Troubleshooting" }

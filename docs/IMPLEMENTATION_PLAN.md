@@ -132,6 +132,6 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 
 ## M20 – Component database (`feature/component-database`)
 
-- [ ] Window with a tree of kinds, manufacturers and series and an editor with one column per power class
-- [ ] Create, change, copy and delete own series and power classes; shipped series are saved as own copies
-- [ ] Attach and show datasheets; import from the window
+- [x] Window with a tree of kinds, manufacturers and series and an editor with one column per power class
+- [x] Create, change, copy and delete own series and power classes; shipped series are saved as own copies
+- [x] Attach and show datasheets; import from the window

@@ -24,7 +24,7 @@ A series file names the manufacturer and the series and lists the power classes 
 
 Your own series, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in the same structure, with the datasheet next to the series file. An own series replaces the shipped series with the same manufacturer and name, and an own power class the shipped one with the same manufacturer and model. A model belongs to one series: saving a series moves its models out of your other series.
 
-The selection dialogs follow this structure: manufacturer, for inverters the type (for example "Three-phase hybrid inverter", from the AC phases and the battery input), series and power class.
+The [component database](component-database.md) shows all series and lets you create and change them without editing JSON files. The selection dialogs follow this structure: manufacturer, for inverters the type (for example "Three-phase hybrid inverter", from the AC phases and the battery input), series and power class.
 
 Versions before 0.20.0 kept your own entries in `Modules.json`, `Inverters.json` and `Batteries.json` with the datasheets in `Datasheets`; they are converted into series files on the first start (one series per entry), and the old files are kept as `*.migrated`.
 

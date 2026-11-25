@@ -11,6 +11,7 @@ AnWa-Solar helps you design the PV strings of a photovoltaic system. You select 
 - [Battery Storage](battery.md): check a battery bank against the battery input of a hybrid inverter.
 - [Report](report.md): the Markdown report and its preview.
 - [Datasheet Import](datasheet-import.md): read module, inverter and battery values from a PDF datasheet and show stored datasheets.
+- [Component Database](component-database.md): view, create and change module, inverter and battery series in one window.
 - [Master Data](master-data.md): the module and inverter data and how to add entries.
 - [Settings, Theme and Files](settings.md): where AnWa-Solar keeps its data, light and dark mode.
 - [Troubleshooting](troubleshooting.md): messages and what to do.
