@@ -814,5 +814,7 @@
   "English datasheet…": "Englisches Datenblatt…",
   "{0} datasheet {1} is attached when you save.": "Das Datenblatt {1} ({0}) wird beim Speichern angehängt.",
   "Datasheet language": "Sprache des Datenblatts",
-  "The datasheet of the application language is shown and exported; a series keeps one German and one English datasheet": "Angezeigt und exportiert wird das Datenblatt in der Sprache der Anwendung; eine Serie hat ein deutsches und ein englisches Datenblatt"
+  "The datasheet of the application language is shown and exported; a series keeps one German and one English datasheet": "Angezeigt und exportiert wird das Datenblatt in der Sprache der Anwendung; eine Serie hat ein deutsches und ein englisches Datenblatt",
+  "inverters": "Wechselrichter",
+  "batteries": "Batterien"
 }

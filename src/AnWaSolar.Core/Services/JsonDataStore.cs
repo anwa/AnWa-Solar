@@ -338,6 +338,7 @@ public class JsonDataStore : IDataStore
             sheets[datasheetLanguage] = CopyDatasheet(datasheetSourcePath, Path.Combine(folder, SheetFileName(series.Series, datasheetLanguage)));
         }
 
+        series.Variants = [.. SeriesNames.ByPower(series.Variants)];
         series.DatasheetFile = sheets.GetValueOrDefault(DatasheetLanguage.NotStated);
         series.DatasheetFileGerman = sheets.GetValueOrDefault(L.German);
         series.DatasheetFileEnglish = sheets.GetValueOrDefault(L.English);
@@ -696,6 +697,7 @@ public class JsonDataStore : IDataStore
                 }
 
                 int index = 0;
+                int first = result.Count;
                 foreach (JsonElement element in variants.EnumerateArray())
                 {
                     index++;
@@ -735,6 +737,11 @@ public class JsonDataStore : IDataStore
 
                     result.Add(item);
                 }
+
+                // The power classes of a series in ascending power, whatever their order in the file.
+                List<T> ordered = [.. SeriesNames.ByPower(result.Skip(first))];
+                result.RemoveRange(first, ordered.Count);
+                result.AddRange(ordered);
             }
         }
 

@@ -10,7 +10,7 @@ Rechts zeigt der Editor die gewählte Serie:
 
 - **Hersteller** und **Serie** der Serie.
 - Eine Zeile, die sagt, ob es eine mitgelieferte oder eigene Serie ist und welche Datenblätter angehängt sind (Deutsch, Englisch).
-- Eine Tabelle mit einer Zeile pro Wert und einer Spalte pro Leistungsklasse, so wie Datenblätter aufgebaut sind. Fette Zeilen sind Pflichtwerte; der Tooltip einer Zeile erklärt sie.
+- Eine Tabelle mit einer Zeile pro Wert und einer Spalte pro Leistungsklasse, so wie Datenblätter aufgebaut sind. Die Leistungsklassen stehen von links nach rechts nach aufsteigender Leistung (Module nach Pmax, Wechselrichter nach der AC-Nennleistung, Batterien nach der Nennenergie), ebenso in den Auswahldialogen und beim Speichern. Fette Zeilen sind Pflichtwerte; der Tooltip einer Zeile erklärt sie.
 
 | Knopf | Funktion |
 |---|---|

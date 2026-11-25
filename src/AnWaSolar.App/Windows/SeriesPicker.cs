@@ -105,8 +105,9 @@ internal sealed class SeriesPicker<T>
     private void FillModels()
     {
         _updating = true;
-        string[] models = [.. OfType.Where(e => Same(e.Series, _series.SelectedItem as string)).Select(e => e.Model).Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.OrdinalIgnoreCase)];
+        // Power classes in ascending power, as in the component database.
+        string[] models = [.. SeriesNames.ByPower(OfType.Where(e => Same(e.Series, _series.SelectedItem as string))).Select(e => e.Model)
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
         _model.ItemsSource = models;
         _model.SelectedItem = models.FirstOrDefault();
         _updating = false;
