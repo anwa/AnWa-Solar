@@ -62,6 +62,20 @@ public sealed class ComponentDatabaseTests : IDisposable
     }
 
     [Fact]
+    public void Shipped_modules_are_the_three_checked_series()
+    {
+        JsonDataStore store = Shipped();
+
+        Assert.Equal(["AIKO AIKO-A-MAH60Db: 6", "Ja-Solar JAM54D40 LB: 6", "Trina TSM-NEG9R.28: 7"],
+            store.Modules.GroupBy(m => $"{m.Manufacturer} {m.Series}").Select(g => $"{g.Key}: {g.Count()}").Order(StringComparer.Ordinal));
+        Assert.Empty(store.Issues);
+
+        // Worked check of one power class against its datasheet (Trina TSM-NEG9R.28, 465 W).
+        PVModule trina = store.Modules.Single(m => m.Model == "TSM-465NEG9R.28");
+        Assert.Equal((465.0, 45.8, 10.16, 54.2, 10.85, -0.24, 25.0), (trina.PmaxW, trina.VmppV, trina.ImppA, trina.VocV, trina.IscA, trina.VocTempCoeffPctPerC, trina.MaxSeriesFuseA ?? 0));
+    }
+
+    [Fact]
     public void Values_stored_as_zero_for_not_stated_stay_empty()
     {
         Inverter tenK = Shipped().Inverters.Single(i => i.Model == "SUN-10K-G06P3-EU-AM2");

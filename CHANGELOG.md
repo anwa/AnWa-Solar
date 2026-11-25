@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v1.1.0 (2026-11-25)
+
+- Changed: The shipped PV modules are three series checked by the user against their datasheets: AIKO AIKO-A-MAH60Db (495–520 W), Ja-Solar JAM54D40 LB (440–465 W) and Trina TSM-NEG9R.28 (440–470 W), each with all power classes, the max. series fuse rating where the datasheet states it and the module leads. The outdated single-model series (Ja-Solar JAM54D40-LB, Trina TSM-NEG9R.25) are removed; AIKO-A500-MAH60Db now has Impp 13.2 A and a max. operating temperature of 70 °C as in its datasheet. Projects that use a removed module keep their copied values and say so.
+
 ## v1.0.2 (2026-11-25)
 
 - Fixed: **Delete series** in the component database was disabled for shipped series, so outdated shipped series could not be removed. It now hides a shipped series (listed in `%LOCALAPPDATA%\AnWa-Solar\Data\Hidden series.json`; the installation folder is not changed), and **Restore shipped series** shows the hidden series again. The tooltip of the button says what it does for the selected series.

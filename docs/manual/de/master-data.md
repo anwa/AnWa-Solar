@@ -39,7 +39,7 @@ Trage nur Werte aus den Datenblättern der Hersteller ein. Zahlen in den Dateien
   "Model": "AIKO-A500-MAH60Db",
   "Pmax (W)": 500,
   "Vmpp (V)": 37.9,
-  "Impp (A)": 13.21,
+  "Impp (A)": 13.2,
   "Voc (V)": 45.02,
   "Isc (A)": 14.05,
   "Module efficiency (%)": 22.6,
@@ -47,7 +47,7 @@ Trage nur Werte aus den Datenblättern der Hersteller ein. Zahlen in den Dateien
   "Temperature coefficient of Voc (%/°C)": -0.22,
   "Temperature coefficient of Isc (%/°C)": 0.05,
   "Operating temperature min (°C)": -40,
-  "Operating temperature max (°C)": 85
+  "Operating temperature max (°C)": 70
 }
 ```
 
