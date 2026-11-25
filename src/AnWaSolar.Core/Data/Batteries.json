@@ -1,0 +1,63 @@
+{
+  "Batteries": [
+    {
+      "Manufacturer": "Deye",
+      "Model": "SE-F12",
+      "Nominal voltage (V)": 51.2,
+      "Operating voltage range (V)": "44.8-57.6",
+      "Nominal capacity (Ah)": 235,
+      "Nominal energy (kWh)": 12.03,
+      "Depth of discharge (%)": 90,
+      "Max. charge current (A)": 230,
+      "Max. discharge current (A)": 230,
+      "Max. modules in parallel": 32
+    },
+    {
+      "Manufacturer": "Deye",
+      "Model": "SE-F12 Max",
+      "Nominal voltage (V)": 51.2,
+      "Operating voltage range (V)": "44.8-57.6",
+      "Nominal capacity (Ah)": 235,
+      "Nominal energy (kWh)": 12.03,
+      "Depth of discharge (%)": 90,
+      "Max. charge current (A)": 230,
+      "Max. discharge current (A)": 230,
+      "Max. modules in parallel": 32
+    },
+    {
+      "Manufacturer": "Deye",
+      "Model": "SE-F16",
+      "Nominal voltage (V)": 51.2,
+      "Operating voltage range (V)": "44.8-57.6",
+      "Nominal capacity (Ah)": 314,
+      "Nominal energy (kWh)": 16,
+      "Depth of discharge (%)": 90,
+      "Max. charge current (A)": 160,
+      "Max. discharge current (A)": 230,
+      "Max. modules in parallel": 32
+    },
+    {
+      "Manufacturer": "Deye",
+      "Model": "SE-F16 Max",
+      "Nominal voltage (V)": 51.2,
+      "Operating voltage range (V)": "44.8-57.6",
+      "Nominal capacity (Ah)": 314,
+      "Nominal energy (kWh)": 16,
+      "Depth of discharge (%)": 90,
+      "Max. charge current (A)": 160,
+      "Max. discharge current (A)": 230,
+      "Max. modules in parallel": 32
+    },
+    {
+      "Manufacturer": "Felicity",
+      "Model": "FLA48314-EU",
+      "Nominal voltage (V)": 51.2,
+      "Operating voltage range (V)": "44.8-57.6",
+      "Nominal energy (kWh)": 16,
+      "Depth of discharge (%)": 95,
+      "Max. charge current (A)": 160,
+      "Max. discharge current (A)": 160,
+      "Max. modules in parallel": 15
+    }
+  ]
+}

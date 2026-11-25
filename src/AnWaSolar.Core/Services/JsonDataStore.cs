@@ -24,6 +24,8 @@ public interface IDataStore
 
     IReadOnlyList<Inverter> Inverters { get; }
 
+    IReadOnlyList<Battery> Batteries { get; }
+
     /// <summary>Problems of the last <see cref="Load"/>; skipped entries are listed individually.</summary>
     IReadOnlyList<DataLoadIssue> Issues { get; }
 
@@ -44,6 +46,9 @@ public interface IDataStore
 
     /// <inheritdoc cref="SaveModule"/>
     Inverter SaveInverter(Inverter inverter, string? datasheetSourcePath);
+
+    /// <inheritdoc cref="SaveModule"/>
+    Battery SaveBattery(Battery battery, string? datasheetSourcePath);
 }
 
 public interface IDataPathProvider
@@ -81,6 +86,7 @@ public class JsonDataStore : IDataStore
 {
     public const string ModuleFileName = "Modules.json";
     public const string InverterFileName = "Inverters.json";
+    public const string BatteryFileName = "Batteries.json";
     public const string DatasheetFolder = "Datasheets";
 
     private const string OwnSuffix = " (own data)";
@@ -98,6 +104,7 @@ public class JsonDataStore : IDataStore
 
     private List<PVModule> _modules = [];
     private List<Inverter> _inverters = [];
+    private List<Battery> _batteries = [];
     private List<DataLoadIssue> _issues = [];
 
     public JsonDataStore(ILogger<JsonDataStore> logger, JsonSerializerOptions jsonOptions, IDataPathProvider paths)
@@ -110,6 +117,8 @@ public class JsonDataStore : IDataStore
     public IReadOnlyList<PVModule> Modules => _modules;
 
     public IReadOnlyList<Inverter> Inverters => _inverters;
+
+    public IReadOnlyList<Battery> Batteries => _batteries;
 
     public IReadOnlyList<DataLoadIssue> Issues => _issues;
 
@@ -124,6 +133,9 @@ public class JsonDataStore : IDataStore
         _inverters = Merge(
             LoadEntries<Inverter>(_paths.GetFilePath(InverterFileName), InverterFileName, "Inverters", ValidateInverter, issues, own: false),
             LoadEntries<Inverter>(UserFilePath(InverterFileName), InverterFileName + OwnSuffix, "Inverters", ValidateInverter, issues, own: true));
+        _batteries = Merge(
+            LoadEntries<Battery>(_paths.GetFilePath(BatteryFileName), BatteryFileName, "Batteries", ValidateBattery, issues, own: false),
+            LoadEntries<Battery>(UserFilePath(BatteryFileName), BatteryFileName + OwnSuffix, "Batteries", ValidateBattery, issues, own: true));
         CableTables = CableTables.Load(_paths.GetFilePath(CableTables.FileName), out string? tableError);
         if (tableError is not null)
         {
@@ -132,8 +144,8 @@ public class JsonDataStore : IDataStore
 
         _issues = issues;
 
-        _logger.LogInformation("Master data loaded: {ModuleCount} PV modules, {InvCount} inverters ({OwnModules} and {OwnInverters} own).",
-            _modules.Count, _inverters.Count, _modules.Count(m => m.IsUserEntry), _inverters.Count(i => i.IsUserEntry));
+        _logger.LogInformation("Master data loaded: {ModuleCount} PV modules, {InvCount} inverters, {BatteryCount} batteries ({OwnModules}, {OwnInverters} and {OwnBatteries} own).",
+            _modules.Count, _inverters.Count, _batteries.Count, _modules.Count(m => m.IsUserEntry), _inverters.Count(i => i.IsUserEntry), _batteries.Count(b => b.IsUserEntry));
         foreach (DataLoadIssue issue in issues)
         {
             _logger.LogWarning("Master data: {Issue}", issue.ToString());
@@ -176,6 +188,18 @@ public class JsonDataStore : IDataStore
 
         Save(inverter, datasheetSourcePath, InverterFileName, "Inverters");
         return _inverters.First(i => i.IsUserEntry && SameKey(i, inverter));
+    }
+
+    public Battery SaveBattery(Battery battery, string? datasheetSourcePath)
+    {
+        ArgumentNullException.ThrowIfNull(battery);
+        if (ValidateBattery(battery) is { } error)
+        {
+            throw new ArgumentException($"The battery is invalid: {error}", nameof(battery));
+        }
+
+        Save(battery, datasheetSourcePath, BatteryFileName, "Batteries");
+        return _batteries.First(b => b.IsUserEntry && SameKey(b, battery));
     }
 
     /// <summary>File name of a stored datasheet: manufacturer and model without characters Windows does not allow.</summary>
@@ -446,6 +470,62 @@ public class JsonDataStore : IDataStore
         if (w.RatedAcCurrentA > 0 && w.MaxAcCurrentA > 0 && w.MaxAcCurrentA < w.RatedAcCurrentA)
         {
             return "the max. AC current must be at least the rated AC current.";
+        }
+
+        if (w.MaxBatteryChargeCurrentA < 0 || w.MaxBatteryDischargeCurrentA < 0 || w.BatteryInputs < 0)
+        {
+            return "battery currents and inputs must not be negative.";
+        }
+
+        if (w.HasBatteryInput && !StringCalculator.TryParseVoltageRange(w.BatteryVoltageRangeV!, out _, out _))
+        {
+            return $"battery voltage range \"{w.BatteryVoltageRangeV}\" is invalid (expected format: \"40-60\").";
+        }
+
+        return null;
+    }
+
+    // Returns the reason why a battery cannot be used, or null when it is valid.
+    internal static string? ValidateBattery(Battery b)
+    {
+        if (string.IsNullOrWhiteSpace(b.Manufacturer) || string.IsNullOrWhiteSpace(b.Model))
+        {
+            return "manufacturer or model is missing.";
+        }
+
+        if (!StringCalculator.TryParseVoltageRange(b.VoltageRangeV, out double min, out double max))
+        {
+            return $"operating voltage range \"{b.VoltageRangeV}\" is invalid (expected format: \"44.8-57.6\").";
+        }
+
+        if (b.NominalVoltageV <= 0 || b.NominalEnergyKWh <= 0 || b.MaxChargeCurrentA <= 0 || b.MaxDischargeCurrentA <= 0)
+        {
+            return "nominal voltage, nominal energy and the max. charge and discharge current must be greater than 0.";
+        }
+
+        if (b.NominalCapacityAh is <= 0)
+        {
+            return "the nominal capacity must be greater than 0 when it is given.";
+        }
+
+        if (b.DepthOfDischargePct is { } dod && (dod <= 0 || dod > 100))
+        {
+            return "the depth of discharge must be above 0 and at most 100 %.";
+        }
+
+        if (b.NominalVoltageV < min || b.NominalVoltageV > max)
+        {
+            return "the nominal voltage must lie within the operating voltage range.";
+        }
+
+        if (b.UsableEnergyKWh is { } usable && (usable <= 0 || usable > b.NominalEnergyKWh))
+        {
+            return "the usable energy must be greater than 0 and at most the nominal energy.";
+        }
+
+        if (b.MaxModulesInSeries < 0 || b.MaxModulesInParallel < 0)
+        {
+            return "the max. module counts must not be negative.";
         }
 
         return null;

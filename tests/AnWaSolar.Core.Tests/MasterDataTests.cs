@@ -25,6 +25,7 @@ public sealed class MasterDataTests
 
         Assert.NotEmpty(store.Modules);
         Assert.NotEmpty(store.Inverters);
+        Assert.NotEmpty(store.Batteries);
         Assert.Empty(store.Issues);
     }
 
@@ -56,6 +57,26 @@ public sealed class MasterDataTests
             Assert.True(inverter.MaxShortCircuitCurrentA >= inverter.MaxInputCurrentA, name);
             Assert.Matches(@"^\d+-\d+$", inverter.MpptVoltageRangeV);
         }
+    }
+
+    [Fact]
+    public void Batteries_and_battery_inputs_have_consistent_datasheet_values()
+    {
+        JsonDataStore store = LoadShippedData();
+        foreach (Models.Battery battery in store.Batteries)
+        {
+            string name = battery.DisplayName;
+            Assert.True(Calculation.StringCalculator.TryParseVoltageRange(battery.VoltageRangeV, out double min, out double max), name);
+            Assert.InRange(battery.NominalVoltageV, min, max);
+            Assert.True(battery.NominalEnergyKWh > 0 && battery.MaxChargeCurrentA > 0 && battery.MaxDischargeCurrentA > 0, name);
+        }
+
+        foreach (Models.Inverter inverter in store.Inverters.Where(i => i.HasBatteryInput))
+        {
+            Assert.True(inverter.MaxBatteryChargeCurrentA > 0 && inverter.MaxBatteryDischargeCurrentA > 0, inverter.DisplayName);
+        }
+
+        Assert.Equal(3, store.Inverters.Count(i => i.HasBatteryInput));
     }
 
     // Only the shipped files: a user data folder that does not exist.

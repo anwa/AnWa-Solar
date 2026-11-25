@@ -29,7 +29,11 @@
       "Max. AC apparent power (VA)": 16500,
       "Rated AC output current (A)": 21.8,
       "Max. AC output current (A)": 24,
-      "AC phases": 3
+      "AC phases": 3,
+      "Battery voltage range (V)": "40-60",
+      "Max. battery charge current (A)": 280,
+      "Max. battery discharge current (A)": 280,
+      "Battery inputs": 2
     },
     {
       "Manufacturer": "Deye",
@@ -47,7 +51,11 @@
       "Max. AC apparent power (VA)": 19800,
       "Rated AC output current (A)": 26.1,
       "Max. AC output current (A)": 28.7,
-      "AC phases": 3
+      "AC phases": 3,
+      "Battery voltage range (V)": "40-60",
+      "Max. battery charge current (A)": 330,
+      "Max. battery discharge current (A)": 330,
+      "Battery inputs": 2
     },
     {
       "Manufacturer": "Deye",
@@ -65,7 +73,11 @@
       "Max. AC apparent power (VA)": 22000,
       "Rated AC output current (A)": 29,
       "Max. AC output current (A)": 31.9,
-      "AC phases": 3
+      "AC phases": 3,
+      "Battery voltage range (V)": "40-60",
+      "Max. battery charge current (A)": 350,
+      "Max. battery discharge current (A)": 350,
+      "Battery inputs": 2
     }
   ]
 }

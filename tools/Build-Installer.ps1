@@ -50,7 +50,7 @@ Write-Host 'Publishing application (self-contained, win-x64)...'
 dotnet publish $appProject -c $Configuration -r win-x64 --self-contained true -p:DebugType=none -o $publishDir
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
 
-foreach ($required in 'AnWa-Solar.exe', 'appsettings.json', 'Data\Modules.json', 'Data\Inverters.json') {
+foreach ($required in 'AnWa-Solar.exe', 'appsettings.json', 'Data\Modules.json', 'Data\Inverters.json', 'Data\Batteries.json', 'Data\CableTables.json') {
     if (-not (Test-Path -LiteralPath (Join-Path $publishDir $required))) {
         throw "The publish output is missing $required."
     }

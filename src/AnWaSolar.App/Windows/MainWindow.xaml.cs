@@ -50,6 +50,8 @@ public partial class MainWindow : ChromeWindow
     private StringCalculationResult? _lastResult;
     private CableCalculationResult? _lastCables;
     private CableSettings _cableSettings = new();
+    private BatteryCalculationResult? _lastBattery;
+    private BatterySettings _batterySettings = new();
 
     private CalculationParameters _parameters;
 
@@ -121,6 +123,7 @@ public partial class MainWindow : ChromeWindow
         // Load and show the parameters
         _parameters = _settings.LoadParameters();
         _cableSettings = _settings.LoadCables();
+        _batterySettings = _settings.LoadBattery();
         UpdateParametersSummary();
 
         // Restore the last selection
@@ -713,12 +716,57 @@ public partial class MainWindow : ChromeWindow
         CableSummaryText.Text = $"{dc} · {ac}";
     }
 
+    private void OnEditBatteryClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var win = new BatterySettingsWindow(_batterySettings, _selectedInverter, _datasheets) { Owner = this };
+            bool accepted = win.ShowDialog() == true;
+            if (win.Imported)
+            {
+                ReloadMasterData();
+            }
+
+            if (accepted)
+            {
+                _batterySettings = win.Settings;
+                if (!_settings.SaveBattery(_batterySettings))
+                {
+                    MessageDialog.Show(this, "The battery settings could not be saved. They apply until the application is closed.", "Battery", StatusKind.Warning);
+                }
+
+                Recalculate();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in the battery dialog.");
+            MessageDialog.Show(this, "Error in the battery dialog. See the log for details.", "Error", StatusKind.Error);
+        }
+    }
+
+    private Battery? FindBattery(SelectedRef? reference) => reference is null ? null : _dataStore.Batteries.FirstOrDefault(b =>
+        string.Equals(b.Manufacturer, reference.Manufacturer, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(b.Model, reference.Model, StringComparison.OrdinalIgnoreCase));
+
+    // The battery card is shown for hybrid inverters and while a battery is planned.
+    private void UpdateBatterySummary()
+    {
+        bool hybrid = _selectedInverter?.HasBatteryInput == true;
+        BatteryCard.Visibility = _selectedInverter is not null && (hybrid || _batterySettings.Enabled) ? Visibility.Visible : Visibility.Collapsed;
+        BatterySummaryText.Text = !_batterySettings.Enabled
+            ? (hybrid ? "No battery planned" : "The inverter has no battery input")
+            : _batterySettings.Battery is { } b
+                ? string.Create(CultureInfo.CurrentCulture, $"{b.Manufacturer} {b.Model} · {_batterySettings.InSeries} × {_batterySettings.InParallel}")
+                : "No battery selected";
+    }
+
     // Copies the results as plain text.
     private void OnCopyResultsClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            string text = _lastResult is null ? ResultPresenter.Present(null).Details : CalculationTextFormatter.Format(_lastResult, _lastCables);
+            string text = _lastResult is null ? ResultPresenter.Present(null).Details : CalculationTextFormatter.Format(_lastResult, _lastCables, _lastBattery);
             Clipboard.SetText(text);
             Snackbar.MessageQueue?.Enqueue("Results copied to the clipboard.");
         }
@@ -858,7 +906,11 @@ public partial class MainWindow : ChromeWindow
             ? CableCalculator.Calculate(_lastResult, _cableSettings, tables)
             : null;
         UpdateCableSummary();
-        ResultOverview overview = ResultPresenter.Present(_lastResult, _lastCables, _cableSettings);
+        _lastBattery = _lastResult is { HasValidMpptRange: true } && _batterySettings.Enabled
+            ? BatteryCalculator.Calculate(_lastResult.Inverter, FindBattery(_batterySettings.Battery), _batterySettings.InSeries, _batterySettings.InParallel)
+            : null;
+        UpdateBatterySummary();
+        ResultOverview overview = ResultPresenter.Present(_lastResult, _lastCables, _cableSettings, _lastBattery);
         ResultsPanel.DataContext = overview;
         StatusBar.DataContext = overview;
         LimitsCard.Visibility = overview.Limits.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -954,7 +1006,7 @@ public partial class MainWindow : ChromeWindow
     // Builds the Markdown report from the last calculation.
     private void BuildMarkdownReport()
     {
-        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now, _lastCables, _dataStore.CableTables);
+        _reportMarkdown = ReportBuilder.Build(_lastResult, _parameters, DateTime.Now, _lastCables, _dataStore.CableTables, _lastBattery);
         ReportMarkdownTextBox.Text = _reportMarkdown;
     }
 

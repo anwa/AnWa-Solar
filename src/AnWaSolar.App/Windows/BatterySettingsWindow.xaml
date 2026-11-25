@@ -1,0 +1,123 @@
+<aw:ChromeWindow x:Class="AnWaSolar.Windows.BatterySettingsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:aw="https://anwa-soft.de/design/wpf"
+                 Style="{StaticResource AppDialog}"
+                 WindowStartupLocation="CenterOwner"
+                 Title="Battery storage"
+                 Width="720"
+                 SizeToContent="Height">
+    <DockPanel>
+        <Border Style="{StaticResource AnWaSoft.DialogButtonBar}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Click="OnImportClick"
+                            Margin="0,0,8,0"
+                            ToolTip="Read a PDF battery datasheet and add its values to your own master data"
+                            AutomationProperties.Name="Import datasheet">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Import" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Import…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="DatasheetButton"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Click="OnDatasheetClick"
+                            IsEnabled="False"
+                            ToolTip="Show the imported datasheet of this battery"
+                            AutomationProperties.Name="Show datasheet">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Datasheet" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            MinWidth="96"
+                            Margin="0,0,8,0"
+                            IsCancel="True" />
+                    <Button Content="Save"
+                            MinWidth="96"
+                            IsDefault="True"
+                            Click="OnSaveClick" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <StackPanel Margin="24,20,24,16">
+            <CheckBox x:Name="EnabledCheck"
+                      Content="Plan a battery storage"
+                      Checked="OnEnabledChanged"
+                      Unchecked="OnEnabledChanged"
+                      AutomationProperties.Name="Plan a battery storage" />
+            <TextBlock x:Name="InverterNote"
+                       Margin="0,8,0,0"
+                       TextWrapping="Wrap"
+                       Style="{StaticResource AnWaSoft.Text.Muted}" />
+
+            <StackPanel x:Name="BatteryPanel" Margin="0,16,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="ManufacturerCombo"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="Manufacturer"
+                              AutomationProperties.Name="Manufacturer"
+                              SelectionChanged="OnManufacturerSelectionChanged" />
+                    <ComboBox x:Name="ModelCombo"
+                              Grid.Column="2"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="Model"
+                              AutomationProperties.Name="Model"
+                              SelectionChanged="OnModelSelectionChanged" />
+                </Grid>
+
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="SeriesInput"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Modules in series"
+                             materialDesign:HintAssist.HelperText="1 for low-voltage batteries"
+                             AutomationProperties.Name="Modules in series" />
+                    <TextBox x:Name="ParallelInput"
+                             Grid.Column="2"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Modules in parallel"
+                             materialDesign:HintAssist.HelperText="Modules, or towers, connected in parallel"
+                             AutomationProperties.Name="Modules in parallel" />
+                </Grid>
+
+                <Border Margin="0,32,0,0"
+                        Padding="16,12"
+                        CornerRadius="10"
+                        Background="{DynamicResource AnWaSoft.Brush.PanelBackground}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <materialDesign:PackIcon Kind="BatteryHigh" Width="20" Height="20" Margin="0,0,8,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <TextBlock Text="Datasheet values of one module" Style="{StaticResource AnWaSoft.Text.CardTitle}" FontSize="14" />
+                        </StackPanel>
+                        <Grid x:Name="DetailGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </DockPanel>
+</aw:ChromeWindow>

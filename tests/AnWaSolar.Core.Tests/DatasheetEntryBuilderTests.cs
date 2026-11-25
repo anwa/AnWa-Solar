@@ -3,7 +3,10 @@ using AnWaSolar.Core.Models;
 
 namespace AnWaSolar.Core.Tests;
 
-/// <summary>Entries from the import dialog, with the values of the Trina TSM-445-NEG9R.28 and the Deye SUN-18K-SG05LP3-EU-SM2.</summary>
+/// <summary>
+/// Entries from the import dialog, with the values of the Trina TSM-445-NEG9R.28, the Deye SUN-18K-SG05LP3-EU-SM2 and
+/// the Felicity FLA48314-EU battery.
+/// </summary>
 public sealed class DatasheetEntryBuilderTests
 {
     internal static Dictionary<string, string?> Trina445() => new()
@@ -99,6 +102,58 @@ public sealed class DatasheetEntryBuilderTests
 
         Assert.Null(inverter);
         Assert.Contains(errors, e => e.Contains("MPPT voltage range must lie below", StringComparison.Ordinal));
+    }
+
+    internal static Dictionary<string, string?> Felicity() => new()
+    {
+        [DatasheetFields.Manufacturer] = "Felicity",
+        [DatasheetFields.Model] = "FLA48314-EU",
+        [DatasheetFields.NominalVoltageV] = "51.2",
+        [DatasheetFields.OperatingRangeV] = "44.8-57.6",
+        [DatasheetFields.NominalCapacityAh] = "",
+        [DatasheetFields.NominalEnergyKWh] = "16",
+        [DatasheetFields.DepthOfDischargePct] = "95",
+        [DatasheetFields.MaxChargeA] = "160",
+        [DatasheetFields.MaxDischargeA] = "160",
+        [DatasheetFields.MaxInParallel] = "15",
+    };
+
+    [Fact]
+    public void Battery_is_built_without_the_optional_capacity()
+    {
+        IReadOnlyList<string> errors = DatasheetEntryBuilder.TryBuildBattery(Felicity(), out Battery? battery);
+
+        Assert.Empty(errors);
+        Assert.Null(battery!.NominalCapacityAh);
+        Assert.Equal(15, battery.MaxModulesInParallel);
+        Assert.Equal(0, battery.MaxModulesInSeries);
+        Assert.Equal(15.2, battery.UsableEnergyPerModuleKWh!.Value, 6);
+    }
+
+    [Fact]
+    public void Battery_with_nominal_voltage_outside_its_range_is_rejected()
+    {
+        Dictionary<string, string?> values = Felicity();
+        values[DatasheetFields.NominalVoltageV] = "60";
+
+        Assert.Contains(DatasheetEntryBuilder.TryBuildBattery(values, out Battery? battery), e => e.Contains("nominal voltage must lie within", StringComparison.Ordinal));
+        Assert.Null(battery);
+    }
+
+    [Fact]
+    public void Inverter_battery_input_needs_range_and_currents()
+    {
+        Dictionary<string, string?> values = Deye18K();
+        values[DatasheetFields.BatteryRangeV] = "40-60";
+        values[DatasheetFields.MaxBatteryChargeA] = "330";
+
+        Assert.Contains(DatasheetEntryBuilder.TryBuildInverter(values, out _), e => e.Contains("battery charge and discharge current", StringComparison.Ordinal));
+
+        values[DatasheetFields.MaxBatteryDischargeA] = "330";
+        values[DatasheetFields.BatteryInputs] = "2";
+        Assert.Empty(DatasheetEntryBuilder.TryBuildInverter(values, out Inverter? inverter));
+        Assert.True(inverter!.HasBatteryInput);
+        Assert.Equal(330, inverter.MaxBatteryDischargeCurrentA);
     }
 
     [Fact]

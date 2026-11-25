@@ -88,7 +88,32 @@ public static partial class DatasheetParser
         [DatasheetFields.RatedAcCurrentA] = [Re(@"ac-?(eingangs-?/)?ausgangsnennstrom|nenn-?ac-?strom|ratedac(input/)?outputcurrent|(rated|nominal)outputcurrent")],
         [DatasheetFields.MaxAcCurrentA] = [Re(@"max\.?ac-?(eingangs-?/)?ausgangs+strom|max(imum)?\.?ac(input/)?outputcurrent|max(imum)?\.?outputcurrent")],
         [DatasheetFields.MaxShortCircuitCurrentA] = [Re(@"eingangs-?kurzschlus+strom|inputshort-?circuitcurrent|max(imum)?\.?short-?circuitcurrent|max\.?kurzschlus+strom|iscpv")],
+        [DatasheetFields.BatteryRangeV] = [Re(@"batteriespannungsbereich|batteryvoltagerange|batteryvoltage(?!.*nominal)")],
+        [DatasheetFields.MaxBatteryChargeA] = [Re(@"max\.?(batterie-?)?ladestrom|max(imum)?\.?(battery)?(?<!dis)charg(e|ing)current")],
+        [DatasheetFields.MaxBatteryDischargeA] = [Re(@"max\.?(batterie-?)?entladestrom|max(imum)?\.?(battery)?discharg(e|ing)current")],
     };
+
+    private static readonly Regex[] s_batteryInputs = [Re(@"anzahlderbatterieeingänge|(no\.?of|numberof)batter(y|ies)inputs?|batteryinputs")];
+
+    // Battery modules: values of one module, per model column.
+    private static readonly Dictionary<string, Regex[]> s_batteryLabels = new()
+    {
+        [DatasheetFields.NominalVoltageV] = [Re(@"nennspannung|nominalvoltage|ratedvoltage")],
+        [DatasheetFields.OperatingRangeV] = [Re(@"betriebsspannung|spannungsbereich|operatingvoltage|voltagerange|workingvoltage")],
+        [DatasheetFields.NominalCapacityAh] = [Re(@"nennkapazität|nominalcapacity|ratedcapacity|kapazität|capacity(?!.*kwh)")],
+        [DatasheetFields.NominalEnergyKWh] = [Re(@"nennenergie|nominalenergy|ratedenergy|energie\(kwh\)|energy\(kwh\)|nennenergieinhalt|gesamtenergie|totalenergy")],
+        [DatasheetFields.UsableEnergyKWh] = [Re(@"nutzbareenergie|nutzbarekapazität|nutzbarerenergieinhalt|usableenergy|usablecapacity")],
+        [DatasheetFields.DepthOfDischargePct] = [Re(@"entladetiefe|depthofdischarge|(?<![a-z])dod(?![a-z])")],
+        [DatasheetFields.MaxChargeA] = [Re(@"max\.?(dauer-?)?ladestrom|max(imum)?\.?(continuous)?(?<!dis)charg(e|ing)current"), Re(@"(?<!ent)ladestrom|(?<!dis)charg(e|ing)current")],
+        [DatasheetFields.MaxDischargeA] = [Re(@"max\.?(dauer-?)?entladestrom|max(imum)?\.?(continuous)?discharg(e|ing)current"), Re(@"entladestrom|discharg(e|ing)current")],
+        [DatasheetFields.MaxInSeries] = [Re(@"inreihe|inserie|seriesconnection|reihenschaltung|max\.?series")],
+        [DatasheetFields.MaxInParallel] = [Re(@"parallel|skalierbarkeit|scalability")],
+    };
+
+    private static readonly Regex[] s_batteryWords = [Re(@"lifepo|zyklen|cycles?(?![a-z])|kwh|entladetiefe|depthofdischarge|(?<![a-z])dod(?![a-z])|zellchemie|cellchemistry|batteriemodul|batterymodule")];
+
+    // A neighbouring line with a peak value ("Spitzenwert 280 A (10 Sek.)") does not hold the continuous value of a label.
+    private static readonly Regex s_peakValue = Re(@"spitzenwert|peak");
 
     private static readonly Regex s_threePhase = Re(@"dreiphas|three-?phase|3l\+n\+pe|3/n/pe|3w\+n\+pe");
 
@@ -109,6 +134,12 @@ public static partial class DatasheetParser
         string text = string.Concat(words.Select(w => w.Text)).ToLowerInvariant();
         int module = s_moduleWords.Sum(r => r.Matches(text).Count);
         int inverter = s_inverterWords.Sum(r => r.Matches(text).Count);
+        int battery = s_batteryWords.Sum(r => r.Matches(text).Count);
+        if (battery > inverter && battery > module)
+        {
+            return DatasheetKind.Battery;
+        }
+
         return inverter > module ? DatasheetKind.Inverter : DatasheetKind.Module;
     }
 
@@ -127,7 +158,7 @@ public static partial class DatasheetParser
             Candidate? pmax = FindCandidates(lines, s_moduleLabels[DatasheetFields.PmaxW])
                 .OrderByDescending(c => c.Tokens.Count(t => TryNumber(t.Text, out _)))
                 .FirstOrDefault();
-            columns = ModuleColumns(lines, pmax);
+            columns = ModuleColumns(lines, pmax, " W");
             foreach ((string key, Regex[] patterns) in s_moduleLabels)
             {
                 values[key] = ReadColumns(lines, patterns, columns, NumberOf);
@@ -144,6 +175,33 @@ public static partial class DatasheetParser
             values[DatasheetFields.OperatingMinC] = [.. temperature.Select(v => v is null ? null : v with { Text = v.Text.Split('|')[0] })];
             values[DatasheetFields.OperatingMaxC] = [.. temperature.Select(v => v is null ? null : v with { Text = v.Text.Split('|')[1] })];
         }
+        else if (kind == DatasheetKind.Battery)
+        {
+            // The energy or capacity row with the most values gives the model columns; the model names of battery
+            // datasheets are often graphics, so a column may stay without name.
+            Candidate? energy = FindCandidates(lines, s_batteryLabels[DatasheetFields.NominalEnergyKWh])
+                .Concat(FindCandidates(lines, s_batteryLabels[DatasheetFields.NominalCapacityAh]))
+                .OrderByDescending(c => c.Tokens.Count(t => TryNumber(t.Text, out _)))
+                .FirstOrDefault();
+            columns = ModuleColumns(lines, energy, fallbackUnit: null);
+            foreach ((string key, Regex[] patterns) in s_batteryLabels)
+            {
+                if (key == DatasheetFields.OperatingRangeV)
+                {
+                    values[key] = Shared(columns, FirstRange(lines, patterns));
+                    continue;
+                }
+
+                Func<string, string?> read = key switch
+                {
+                    DatasheetFields.MaxInSeries or DatasheetFields.MaxInParallel => IntegerOf,
+                    DatasheetFields.NominalCapacityAh => t => UnitOf(t, "Ah"),
+                    DatasheetFields.NominalEnergyKWh or DatasheetFields.UsableEnergyKWh => t => UnitOf(t, "kWh"),
+                    _ => NumberOf,
+                };
+                values[key] = ReadColumns(lines, patterns, columns, read);
+            }
+        }
         else
         {
             columns = InverterColumns(lines);
@@ -151,7 +209,7 @@ public static partial class DatasheetParser
             {
                 Func<string, string?> read = key switch
                 {
-                    DatasheetFields.MpptRangeV => RangeOf,
+                    DatasheetFields.MpptRangeV or DatasheetFields.BatteryRangeV => RangeOf,
                     DatasheetFields.MaxInputCurrentA or DatasheetFields.MaxShortCircuitCurrentA => PerMpptOf,
                     DatasheetFields.RatedAcCurrentA or DatasheetFields.MaxAcCurrentA => LastOf,
                     _ => NumberOf,
@@ -167,6 +225,7 @@ public static partial class DatasheetParser
             }
 
             values[DatasheetFields.MaxStringsPerMppt] = strings;
+            values[DatasheetFields.BatteryInputs] = ReadColumns(lines, s_batteryInputs, columns, IntegerOf);
 
             string text = string.Concat(words.Select(w => Normalize(w.Text))).ToLowerInvariant();
             string? phases = s_threePhase.IsMatch(text) ? "3" : s_singlePhase.IsMatch(text) ? "1" : null;
@@ -302,7 +361,7 @@ public static partial class DatasheetParser
                     .OrderBy(l => Math.Abs(l.CenterY - line.CenterY)))
                 {
                     List<DatasheetWord> tokens = ValueTokens(MergeFragments(neighbour.Words.Where(w => w.Left >= labelRight - 1)));
-                    if (tokens.Count > 0 && !HasOwnLabel(neighbour, labelRight))
+                    if (tokens.Count > 0 && !HasOwnLabel(neighbour, labelRight) && !s_peakValue.IsMatch(neighbour.Key))
                     {
                         yield return new Candidate(line, neighbour, tokens, order++);
                         break;
@@ -389,7 +448,9 @@ public static partial class DatasheetParser
         public double Tolerance => Centers.Count < 2 ? 0 : 0.5 * Centers.Zip(Centers.Skip(1), (a, b) => Math.Abs(b - a)).Min();
     }
 
-    private static Columns ModuleColumns(List<Line> lines, Candidate? pmax)
+    // Columns at the values of a row (Pmax of a module, energy of a battery); headings are model-like words above it.
+    // Without heading a column is named after its value and the fallback unit, or stays empty without one.
+    private static Columns ModuleColumns(List<Line> lines, Candidate? pmax, string? fallbackUnit)
     {
         if (pmax is null)
         {
@@ -425,7 +486,7 @@ public static partial class DatasheetParser
             }
         }
 
-        return new Columns([.. names.Select((n, i) => string.IsNullOrEmpty(n) ? numbers[i].Text + " W" : n)], centers);
+        return new Columns([.. names.Select((n, i) => string.IsNullOrEmpty(n) ? (fallbackUnit is null ? string.Empty : numbers[i].Text + fallbackUnit) : n)], centers);
     }
 
     private static Columns InverterColumns(List<Line> lines)
@@ -541,6 +602,23 @@ public static partial class DatasheetParser
         return null;
     }
 
+    // A range whose numbers may be separate words: "44,8 V ~ 57,6 V" or "44.8-57.6V".
+    private static DatasheetValue? FirstRange(List<Line> lines, Regex[] patterns)
+    {
+        foreach (Candidate candidate in FindCandidates(lines, patterns))
+        {
+            int start = candidate.ValueLine.Words.IndexOf(candidate.Tokens[0]);
+            string text = Normalize(string.Join(string.Empty, candidate.ValueLine.Words.Skip(start).Take(6).Select(w => w.Text)));
+            Match match = SpacedRangePattern().Match(text);
+            if (match.Success && TryNumber(match.Groups[1].Value, out double low) && TryNumber(match.Groups[2].Value, out double high) && low < high)
+            {
+                return new DatasheetValue($"{Format(low)}-{Format(high)}", candidate.Source);
+            }
+        }
+
+        return null;
+    }
+
     private static DatasheetValue?[] ReadOperatingTemperature(List<Line> lines, Columns columns)
     {
         foreach (Candidate candidate in FindCandidates(lines, s_operatingTemperature))
@@ -560,6 +638,13 @@ public static partial class DatasheetParser
     private static DatasheetValue?[] Shared(Columns columns, DatasheetValue? value) => [.. Enumerable.Repeat(value, columns.Count)];
 
     private static string? NumberOf(string token) => TryNumber(token, out double value) ? Format(value) : null;
+
+    // A number whose unit, when it is part of the token, is the expected one: "235Ah" for a capacity, not "12,03kWh".
+    private static string? UnitOf(string token, string unit)
+    {
+        Match match = NumberPattern().Match(Normalize(token).Trim());
+        return match.Success && (match.Groups[2].Value.Length == 0 || match.Groups[2].Value == unit) ? NumberOf(token) : null;
+    }
 
     private static string? IntegerOf(string token) => TryNumber(token, out double value) && value == Math.Floor(value) && value > 0 ? Format(value) : null;
 
@@ -604,7 +689,10 @@ public static partial class DatasheetParser
         return (Format(mppts), strings);
     }
 
-    /// <summary>Reads a number with an optional unit ("800V", "7.5kW", "-0,30", "22,5%"); kW and kVA are converted to W.</summary>
+    /// <summary>
+    /// Reads a number with an optional unit ("800V", "7.5kW", "-0,30", "22,5%", "5.12kWh", "100Ah"); kW and kVA are
+    /// converted to W, Wh to kWh.
+    /// </summary>
     internal static bool TryNumber(string token, out double value)
     {
         value = 0;
@@ -620,7 +708,12 @@ public static partial class DatasheetParser
             return false;
         }
 
-        if (match.Groups[2].Value.StartsWith('k'))
+        string unit = match.Groups[2].Value;
+        if (unit == "Wh")
+        {
+            value /= 1000;
+        }
+        else if (unit.StartsWith('k') && unit != "kWh")
         {
             value *= 1000;
         }
@@ -644,11 +737,14 @@ public static partial class DatasheetParser
 
     private static Regex Re(string pattern) => new(pattern, RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
-    [GeneratedRegex(@"^([+-]?\d+(?:[.,]\d+)?)\s*(k?W[p]?|k?VA|V|A|%|°?C|K|mm|kg)?[*)]?$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^([+-]?\d+(?:[.,]\d+)?)\s*(kWh|Wh|Ah|k?W[p]?|k?VA|V|A|%|°?C|K|mm|kg)?[*)]?$", RegexOptions.CultureInvariant)]
     private static partial Regex NumberPattern();
 
     [GeneratedRegex(@"^(\d+(?:[.,]\d+)?)\s*V?\s*[-~]\s*(\d+(?:[.,]\d+)?)\s*V?$", RegexOptions.CultureInvariant)]
     private static partial Regex RangePattern();
+
+    [GeneratedRegex(@"^(\d+(?:[.,]\d+)?)V?[-~](\d+(?:[.,]\d+)?)V?", RegexOptions.CultureInvariant)]
+    private static partial Regex SpacedRangePattern();
 
     [GeneratedRegex(@"([+-]?\d+(?:[.,]\d+)?)\s*(?:°?C)?\s*(?:to|bis|~|\.\.\.|…|-)\s*([+-]?\d+(?:[.,]\d+)?)", RegexOptions.CultureInvariant)]
     private static partial Regex TemperatureRangePattern();
@@ -656,7 +752,7 @@ public static partial class DatasheetParser
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9.\-/+_]*$", RegexOptions.CultureInvariant)]
     private static partial Regex ModelPattern();
 
-    [GeneratedRegex(@"^\d+([.,]\d+)?(k?W|k?VA|V|A|mm|kg|Hz)$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^\d+([.,]\d+)?(k?Wh|Ah|k?W|k?VA|V|A|mm|kg|Hz)$", RegexOptions.CultureInvariant)]
     private static partial Regex UnitPattern();
 
     #endregion

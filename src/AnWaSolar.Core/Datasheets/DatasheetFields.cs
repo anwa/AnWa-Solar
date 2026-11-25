@@ -5,6 +5,7 @@ public enum DatasheetKind
 {
     Module,
     Inverter,
+    Battery,
 }
 
 /// <summary>How the text of a field is read and checked.</summary>
@@ -60,6 +61,21 @@ public static class DatasheetFields
     public const string RatedAcCurrentA = "RatedAcCurrentA";
     public const string MaxAcCurrentA = "MaxAcCurrentA";
     public const string AcPhases = "AcPhases";
+    public const string BatteryRangeV = "BatteryRangeV";
+    public const string MaxBatteryChargeA = "MaxBatteryChargeA";
+    public const string MaxBatteryDischargeA = "MaxBatteryDischargeA";
+    public const string BatteryInputs = "BatteryInputs";
+
+    public const string NominalVoltageV = "NominalVoltageV";
+    public const string OperatingRangeV = "OperatingRangeV";
+    public const string NominalCapacityAh = "NominalCapacityAh";
+    public const string NominalEnergyKWh = "NominalEnergyKWh";
+    public const string UsableEnergyKWh = "UsableEnergyKWh";
+    public const string DepthOfDischargePct = "DepthOfDischargePct";
+    public const string MaxChargeA = "MaxChargeA";
+    public const string MaxDischargeA = "MaxDischargeA";
+    public const string MaxInSeries = "MaxInSeries";
+    public const string MaxInParallel = "MaxInParallel";
 
     public static IReadOnlyList<DatasheetField> Module { get; } =
     [
@@ -98,7 +114,32 @@ public static class DatasheetFields
         new(RatedAcCurrentA, "Rated AC output current", "A", DatasheetValueType.Number, false, "Per phase at 230/400 V: for \"27.3/26.1\" (220/380 V / 230/400 V) enter 26.1."),
         new(MaxAcCurrentA, "Max. AC output current", "A", DatasheetValueType.Number, false, "Per phase at 230/400 V."),
         new(AcPhases, "AC phases", string.Empty, DatasheetValueType.Integer, false, "1 or 3."),
+        new(BatteryRangeV, "Battery voltage range", "V", DatasheetValueType.Range, false, "Hybrid inverters only, for example 40-60. Leave empty without battery input."),
+        new(MaxBatteryChargeA, "Max. battery charge current", "A", DatasheetValueType.Number, false),
+        new(MaxBatteryDischargeA, "Max. battery discharge current", "A", DatasheetValueType.Number, false),
+        new(BatteryInputs, "Battery inputs", string.Empty, DatasheetValueType.Integer, false),
     ];
 
-    public static IReadOnlyList<DatasheetField> For(DatasheetKind kind) => kind == DatasheetKind.Module ? Module : Inverter;
+    public static IReadOnlyList<DatasheetField> Battery { get; } =
+    [
+        new(Manufacturer, "Manufacturer", string.Empty, DatasheetValueType.Text, true),
+        new(Model, "Model", string.Empty, DatasheetValueType.Text, true, "One battery module, for example the module of a high-voltage tower."),
+        new(NominalVoltageV, "Nominal voltage", "V", DatasheetValueType.Number, true, "Of one module."),
+        new(OperatingRangeV, "Operating voltage range", "V", DatasheetValueType.Range, true, "Of one module, for example 44.8-57.6."),
+        new(NominalCapacityAh, "Nominal capacity", "Ah", DatasheetValueType.Number, false, "Leave empty when the datasheet does not state it."),
+        new(NominalEnergyKWh, "Nominal energy", "kWh", DatasheetValueType.Number, true, "Of one module."),
+        new(UsableEnergyKWh, "Usable energy", "kWh", DatasheetValueType.Number, false, "Of one module; leave empty when the datasheet does not state it."),
+        new(DepthOfDischargePct, "Depth of discharge", "%", DatasheetValueType.Number, false, "Recommended DoD, for example 90."),
+        new(MaxChargeA, "Max. charge current", "A", DatasheetValueType.Number, true, "Max. continuous charge current of one module."),
+        new(MaxDischargeA, "Max. discharge current", "A", DatasheetValueType.Number, true, "Max. continuous discharge current of one module."),
+        new(MaxInSeries, "Max. modules in series", string.Empty, DatasheetValueType.Integer, false, "Leave empty when the datasheet does not state it."),
+        new(MaxInParallel, "Max. modules in parallel", string.Empty, DatasheetValueType.Integer, false, "Leave empty when the datasheet does not state it."),
+    ];
+
+    public static IReadOnlyList<DatasheetField> For(DatasheetKind kind) => kind switch
+    {
+        DatasheetKind.Inverter => Inverter,
+        DatasheetKind.Battery => Battery,
+        _ => Module,
+    };
 }

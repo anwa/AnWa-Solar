@@ -103,8 +103,8 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Cross-section from current-carrying capacity and voltage drop for DC strings and the AC line; string fuses and AC line protection
 - [x] Input dialog, result card and report section with formulas
 
-## M16 – Battery storage compatibility (`feature/battery`)
+## M16 – Battery storage compatibility (`feature/battery`, v0.17.0)
 
-- [ ] Battery master data with datasheet import; inverter battery values (voltage range, charge and discharge current)
-- [ ] Compatibility check of the battery bank against the hybrid inverter and usable capacity
-- [ ] Configuration card, result card, report section and manual page
+- [x] Battery master data with datasheet import; inverter battery values (voltage range, charge and discharge current)
+- [x] Compatibility check of the battery bank against the hybrid inverter and usable capacity
+- [x] Configuration card, result card, report section and manual page

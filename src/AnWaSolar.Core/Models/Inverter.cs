@@ -62,6 +62,26 @@ public class Inverter : IMasterDataEntry
     [JsonPropertyName("AC phases")]
     public int AcPhases { get; set; }
 
+    /// <summary>Battery voltage range of a hybrid inverter, for example "40-60"; null without battery input.</summary>
+    [JsonPropertyName("Battery voltage range (V)")]
+    public string? BatteryVoltageRangeV { get; set; }
+
+    /// <summary>Max. battery charge current; 0 when not stated.</summary>
+    [JsonPropertyName("Max. battery charge current (A)")]
+    public double MaxBatteryChargeCurrentA { get; set; }
+
+    /// <summary>Max. battery discharge current; 0 when not stated.</summary>
+    [JsonPropertyName("Max. battery discharge current (A)")]
+    public double MaxBatteryDischargeCurrentA { get; set; }
+
+    /// <summary>Number of battery inputs; 0 when not stated.</summary>
+    [JsonPropertyName("Battery inputs")]
+    public int BatteryInputs { get; set; }
+
+    /// <summary>True for a hybrid inverter with a battery voltage range in the master data.</summary>
+    [JsonIgnore]
+    public bool HasBatteryInput => !string.IsNullOrWhiteSpace(BatteryVoltageRangeV);
+
     /// <summary>
     /// Imported datasheet, relative to the user data folder (for example <c>Datasheets/Trina TSM-445.pdf</c>); only own
     /// entries have one.

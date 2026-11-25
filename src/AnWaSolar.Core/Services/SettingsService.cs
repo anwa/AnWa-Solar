@@ -106,6 +106,9 @@ public sealed class UserSettings
     /// <summary>Cable runs and installation conditions; optional.</summary>
     public CableSettings Cables { get; set; } = new();
 
+    /// <summary>Planned battery bank; optional.</summary>
+    public BatterySettings Battery { get; set; } = new();
+
     /// <summary>Colour theme; optional, files without it use <see cref="AppTheme.System"/>.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
     public AppTheme Theme { get; set; } = AppTheme.System;
@@ -129,6 +132,10 @@ public interface ISettingsService
     CableSettings LoadCables();
 
     bool SaveCables(CableSettings cables);
+
+    BatterySettings LoadBattery();
+
+    bool SaveBattery(BatterySettings battery);
 
     bool SaveTheme(AppTheme theme);
 
@@ -274,6 +281,30 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public BatterySettings LoadBattery()
+    {
+        lock (_lock)
+        {
+            return EnsureLoaded().Battery.Clone();
+        }
+    }
+
+    public bool SaveBattery(BatterySettings battery)
+    {
+        ArgumentNullException.ThrowIfNull(battery);
+        lock (_lock)
+        {
+            EnsureLoaded().Battery = battery.Clone();
+            bool ok = TryWrite();
+            if (ok)
+            {
+                _logger.LogInformation("Battery settings saved to {Path}.", SettingsFilePath);
+            }
+
+            return ok;
+        }
+    }
+
     public AppTheme LoadTheme()
     {
         lock (_lock)
@@ -357,6 +388,18 @@ public sealed class SettingsService : ISettingsService
                 {
                     // Invalid cable settings do not discard the other settings.
                     _logger.LogWarning(ex, "Cable settings in {Path} cannot be read; the defaults are used.", SettingsFilePath);
+                }
+            }
+
+            if (root["Battery"] is JsonObject battery)
+            {
+                try
+                {
+                    settings.Battery = battery.Deserialize<BatterySettings>() ?? new BatterySettings();
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Battery settings in {Path} cannot be read; the defaults are used.", SettingsFilePath);
                 }
             }
 

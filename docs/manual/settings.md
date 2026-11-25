@@ -17,6 +17,7 @@ AnWa-Solar saves your settings per Windows user in `%LOCALAPPDATA%\AnWa-Solar\se
 - the calculation parameters (Tmin, Tmax, safety margin),
 - the last selection: inverter, and per MPPT the module, the counts and whether the string is enabled,
 - the cable lengths and installation conditions,
+- the planned battery (module and the numbers in series and in parallel),
 - the theme.
 
 Changes are saved automatically, at the latest half a second after the last change and when you close the window. When the file cannot be read, AnWa-Solar keeps it as `settings.json.invalid-<date>` and starts with the default values.
@@ -27,7 +28,7 @@ Settings of older versions are taken over automatically on the first start.
 
 | Path | Content |
 |---|---|
-| `C:\Program Files\AnWa-Solar` | Program, `Data\Modules.json`, `Data\Inverters.json`, `Data\CableTables.json` (standard tables for cables and fuses), `appsettings.json` |
+| `C:\Program Files\AnWa-Solar` | Program, `Data\Modules.json`, `Data\Inverters.json`, `Data\Batteries.json`, `Data\CableTables.json` (standard tables for cables and fuses), `appsettings.json` |
 | `%LOCALAPPDATA%\AnWa-Solar\settings.json` | Your settings |
 | `%LOCALAPPDATA%\AnWa-Solar\Data` | Your own master data and imported datasheets, see [Datasheet Import](datasheet-import.md#your-own-master-data) |
 | `%LOCALAPPDATA%\AnWa-Solar\logs` | Log files, one per day (`log-YYYY-MM-DD.jsonl`) |

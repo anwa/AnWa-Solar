@@ -85,6 +85,25 @@ public sealed class SettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void Battery_settings_are_saved_and_read()
+    {
+        Assert.False(Create().LoadBattery().Enabled);
+        Assert.True(Create().SaveBattery(new Calculation.BatterySettings
+        {
+            Enabled = true,
+            Battery = new SelectedRef { Manufacturer = "Deye", Model = "SE-F16" },
+            InSeries = 1,
+            InParallel = 2,
+        }));
+
+        Calculation.BatterySettings battery = Create().LoadBattery();
+
+        Assert.True(battery.Enabled);
+        Assert.Equal("SE-F16", battery.Battery?.Model);
+        Assert.Equal(2, battery.InParallel);
+    }
+
+    [Fact]
     public void Writing_leaves_no_temporary_file()
     {
         SettingsService service = Create();
