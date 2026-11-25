@@ -144,6 +144,6 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 
 ## M22 – Datasheets per language (`feature/datasheet-language`, v1.0.0)
 
-- [ ] A series keeps a German and an English datasheet
-- [ ] Import and component database attach a datasheet with its language
-- [ ] Viewer and project export use the datasheet of the current language, otherwise the only one
+- [x] A series keeps a German and an English datasheet
+- [x] Import and component database attach a datasheet with its language
+- [x] Viewer and project export use the datasheet of the current language, otherwise the only one

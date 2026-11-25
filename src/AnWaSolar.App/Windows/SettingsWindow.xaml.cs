@@ -28,8 +28,8 @@ public partial class SettingsWindow : ChromeWindow
         LanguageCombo.ItemsSource = new[]
         {
             new KeyValuePair<string?, string>(null, L.T("Windows language")),
-            new KeyValuePair<string?, string>(L.German, L.T("Deutsch")),
-            new KeyValuePair<string?, string>(L.English, L.T("English")),
+            new KeyValuePair<string?, string>(L.German, "Deutsch"),
+            new KeyValuePair<string?, string>(L.English, "English"),
         };
         LanguageCombo.DisplayMemberPath = "Value";
         LanguageCombo.SelectedValuePath = "Key";

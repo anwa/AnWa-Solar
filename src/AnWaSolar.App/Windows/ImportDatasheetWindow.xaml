@@ -85,6 +85,15 @@
                               AutomationProperties.Name="Save this power class" />
                     <TextBlock x:Name="IncludedText" Style="{StaticResource AnWaSoft.Text.Muted}" FontSize="12" Margin="0,4,0,0" />
                 </StackPanel>
+                <ComboBox x:Name="LanguageCombo"
+                          DockPanel.Dock="Right"
+                          Width="170"
+                          Margin="16,0,0,0"
+                          VerticalAlignment="Top"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Datasheet language"
+                          ToolTip="The datasheet of the application language is shown and exported; a series keeps one German and one English datasheet"
+                          AutomationProperties.Name="Datasheet language" />
                 <TextBox x:Name="SeriesInput"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          materialDesign:HintAssist.Hint="Series"

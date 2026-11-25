@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using AnWaSolar.Core.Calculation;
+using AnWaSolar.Core.Datasheets;
 using AnWaSolar.Core.Models;
 
 using Microsoft.Extensions.Logging;
@@ -34,18 +35,29 @@ public interface IDataStore
 
     void Load();
 
-    /// <summary>Full path of the datasheet of an entry, or null when it has none or the file is missing.</summary>
+    /// <summary>
+    /// Full path of the datasheet of an entry, or null when it has none or the file is missing. Of the datasheets of a
+    /// series, the entry has the one of the application language (see <see cref="DatasheetLanguage.Pick"/>).
+    /// </summary>
     string? GetDatasheetPath(IMasterDataEntry entry);
+
+    /// <summary>Full paths of the datasheets of an own series by language; empty when it has none.</summary>
+    IReadOnlyDictionary<string, string> GetSeriesDatasheets<T>(string manufacturer, string series)
+        where T : class, IMasterDataEntry;
 
     /// <summary>
     /// Saves a series into the own master data (<c>Data\&lt;Kind&gt;\&lt;Manufacturer&gt;\&lt;Series&gt;.json</c>), replacing an
     /// own series with the same manufacturer and name; its models are removed from other own series. The datasheet
-    /// (when given) is copied next to the series file. The master data is reloaded; returns the loaded variants.
+    /// (when given) is copied next to the series file as the datasheet of its language; the datasheets of the other
+    /// languages stay, and those of a renamed series move with it. The master data is reloaded; returns the loaded
+    /// variants.
     /// </summary>
     /// <exception cref="ArgumentException">The series or one of its variants is invalid.</exception>
     /// <exception cref="IOException">The own master data or the datasheet cannot be written.</exception>
     /// <param name="replaces">Manufacturer and name of the own series this one replaces when it was renamed; its file is removed.</param>
-    IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath, (string Manufacturer, string Series)? replaces = null)
+    /// <param name="datasheetLanguage">Language of the given datasheet: "de", "en" or <see cref="DatasheetLanguage.NotStated"/>.</param>
+    IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath, (string Manufacturer, string Series)? replaces = null,
+        string datasheetLanguage = DatasheetLanguage.NotStated)
         where T : class, IMasterDataEntry;
 
     /// <summary>Deletes an own series with its datasheet and reloads the master data; false when there is none.</summary>
@@ -181,10 +193,79 @@ public class JsonDataStore : IDataStore
         return path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
     }
 
-    public IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath, (string Manufacturer, string Series)? replaces = null)
+    public IReadOnlyDictionary<string, string> GetSeriesDatasheets<T>(string manufacturer, string series)
+        where T : class, IMasterDataEntry
+    {
+        string path = OwnSeriesPath(KindOf<T>(), manufacturer, series);
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach ((string language, string file) in ReadSheets(path))
+        {
+            string pdf = Path.Combine(Path.GetDirectoryName(path)!, file);
+            if (File.Exists(pdf))
+            {
+                result[language] = pdf;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>JSON property of the datasheet of a language in a series file.</summary>
+    public static string DatasheetProperty(string language) =>
+        language == DatasheetLanguage.NotStated ? "Datasheet file" : $"Datasheet file ({language})";
+
+    // The datasheets of a series file by language, relative to its folder; empty when the file is missing or unreadable.
+    private static Dictionary<string, string> ReadSheets(string path)
+    {
+        var sheets = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!File.Exists(path))
+        {
+            return sheets;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
+            AddSheets(document.RootElement, sheets);
+        }
+        catch (JsonException)
+        {
+            // An unreadable file has no usable datasheets.
+        }
+
+        return sheets;
+    }
+
+    private static void AddSheets(JsonElement root, Dictionary<string, string> sheets)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (string language in DatasheetLanguage.All)
+        {
+            if (root.TryGetProperty(DatasheetProperty(language), out JsonElement sheet) && sheet.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(sheet.GetString()))
+            {
+                sheets[language] = sheet.GetString()!;
+            }
+        }
+    }
+
+    private static string SheetFileName(string series, string language) =>
+        FileNameOf(series) + (language == DatasheetLanguage.NotStated ? string.Empty : $" ({language})") + ".pdf";
+
+    public IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath, (string Manufacturer, string Series)? replaces = null,
+        string datasheetLanguage = DatasheetLanguage.NotStated)
         where T : class, IMasterDataEntry
     {
         ArgumentNullException.ThrowIfNull(series);
+        if (!DatasheetLanguage.All.Contains(datasheetLanguage))
+        {
+            throw new ArgumentException($"Unknown datasheet language {datasheetLanguage}.", nameof(datasheetLanguage));
+        }
+
         Kind<T> kind = KindOf<T>();
         series.Manufacturer = series.Manufacturer.Trim();
         series.Series = series.Series.Trim();
@@ -222,13 +303,13 @@ public class JsonDataStore : IDataStore
         string path = Path.Combine(folder, FileNameOf(series.Series) + ".json");
 
         // Read an existing file first, so that nothing is changed when it cannot be replaced.
-        string? previousDatasheet = null;
+        var sheets = new Dictionary<string, string>(StringComparer.Ordinal);
         if (File.Exists(path))
         {
             try
             {
                 using JsonDocument existing = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
-                previousDatasheet = existing.RootElement.TryGetProperty("Datasheet file", out JsonElement sheet) && sheet.ValueKind == JsonValueKind.String ? sheet.GetString() : null;
+                AddSheets(existing.RootElement, sheets);
             }
             catch (JsonException ex)
             {
@@ -236,19 +317,39 @@ public class JsonDataStore : IDataStore
             }
         }
 
-        // The datasheet is copied first: it may be the datasheet of a series that is removed below (renamed series).
+        // The datasheets are copied first: they may belong to a series that is removed below (renamed series).
         Directory.CreateDirectory(folder);
-        series.DatasheetFile = datasheetSourcePath is null ? previousDatasheet : CopyDatasheet(datasheetSourcePath, Path.Combine(folder, FileNameOf(series.Series) + ".pdf"));
-        RemoveModelsFromOtherSeries(kind, series, path);
-        if (replaces is { } old && OwnSeriesPath(kind, old.Manufacturer, old.Series) is var oldPath
-            && !string.Equals(Path.GetFullPath(oldPath), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
+        string? oldPath = replaces is { } old && OwnSeriesPath(kind, old.Manufacturer, old.Series) is var replaced
+            && !string.Equals(Path.GetFullPath(replaced), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase) ? replaced : null;
+        if (oldPath is not null)
         {
-            DeleteSeriesFile(oldPath, keep: Path.Combine(folder, series.DatasheetFile ?? string.Empty));
+            foreach ((string language, string file) in ReadSheets(oldPath))
+            {
+                string source = Path.Combine(Path.GetDirectoryName(oldPath)!, file);
+                if (!sheets.ContainsKey(language) && File.Exists(source))
+                {
+                    sheets[language] = CopyDatasheet(source, Path.Combine(folder, SheetFileName(series.Series, language)));
+                }
+            }
+        }
+
+        if (datasheetSourcePath is not null)
+        {
+            sheets[datasheetLanguage] = CopyDatasheet(datasheetSourcePath, Path.Combine(folder, SheetFileName(series.Series, datasheetLanguage)));
+        }
+
+        series.DatasheetFile = sheets.GetValueOrDefault(DatasheetLanguage.NotStated);
+        series.DatasheetFileGerman = sheets.GetValueOrDefault(L.German);
+        series.DatasheetFileEnglish = sheets.GetValueOrDefault(L.English);
+        RemoveModelsFromOtherSeries(kind, series, path);
+        if (oldPath is not null)
+        {
+            DeleteSeriesFile(oldPath, keep: [.. sheets.Values.Select(f => Path.Combine(folder, f))]);
         }
 
         WriteSeries(path, series);
-        _logger.LogInformation("Own series saved: {Manufacturer} {Series} with {Count} variants in {Path}, datasheet {Datasheet}.",
-            series.Manufacturer, series.Series, series.Variants.Count, path, series.DatasheetFile ?? "(none)");
+        _logger.LogInformation("Own series saved: {Manufacturer} {Series} with {Count} variants in {Path}, datasheets {Datasheets}.",
+            series.Manufacturer, series.Series, series.Variants.Count, path, sheets.Count == 0 ? "(none)" : string.Join(", ", sheets.Values));
         Load();
 
         HashSet<string> models = new(series.Variants.Select(v => v.Model), StringComparer.OrdinalIgnoreCase);
@@ -264,7 +365,7 @@ public class JsonDataStore : IDataStore
             return false;
         }
 
-        DeleteSeriesFile(path, keep: null);
+        DeleteSeriesFile(path, keep: []);
         _logger.LogInformation("Own series {Manufacturer} {Series} deleted.", manufacturer, series);
         Load();
         return true;
@@ -274,30 +375,24 @@ public class JsonDataStore : IDataStore
         where T : class, IMasterDataEntry =>
         Path.Combine(_paths.UserDirectory, kind.Folder, FileNameOf(manufacturer.Trim()), FileNameOf(series.Trim()) + ".json");
 
-    // Deletes a series file and its datasheet (unless it is the file to keep); an empty manufacturer folder goes too.
-    private static void DeleteSeriesFile(string path, string? keep)
+    // Deletes a series file and its datasheets (except the files to keep); an empty manufacturer folder goes too.
+    // An unreadable file is deleted without its datasheets.
+    private static void DeleteSeriesFile(string path, IReadOnlyCollection<string> keep)
     {
         if (!File.Exists(path))
         {
             return;
         }
 
-        string? sheet = null;
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
-            sheet = document.RootElement.TryGetProperty("Datasheet file", out JsonElement s) && s.ValueKind == JsonValueKind.String ? s.GetString() : null;
-        }
-        catch (JsonException)
-        {
-            // An unreadable file is deleted without its datasheet.
-        }
-
+        Dictionary<string, string> sheets = ReadSheets(path);
         File.Delete(path);
-        if (sheet is not null && Path.Combine(Path.GetDirectoryName(path)!, sheet) is var pdf && File.Exists(pdf)
-            && (keep is null || !string.Equals(Path.GetFullPath(pdf), Path.GetFullPath(keep), StringComparison.OrdinalIgnoreCase)))
+        foreach (string sheet in sheets.Values)
         {
-            File.Delete(pdf);
+            string pdf = Path.Combine(Path.GetDirectoryName(path)!, sheet);
+            if (File.Exists(pdf) && !keep.Any(k => string.Equals(Path.GetFullPath(pdf), Path.GetFullPath(k), StringComparison.OrdinalIgnoreCase)))
+            {
+                File.Delete(pdf);
+            }
         }
 
         string folder = Path.GetDirectoryName(path)!;
@@ -480,9 +575,12 @@ public class JsonDataStore : IDataStore
             if (variants.Count == 0)
             {
                 File.Delete(file);
-                if ((string?)root["Datasheet file"] is { } sheet && Path.Combine(Path.GetDirectoryName(file)!, sheet) is var pdf && File.Exists(pdf))
+                foreach (string language in DatasheetLanguage.All)
                 {
-                    File.Delete(pdf);
+                    if ((string?)root[DatasheetProperty(language)] is { } sheet && Path.Combine(Path.GetDirectoryName(file)!, sheet) is var pdf && File.Exists(pdf))
+                    {
+                        File.Delete(pdf);
+                    }
                 }
 
                 _logger.LogInformation("Own series {Path} removed; its models moved to {Series}.", file, saved.Series);
@@ -512,9 +610,17 @@ public class JsonDataStore : IDataStore
             ["Manufacturer"] = series.Manufacturer,
             ["Series"] = series.Series,
         };
-        if (series.DatasheetFile is not null)
+        foreach ((string language, string? file) in new[]
         {
-            root["Datasheet file"] = series.DatasheetFile;
+            (DatasheetLanguage.NotStated, series.DatasheetFile),
+            (L.German, series.DatasheetFileGerman),
+            (L.English, series.DatasheetFileEnglish),
+        })
+        {
+            if (file is not null)
+            {
+                root[DatasheetProperty(language)] = file;
+            }
         }
 
         root["Variants"] = variants;
@@ -580,10 +686,13 @@ public class JsonDataStore : IDataStore
                     continue;
                 }
 
+                // Of the datasheets of the series, the entries get the one of the application language.
                 string? datasheet = null;
-                if (own && root.TryGetProperty("Datasheet file", out JsonElement sheet) && sheet.ValueKind == JsonValueKind.String)
+                var sheets = new Dictionary<string, string>(StringComparer.Ordinal);
+                AddSheets(root, sheets);
+                if (own && DatasheetLanguage.Pick(sheets, L.Language) is { } sheet)
                 {
-                    datasheet = Path.GetRelativePath(_paths.UserDirectory, Path.Combine(Path.GetDirectoryName(file)!, sheet.GetString()!)).Replace('\\', '/');
+                    datasheet = Path.GetRelativePath(_paths.UserDirectory, Path.Combine(Path.GetDirectoryName(file)!, sheet)).Replace('\\', '/');
                 }
 
                 int index = 0;

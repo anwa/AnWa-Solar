@@ -14,7 +14,8 @@ Eine Seriendatei nennt Hersteller und Serie und listet die Leistungsklassen unte
 {
   "Manufacturer": "Deye",
   "Series": "SUN-SG05LP3-EU-SM2",
-  "Datasheet file": "SUN-SG05LP3-EU-SM2.pdf",
+  "Datasheet file (de)": "SUN-SG05LP3-EU-SM2 (de).pdf",
+  "Datasheet file (en)": "SUN-SG05LP3-EU-SM2 (en).pdf",
   "Variants": [
     { "Model": "SUN-15K-SG05LP3-EU-SM2", "Max. DC input power (W)": 24000, "...": "..." },
     { "Model": "SUN-18K-SG05LP3-EU-SM2", "Max. DC input power (W)": 28800, "...": "..." }
@@ -22,7 +23,7 @@ Eine Seriendatei nennt Hersteller und Serie und listet die Leistungsklassen unte
 }
 ```
 
-Deine eigenen Serien, zum Beispiel aus einem [Datenblatt-Import](datasheet-import.md), liegen in `%LOCALAPPDATA%\AnWa-Solar\Data` in derselben Struktur, mit dem Datenblatt neben der Seriendatei. Eine eigene Serie ersetzt die mitgelieferte Serie mit gleichem Hersteller und Namen, und eine eigene Leistungsklasse die mitgelieferte mit gleichem Hersteller und Modell. Ein Modell gehört zu genau einer Serie: Das Speichern einer Serie nimmt ihre Modelle aus deinen anderen Serien heraus.
+Deine eigenen Serien, zum Beispiel aus einem [Datenblatt-Import](datasheet-import.md), liegen in `%LOCALAPPDATA%\AnWa-Solar\Data` in derselben Struktur, mit den Datenblättern neben der Seriendatei: einem deutschen und einem englischen, siehe [Datenblätter in zwei Sprachen](datasheet-import.md#datenblätter-in-zwei-sprachen). `"Datasheet file"` ohne Sprache ist das Datenblatt einer Version vor 1.0.0. Eine eigene Serie ersetzt die mitgelieferte Serie mit gleichem Hersteller und Namen, und eine eigene Leistungsklasse die mitgelieferte mit gleichem Hersteller und Modell. Ein Modell gehört zu genau einer Serie: Das Speichern einer Serie nimmt ihre Modelle aus deinen anderen Serien heraus.
 
 Die [Komponentendatenbank](component-database.md) zeigt alle Serien und lässt dich sie anlegen und ändern, ohne JSON-Dateien zu bearbeiten. Die Auswahldialoge folgen dieser Struktur: Hersteller, bei Wechselrichtern der Typ (zum Beispiel „Dreiphasiger Hybrid-Wechselrichter“, abgeleitet aus den AC-Phasen und dem Batterieeingang), Serie und Leistungsklasse.
 

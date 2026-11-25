@@ -2,6 +2,12 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v1.0.0 (2026-11-25)
+
+- New: Datasheets in German and English. A series keeps one German and one English datasheet (`<Series> (de).pdf`, `<Series> (en).pdf`, series file properties `Datasheet file (de)` and `Datasheet file (en)`). The datasheet viewer and the ZIP export use the datasheet in the language of the application, otherwise the only one; a datasheet of an earlier version has no stated language and is used when there is none in the language of the application.
+- New: The datasheet import asks for the language of the datasheet and suggests it from the text of the PDF; importing the other language adds it to the series. The component database attaches a German or an English datasheet, lists the attached datasheets and shows each of them; renaming and deleting a series moves or deletes all its datasheets.
+- Changed: The language names on the settings page are shown in their own language (Deutsch, English).
+
 ## v0.22.0 (2026-11-25)
 
 - New: German and English. The language is chosen on the settings page (German, English or the Windows language) and applies after a restart; window texts, results, the report, the project export and the user manual use it, and numbers and dates follow it (de-DE, en-GB). Without a choice, AnWa-Solar uses the Windows display language.

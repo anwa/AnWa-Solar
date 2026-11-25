@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace AnWaSolar.Core.Models;
 
 /// <summary>
-/// A series of one manufacturer as one datasheet describes it: the series name, the datasheet and its power classes
+/// A series of one manufacturer as one datasheet describes it: the series name, the datasheets and its power classes
 /// (variants). Each variant holds its complete values, so that the calculation sees single devices. Stored as one JSON
 /// file per series in <c>Data\&lt;Kind&gt;\&lt;Manufacturer&gt;\&lt;Series&gt;.json</c>, the datasheet next to it.
 /// </summary>
@@ -17,9 +17,17 @@ public sealed class ComponentSeries<T>
     [JsonPropertyName("Series")]
     public string Series { get; set; } = string.Empty;
 
-    /// <summary>Datasheet PDF, relative to the folder of the series file; null when there is none.</summary>
+    /// <summary>Datasheet PDF without a stated language, relative to the folder of the series file; null when there is none.</summary>
     [JsonPropertyName("Datasheet file")]
     public string? DatasheetFile { get; set; }
+
+    /// <summary>German datasheet PDF, relative to the folder of the series file; null when there is none.</summary>
+    [JsonPropertyName("Datasheet file (de)")]
+    public string? DatasheetFileGerman { get; set; }
+
+    /// <summary>English datasheet PDF, relative to the folder of the series file; null when there is none.</summary>
+    [JsonPropertyName("Datasheet file (en)")]
+    public string? DatasheetFileEnglish { get; set; }
 
     [JsonPropertyName("Variants")]
     public List<T> Variants { get; set; } = [];

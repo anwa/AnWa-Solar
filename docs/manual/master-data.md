@@ -14,7 +14,8 @@ A series file names the manufacturer and the series and lists the power classes 
 {
   "Manufacturer": "Deye",
   "Series": "SUN-SG05LP3-EU-SM2",
-  "Datasheet file": "SUN-SG05LP3-EU-SM2.pdf",
+  "Datasheet file (de)": "SUN-SG05LP3-EU-SM2 (de).pdf",
+  "Datasheet file (en)": "SUN-SG05LP3-EU-SM2 (en).pdf",
   "Variants": [
     { "Model": "SUN-15K-SG05LP3-EU-SM2", "Max. DC input power (W)": 24000, "...": "..." },
     { "Model": "SUN-18K-SG05LP3-EU-SM2", "Max. DC input power (W)": 28800, "...": "..." }
@@ -22,7 +23,7 @@ A series file names the manufacturer and the series and lists the power classes 
 }
 ```
 
-Your own series, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in the same structure, with the datasheet next to the series file. An own series replaces the shipped series with the same manufacturer and name, and an own power class the shipped one with the same manufacturer and model. A model belongs to one series: saving a series moves its models out of your other series.
+Your own series, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in the same structure, with the datasheets next to the series file: one German and one English, see [Datasheets in two languages](datasheet-import.md#datasheets-in-two-languages). `"Datasheet file"` without a language is the datasheet of a version before 1.0.0. An own series replaces the shipped series with the same manufacturer and name, and an own power class the shipped one with the same manufacturer and model. A model belongs to one series: saving a series moves its models out of your other series.
 
 The [component database](component-database.md) shows all series and lets you create and change them without editing JSON files. The selection dialogs follow this structure: manufacturer, for inverters the type (for example "Three-phase hybrid inverter", from the AC phases and the battery input), series and power class.
 
