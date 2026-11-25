@@ -20,14 +20,36 @@ public static class ReportBuilder
 
     /// <summary>Report including the cable and fuse sizing.</summary>
     public static string Build(StringCalculationResult? result, CalculationParameters parameters, DateTime createdAt, CableCalculationResult? cables, CableTables? tables,
-        BatteryCalculationResult? battery = null)
+        BatteryCalculationResult? battery = null, Projects.ProjectInfo? project = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
         var md = new StringBuilder();
-        md.AppendLine("# Report: PV string design");
+        md.AppendLine(project is null ? "# Report: PV string design" : $"# Report: {project.Name}");
         md.AppendLine($"Created on {createdAt:yyyy-MM-dd HH:mm}");
         md.AppendLine();
+        if (project is not null)
+        {
+            md.AppendLine("## Project");
+            md.AppendLine($"- Project: {project.Name}");
+            if (!string.IsNullOrWhiteSpace(project.Customer))
+            {
+                md.AppendLine($"- Customer: {project.Customer}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(project.Address))
+            {
+                md.AppendLine($"- Address: {project.Address.ReplaceLineEndings(", ")}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(project.Notes))
+            {
+                md.AppendLine();
+                md.AppendLine(project.Notes.Trim());
+            }
+
+            md.AppendLine();
+        }
 
         if (result is null)
         {

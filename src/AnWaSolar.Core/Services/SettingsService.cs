@@ -109,6 +109,9 @@ public sealed class UserSettings
     /// <summary>Planned battery bank; optional.</summary>
     public BatterySettings Battery { get; set; } = new();
 
+    /// <summary>Paths of the most recently opened projects, the last one first; at most five.</summary>
+    public List<string> RecentProjects { get; set; } = [];
+
     /// <summary>Colour theme; optional, files without it use <see cref="AppTheme.System"/>.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
     public AppTheme Theme { get; set; } = AppTheme.System;
@@ -134,6 +137,12 @@ public interface ISettingsService
     bool SaveCables(CableSettings cables);
 
     BatterySettings LoadBattery();
+
+    /// <summary>The most recently opened projects, the last one first.</summary>
+    IReadOnlyList<string> LoadRecentProjects();
+
+    /// <summary>Puts a project at the top of the recent projects; keeps at most five.</summary>
+    bool AddRecentProject(string path);
 
     bool SaveBattery(BatterySettings battery);
 
@@ -305,6 +314,33 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public const int MaxRecentProjects = 5;
+
+    public IReadOnlyList<string> LoadRecentProjects()
+    {
+        lock (_lock)
+        {
+            return [.. EnsureLoaded().RecentProjects];
+        }
+    }
+
+    public bool AddRecentProject(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        lock (_lock)
+        {
+            List<string> recent = EnsureLoaded().RecentProjects;
+            recent.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            recent.Insert(0, path);
+            if (recent.Count > MaxRecentProjects)
+            {
+                recent.RemoveRange(MaxRecentProjects, recent.Count - MaxRecentProjects);
+            }
+
+            return TryWrite();
+        }
+    }
+
     public AppTheme LoadTheme()
     {
         lock (_lock)
@@ -389,6 +425,12 @@ public sealed class SettingsService : ISettingsService
                     // Invalid cable settings do not discard the other settings.
                     _logger.LogWarning(ex, "Cable settings in {Path} cannot be read; the defaults are used.", SettingsFilePath);
                 }
+            }
+
+            if (root["RecentProjects"] is JsonArray recent)
+            {
+                settings.RecentProjects = [.. recent.Select(n => n?.GetValueKind() == JsonValueKind.String ? n.GetValue<string>() : null)
+                    .OfType<string>().Where(p => p.Length > 0).Take(MaxRecentProjects)];
             }
 
             if (root["Battery"] is JsonObject battery)
