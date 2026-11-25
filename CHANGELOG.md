@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.17.1)
+## v0.17.1 (2026-11-25)
 
 - Fixed: Changing the inverter removed the PV modules and reset the strings. Each MPPT now keeps its module, modules per string, parallel strings and enabled state; values the new inverter does not allow stay set and are shown as violations instead of being changed silently. Strings of MPPTs the new inverter does not have come back when an inverter with more MPPTs is selected again.
 
