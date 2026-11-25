@@ -8,6 +8,8 @@ The **String calculation** tab has two columns: the **Configuration** on the lef
 
 After the selection the card shows the inverter values, and one card per MPPT input appears below **Strings**.
 
+Changing the inverter does not change the other components: each MPPT keeps its module, its counts and whether it is enabled, and the cables, the battery and the parameters stay as they are. Values that the new inverter does not allow, for example more parallel strings than it accepts, stay set and are shown as violations. When the new inverter has fewer MPPTs, the strings of the other MPPTs are kept while AnWa-Solar is open and come back when you select an inverter with more MPPTs again.
+
 ## Strings
 
 Each MPPT has its own card:

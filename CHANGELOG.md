@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.17.1)
+
+- Fixed: Changing the inverter removed the PV modules and reset the strings. Each MPPT now keeps its module, modules per string, parallel strings and enabled state; values the new inverter does not allow stay set and are shown as violations instead of being changed silently. Strings of MPPTs the new inverter does not have come back when an inverter with more MPPTs is selected again.
+
 ## v0.17.0 (2026-11-25)
 
 - New: Battery storage compatibility. A configuration card for hybrid inverters with a battery dialog (battery module, modules in series and in parallel), a result card and a report section check the bank voltage against the battery voltage range of the inverter (outside the range is an error; a lower bank voltage that the inverter cannot use is a warning), the module counts against the battery datasheet, and show the charge and discharge current (the lower of bank and inverter) with the power and the nominal and usable energy. A manual page describes it.
