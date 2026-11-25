@@ -57,6 +57,7 @@ dotnet format --verify-no-changes
 - `tools/Build-Installer.ps1` is the pinned build recipe: self-contained win-x64 publish, MSI into `dist\installer\` with SHA-256. The installer project is not part of the solution, so `dotnet build` of the solution does not need a publish folder. `dist/` is git-ignored.
 - The `UpgradeCode` in `Package.wxs` never changes once it is committed.
 - For a release, build from the tagged commit as `../AGENTS.md` and `docs/DEPLOYMENT.md` describe, and record the build in `docs/DEPLOYMENT.md`.
+- Every release gets a GitHub release for its tag (at the user's request, 2026-11-25): created with `gh release create` once the user has approved the push and the tag is on GitHub, with the `CHANGELOG.md` section of the version as notes and the MSI and its `.sha256` file as assets, as `docs/DEPLOYMENT.md` describes.
 - Installing or uninstalling the MSI changes the machine; the user does it. Verify the MSI content read-only (properties, files, shortcut).
 
 ## Domain Rules
