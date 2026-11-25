@@ -29,6 +29,8 @@ On the right, the editor shows the selected series:
 - A **shipped series** cannot be changed in the installation folder: saving creates an own copy that replaces it in the selection.
 - Renaming a series or its manufacturer moves your series with its datasheets to the new name.
 - **Delete series** deletes an own series with its datasheets after a confirmation. When it replaced a shipped series, the shipped series comes back.
+- **Delete series** on a shipped series hides it after a confirmation, for example when it is outdated and you replace it by a corrected own series. It no longer appears in the tree and the selection dialogs; the installation folder is not changed, and projects keep the values they copied. The hidden series are listed in `%LOCALAPPDATA%\AnWa-Solar\Data\Hidden series.json`.
+- **Restore shipped series** shows all hidden shipped series again.
 - **Discard changes** returns to the saved values. Before you switch to another series or close the window with unsaved changes, AnWa-Solar asks.
 
 After the window is closed, the main window uses the changed values; inverter, modules and battery of the open project are resolved again.

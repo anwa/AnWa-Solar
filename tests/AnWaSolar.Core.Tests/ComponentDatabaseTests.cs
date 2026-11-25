@@ -111,6 +111,52 @@ public sealed class ComponentDatabaseTests : IDisposable
     }
 
     [Fact]
+    public void Deleting_a_shipped_series_hides_it_until_it_is_restored()
+    {
+        JsonDataStore store = Store();
+        Assert.Contains(store.Batteries, b => b.Series == "SE-F");
+
+        Assert.True(store.DeleteSeries<Battery>("deye", "se-f"));
+
+        Assert.DoesNotContain(store.Batteries, b => b.Series == "SE-F");
+        Assert.Equal(1, store.HiddenSeriesCount);
+        Assert.Contains("\"Series\": \"SE-F\"", File.ReadAllText(Path.Combine(_root, "Data", JsonDataStore.HiddenSeriesFileName)), StringComparison.Ordinal);
+        Assert.DoesNotContain(Store().Batteries, b => b.Series == "SE-F"); // kept in the user data
+        Assert.False(store.DeleteSeries<Battery>("Deye", "SE-F"));
+
+        Assert.Equal(1, store.RestoreHiddenSeries());
+
+        Assert.Contains(store.Batteries, b => b.Series == "SE-F");
+        Assert.Equal(0, store.HiddenSeriesCount);
+    }
+
+    [Fact]
+    public void Hidden_shipped_series_can_be_replaced_by_an_own_series()
+    {
+        JsonDataStore store = Store();
+        Inverter eighteen = store.Inverters.Single(i => i.Model == "SUN-18K-SG05LP3-EU-SM2");
+        store.DeleteSeries<Inverter>("Deye", "SUN-SG05LP3-EU-SM2");
+
+        store.SaveSeries(new ComponentSeries<Inverter> { Manufacturer = "Deye", Series = "SUN-18K corrected", Variants = [eighteen] }, null);
+
+        Inverter own = Assert.Single(store.Inverters, i => i.Model == "SUN-18K-SG05LP3-EU-SM2");
+        Assert.True(own.IsUserEntry);
+        Assert.DoesNotContain(store.Inverters, i => i.Series == "SUN-SG05LP3-EU-SM2");
+    }
+
+    [Fact]
+    public void Unreadable_hidden_series_file_hides_nothing_and_is_reported()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "Data"));
+        File.WriteAllText(Path.Combine(_root, "Data", JsonDataStore.HiddenSeriesFileName), "{ not json");
+
+        JsonDataStore store = Store();
+
+        Assert.Contains(store.Batteries, b => b.Series == "SE-F");
+        Assert.Contains(store.Issues, i => i.ToString().Contains(JsonDataStore.HiddenSeriesFileName, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Deleting_an_own_copy_brings_back_the_shipped_series()
     {
         JsonDataStore store = Store();
@@ -125,6 +171,11 @@ public sealed class ComponentDatabaseTests : IDisposable
         Assert.Equal(160, store.Inverters.Single(i => i.Model == "SUN-18K-SG05LP3-EU-SM2").StartVoltageV);
         Assert.Contains(store.Inverters, i => i.Model == "SUN-20K-SG05LP3-EU-SM2");
         Assert.False(Directory.Exists(Path.Combine(_root, "Data", "Inverters", "Deye")));
+        Assert.Equal(0, store.HiddenSeriesCount);
+
+        // A second delete hides the shipped series; there is no further series of that name.
+        Assert.True(store.DeleteSeries<Inverter>("Deye", "SUN-SG05LP3-EU-SM2"));
+        Assert.DoesNotContain(store.Inverters, i => i.Series == "SUN-SG05LP3-EU-SM2");
         Assert.False(store.DeleteSeries<Inverter>("Deye", "SUN-SG05LP3-EU-SM2"));
     }
 

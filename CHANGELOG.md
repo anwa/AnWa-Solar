@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v1.0.2 (2026-11-25)
+
+- Fixed: **Delete series** in the component database was disabled for shipped series, so outdated shipped series could not be removed. It now hides a shipped series (listed in `%LOCALAPPDATA%\AnWa-Solar\Data\Hidden series.json`; the installation folder is not changed), and **Restore shipped series** shows the hidden series again. The tooltip of the button says what it does for the selected series.
+
 ## v1.0.1 (2026-11-25)
 
 - Changed: The power classes of a series are ordered by ascending power in the component database, the selection dialogs and the saved series files: modules by Pmax, inverters by the rated AC power (the max. DC input power when it is not stated), batteries by the nominal energy.

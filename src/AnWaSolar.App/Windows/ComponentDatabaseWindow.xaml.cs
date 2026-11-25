@@ -354,7 +354,11 @@ public partial class ComponentDatabaseWindow : ChromeWindow
     {
         SaveButton.IsEnabled = _dirty;
         DiscardButton.IsEnabled = _dirty;
-        DeleteButton.IsEnabled = _isOwn && _shown is not null;
+        DeleteButton.IsEnabled = _shown is not null;
+        DeleteButton.ToolTip = _isOwn
+            ? L.T("Delete this own series; a shipped series of the same name comes back")
+            : L.T("Hide this shipped series, for example to replace it by a corrected own series; the installation folder is not changed");
+        RestoreButton.IsEnabled = Store.HiddenSeriesCount > 0;
         ShowDatasheetButton.IsEnabled = Datasheets().Count > 0;
     }
 
@@ -603,13 +607,15 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     private void OnDeleteClick(object sender, RoutedEventArgs e)
     {
-        if (_shown is not { } key || !_isOwn)
+        if (_shown is not { } key)
         {
             return;
         }
 
-        if (!MessageDialog.Confirm(this, L.F($"Delete the own series {key.Manufacturer} {key.Series} with its {VariantsOf(key).Count} power classes and its datasheet? A shipped series of the same name comes back. This cannot be undone."),
-            Title, L.T("Delete"), L.T("Cancel"), StatusKind.Warning))
+        string question = _isOwn
+            ? L.F($"Delete the own series {key.Manufacturer} {key.Series} with its {VariantsOf(key).Count} power classes and its datasheet? A shipped series of the same name comes back. This cannot be undone.")
+            : L.F($"Hide the shipped series {key.Manufacturer} {key.Series} with its {VariantsOf(key).Count} power classes? It no longer appears in the selection; projects keep their copied values. Restore shipped series shows it again.");
+        if (!MessageDialog.Confirm(this, question, Title, _isOwn ? L.T("Delete") : L.T("Hide"), L.T("Cancel"), StatusKind.Warning))
         {
             return;
         }
@@ -632,6 +638,30 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
         _dirty = false;
         BuildTree(VariantsOf(key).Count > 0 ? key : null);
+    }
+
+    private void OnRestoreClick(object sender, RoutedEventArgs e)
+    {
+        int count = Store.HiddenSeriesCount;
+        if (count == 0 || !ConfirmDiscard()
+            || !MessageDialog.Confirm(this, L.F($"Show the {count} hidden shipped series again?"), Title, L.T("Restore"), L.T("Cancel")))
+        {
+            return;
+        }
+
+        try
+        {
+            Store.RestoreHiddenSeries();
+            Changed = true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageDialog.Show(this, L.F($"The hidden series could not be restored.\n\n{ex.Message}"), Title, StatusKind.Error);
+            return;
+        }
+
+        _dirty = false;
+        BuildTree(_shown);
     }
 
     private void ShowErrors(IEnumerable<string> errors)

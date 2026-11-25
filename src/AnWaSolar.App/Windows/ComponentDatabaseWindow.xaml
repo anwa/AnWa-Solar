@@ -33,13 +33,24 @@
                             <TextBlock Text="Import…" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+                    <Button x:Name="RestoreButton"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Click="OnRestoreClick"
+                            Margin="8,0,0,0"
+                            ToolTip="Show the hidden shipped series again"
+                            AutomationProperties.Name="Restore shipped series">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Restore" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Restore shipped series" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="DeleteButton"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             Click="OnDeleteClick"
                             Margin="0,0,8,0"
-                            ToolTip="Delete this own series; a shipped series of the same name comes back"
+                            ToolTipService.ShowOnDisabled="True"
                             AutomationProperties.Name="Delete series">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="DeleteOutline" Margin="0,0,6,0" VerticalAlignment="Center" />

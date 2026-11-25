@@ -60,9 +60,19 @@ public interface IDataStore
         string datasheetLanguage = DatasheetLanguage.NotStated)
         where T : class, IMasterDataEntry;
 
-    /// <summary>Deletes an own series with its datasheet and reloads the master data; false when there is none.</summary>
+    /// <summary>
+    /// Deletes an own series with its datasheets, so that a shipped series of the same name comes back; without an own
+    /// series, hides the shipped series of that name (the installation folder is not changed). Reloads the master data;
+    /// false when there is no such series.
+    /// </summary>
     bool DeleteSeries<T>(string manufacturer, string series)
         where T : class, IMasterDataEntry;
+
+    /// <summary>Number of shipped series that are hidden.</summary>
+    int HiddenSeriesCount { get; }
+
+    /// <summary>Shows all hidden shipped series again and reloads the master data; returns how many there were.</summary>
+    int RestoreHiddenSeries();
 }
 
 public interface IDataPathProvider
@@ -106,6 +116,9 @@ public class JsonDataStore : IDataStore
     public const string BatteryFileName = "Batteries.json";
     public const string DatasheetFolder = "Datasheets";
 
+    /// <summary>File in the own master data folder that lists the hidden shipped series.</summary>
+    public const string HiddenSeriesFileName = "Hidden series.json";
+
     private const string OwnSuffix = " (own data)";
 
     private static readonly JsonSerializerOptions s_writeOptions = new()
@@ -125,6 +138,7 @@ public class JsonDataStore : IDataStore
     private List<Inverter> _inverters = [];
     private List<Battery> _batteries = [];
     private List<DataLoadIssue> _issues = [];
+    private Dictionary<string, HashSet<(string, string)>> _hidden = [];
 
     public JsonDataStore(ILogger<JsonDataStore> logger, JsonSerializerOptions jsonOptions, IDataPathProvider paths)
     {
@@ -157,9 +171,12 @@ public class JsonDataStore : IDataStore
             : typeof(T) == typeof(Inverter) ? s_inverters as Kind<T>
             : s_batteries as Kind<T>) ?? throw new NotSupportedException(L.F($"No master data kind for {typeof(T).Name}."));
 
+    public int HiddenSeriesCount => _hidden.Values.Sum(h => h.Count);
+
     public void Load()
     {
         var issues = new List<DataLoadIssue>();
+        _hidden = LoadHidden(issues);
         _modules = LoadKind(s_modules, issues);
         _inverters = LoadKind(s_inverters, issues);
         _batteries = LoadKind(s_batteries, issues);
@@ -360,16 +377,112 @@ public class JsonDataStore : IDataStore
     public bool DeleteSeries<T>(string manufacturer, string series)
         where T : class, IMasterDataEntry
     {
-        string path = OwnSeriesPath(KindOf<T>(), manufacturer, series);
-        if (!File.Exists(path))
+        Kind<T> kind = KindOf<T>();
+        string path = OwnSeriesPath(kind, manufacturer, series);
+        if (File.Exists(path))
+        {
+            DeleteSeriesFile(path, keep: []);
+            _logger.LogInformation("Own series {Manufacturer} {Series} deleted.", manufacturer, series);
+            Load();
+            return true;
+        }
+
+        // A shipped series is hidden; its files in the installation folder stay.
+        T? shipped = Entries(kind).FirstOrDefault(e => !e.IsUserEntry && SameManufacturer(e.Manufacturer, manufacturer.Trim())
+            && string.Equals(e.Series, series.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (shipped is null)
         {
             return false;
         }
 
-        DeleteSeriesFile(path, keep: []);
-        _logger.LogInformation("Own series {Manufacturer} {Series} deleted.", manufacturer, series);
+        if (!_hidden.TryGetValue(kind.Folder, out HashSet<(string, string)>? hidden))
+        {
+            _hidden[kind.Folder] = hidden = [];
+        }
+
+        hidden.Add(SeriesKey(shipped.Manufacturer, shipped.Series));
+        WriteHidden(kind.Folder, shipped.Manufacturer, shipped.Series);
+        _logger.LogInformation("Shipped series {Manufacturer} {Series} hidden.", shipped.Manufacturer, shipped.Series);
         Load();
         return true;
+    }
+
+    public int RestoreHiddenSeries()
+    {
+        int count = HiddenSeriesCount;
+        string path = Path.Combine(_paths.UserDirectory, HiddenSeriesFileName);
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+
+        _logger.LogInformation("{Count} hidden shipped series shown again.", count);
+        Load();
+        return count;
+    }
+
+    private static (string, string) SeriesKey(string manufacturer, string series) => (manufacturer.Trim().ToUpperInvariant(), series.Trim().ToUpperInvariant());
+
+    // The hidden shipped series by kind folder; an unreadable file hides nothing and is reported.
+    private Dictionary<string, HashSet<(string, string)>> LoadHidden(List<DataLoadIssue> issues)
+    {
+        var hidden = new Dictionary<string, HashSet<(string, string)>>(StringComparer.OrdinalIgnoreCase);
+        string path = Path.Combine(_paths.UserDirectory, HiddenSeriesFileName);
+        if (!File.Exists(path))
+        {
+            return hidden;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
+            foreach (JsonProperty kind in document.RootElement.EnumerateObject())
+            {
+                if (kind.Value.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                var set = new HashSet<(string, string)>();
+                foreach (JsonElement item in kind.Value.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Object
+                        && item.TryGetProperty("Manufacturer", out JsonElement m) && m.ValueKind == JsonValueKind.String
+                        && item.TryGetProperty("Series", out JsonElement s) && s.ValueKind == JsonValueKind.String)
+                    {
+                        set.Add(SeriesKey(m.GetString()!, s.GetString()!));
+                    }
+                }
+
+                hidden[kind.Name] = set;
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Error reading {Path}.", path);
+            issues.Add(new DataLoadIssue(HiddenSeriesFileName + OwnSuffix, null, L.F($"File cannot be read ({ex.Message}); no shipped series is hidden.")));
+        }
+
+        return hidden;
+    }
+
+    // Adds a shipped series to the hidden series file, with the spelling of its names.
+    private void WriteHidden(string folder, string manufacturer, string series)
+    {
+        string path = Path.Combine(_paths.UserDirectory, HiddenSeriesFileName);
+        JsonObject root = (File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: s_documentOptions) as JsonObject : null) ?? [];
+        if (root[folder] is not JsonArray list)
+        {
+            root[folder] = list = [];
+        }
+
+        if (!list.OfType<JsonObject>().Any(o => SeriesKey((string?)o["Manufacturer"] ?? string.Empty, (string?)o["Series"] ?? string.Empty) == SeriesKey(manufacturer, series)))
+        {
+            list.Add(new JsonObject { ["Manufacturer"] = manufacturer, ["Series"] = series });
+        }
+
+        Directory.CreateDirectory(_paths.UserDirectory);
+        WriteAtomically(path, root.ToJsonString(s_writeOptions));
     }
 
     private string OwnSeriesPath<T>(Kind<T> kind, string manufacturer, string series)
@@ -448,6 +561,10 @@ public class JsonDataStore : IDataStore
         var seen = new HashSet<(string, string)>();
         shipped.AddRange(LoadEntries(kind, shippedLegacy, kind.LegacyFile, issues, own: false, seen));
         shipped.AddRange(LoadSeriesFolder(kind, shippedFolder, issues, own: false, seen));
+        if (_hidden.TryGetValue(kind.Folder, out HashSet<(string, string)>? hidden) && hidden.Count > 0)
+        {
+            shipped.RemoveAll(e => hidden.Contains(SeriesKey(e.Manufacturer, e.Series)));
+        }
 
         // Own: single-list files of earlier versions become series files.
         var ownSeen = new HashSet<(string, string)>();

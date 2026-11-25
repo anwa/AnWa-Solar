@@ -816,5 +816,14 @@
   "Datasheet language": "Sprache des Datenblatts",
   "The datasheet of the application language is shown and exported; a series keeps one German and one English datasheet": "Angezeigt und exportiert wird das Datenblatt in der Sprache der Anwendung; eine Serie hat ein deutsches und ein englisches Datenblatt",
   "inverters": "Wechselrichter",
-  "batteries": "Batterien"
+  "batteries": "Batterien",
+  "Hide this shipped series, for example to replace it by a corrected own series; the installation folder is not changed": "Diese mitgelieferte Serie ausblenden, zum Beispiel um sie durch eine korrigierte eigene Serie zu ersetzen; der Installationsordner wird nicht geändert",
+  "Hide the shipped series {0} {1} with its {2} power classes? It no longer appears in the selection; projects keep their copied values. Restore shipped series shows it again.": "Die mitgelieferte Serie {0} {1} mit ihren {2} Leistungsklassen ausblenden? Sie erscheint nicht mehr in der Auswahl; Projekte behalten ihre kopierten Werte. „Mitgelieferte Serien wiederherstellen“ zeigt sie wieder.",
+  "Hide": "Ausblenden",
+  "Restore": "Wiederherstellen",
+  "Show the {0} hidden shipped series again?": "Die {0} ausgeblendeten mitgelieferten Serien wieder anzeigen?",
+  "The hidden series could not be restored.\n\n{0}": "Die ausgeblendeten Serien konnten nicht wiederhergestellt werden.\n\n{0}",
+  "Show the hidden shipped series again": "Die ausgeblendeten mitgelieferten Serien wieder anzeigen",
+  "Restore shipped series": "Mitgelieferte Serien wiederherstellen",
+  "File cannot be read ({0}); no shipped series is hidden.": "Datei nicht lesbar ({0}); keine mitgelieferte Serie wird ausgeblendet."
 }
