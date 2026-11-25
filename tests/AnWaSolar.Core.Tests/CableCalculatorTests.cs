@@ -35,7 +35,7 @@ public sealed class CableCalculatorTests
     {
         Assert.NotNull(s_tables);
         Assert.True(s_tables.Confirmed);
-        Assert.False(s_tables.BatteryCable.Confirmed); // the battery cable values still need the user's check
+        Assert.True(s_tables.BatteryCable.Confirmed);
         Assert.Equal(56, s_tables.CopperConductivity);
         Assert.Equal(["A1", "B1", "B2", "C", "E"], s_tables.AcMethods);
     }
@@ -215,7 +215,14 @@ public sealed class CableCalculatorTests
         Assert.DoesNotContain(CableTexts.Unconfirmed, ReportBuilder.Build(result, Parameters(), new DateTime(2026, 11, 25), cables, s_tables), StringComparison.Ordinal);
     }
 
-    private static CableCalculationResult BatteryCables(CableSettings settings, int parallel)
+    private static CableTables UnconfirmedBatteryTables()
+    {
+        CableTables tables = CableTables.Load(Path.Combine(AppContext.BaseDirectory, "Data", CableTables.FileName), out _)!;
+        tables.BatteryCable.Confirmed = false;
+        return tables;
+    }
+
+    private static CableCalculationResult BatteryCables(CableSettings settings, int parallel, CableTables? tables = null)
     {
         Inverter inverter = Deye18K();
         inverter.BatteryVoltageRangeV = "40-60";
@@ -237,7 +244,7 @@ public sealed class CableCalculatorTests
         };
         StringCalculationResult strings = StringCalculator.Calculate(inverter, [Aiko(1, 11), Aiko(2, 11)], Parameters());
         BatteryCalculationResult battery = BatteryCalculator.Calculate(inverter, seF16, 1, parallel);
-        return CableCalculator.Calculate(strings, settings, s_tables, battery);
+        return CableCalculator.Calculate(strings, settings, tables ?? s_tables, battery);
     }
 
     [Fact]
@@ -280,7 +287,8 @@ public sealed class CableCalculatorTests
         Assert.Equal(150, main.CrossSectionMm2);
         double expected = (2 * 1 * 165 / (56.0 * 70) + 2 * 3 * 330 / (56.0 * 150)) / 51.2 * 100;
         Assert.Equal(expected, battery.TotalDropPct!.Value, 6);
-        Assert.Equal(ResultState.Warning, cables.State); // the battery cable values are not confirmed yet
+        Assert.Equal(ResultState.Ok, cables.State);
+        Assert.Equal(ResultState.Warning, BatteryCables(settings, 2, UnconfirmedBatteryTables()).State); // unconfirmed values
     }
 
     [Fact]
@@ -304,11 +312,13 @@ public sealed class CableCalculatorTests
     {
         CableSettings settings = Settings();
         settings.BatteryCableLengthM = 2;
-        CableCalculationResult cables = BatteryCables(settings, 2);
+        CableTables unconfirmed = UnconfirmedBatteryTables();
+        CableCalculationResult cables = BatteryCables(settings, 2, unconfirmed);
         StringCalculationResult strings = StringCalculator.Calculate(Deye18K(), [Aiko(1, 11), Aiko(2, 11)], Parameters());
 
         CableView view = ResultPresenter.Present(strings, cables, settings).Cables!;
-        string report = ReportBuilder.Build(strings, Parameters(), new DateTime(2026, 11, 25), cables, s_tables);
+        string report = ReportBuilder.Build(strings, Parameters(), new DateTime(2026, 11, 25), cables, unconfirmed);
+        Assert.DoesNotContain(ResultPresenter.Present(strings, BatteryCables(settings, 2), settings).Cables!.Notes, n => n.Text == CableTexts.BatteryUnconfirmed);
 
         Assert.Contains(view.Rows, r => r.Quantity == "Battery cables to the inverter (2 ×)" && r.Value.StartsWith("70 mm²", StringComparison.Ordinal));
         Assert.Contains(view.Notes, n => n.Text == CableTexts.BatteryUnconfirmed);

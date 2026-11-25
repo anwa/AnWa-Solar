@@ -45,8 +45,8 @@
     "Circuit breaker ratings (A)": [ 6, 10, 13, 16, 20, 25, 32, 40, 50, 63 ]
   },
   "BatteryCable": {
-    "Confirmed": false,
-    "Note": "Common standard values, entered by the agent on 2026-11-25 at the user's request. Set Confirmed to true after checking every value of this section.",
+    "Confirmed": true,
+    "Note": "Common standard values, entered by the agent on 2026-11-25 at the user's request and checked by the user on 2026-11-25. A changed value needs the user's check again; set Confirmed to false until then.",
     "Source": "IEC 60364-5-52:2009, Table B.52.12, method F (single-core cables touching in free air), PVC, copper, ambient 30 °C, conductor 70 °C, two loaded conductors (= DIN VDE 0298-4, Table 11); ambient factors as for the AC cable; fuse ratings IEC 60269-1; voltage drop design recommendation",
     "Cross-sections (mm2)": [ 25, 35, 50, 70, 95, 120, 150 ],
     "Ampacity (A)": [ 131, 162, 196, 251, 304, 352, 406 ],
