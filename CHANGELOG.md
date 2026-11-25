@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.16.0)
+## v0.16.0 (2026-11-25)
 
 - New: Cables and fuses. A configuration card with a settings dialog takes the cable lengths and installation conditions; a result card and a report section size the string cables per MPPT (design current 1.25 × Isc, voltage drop at the MPP), decide on string fuses after IEC 62548 (needed when (Np − 1) × 1.25 × Isc exceeds the module's max. series fuse rating, rated 1.5–2.4 × Isc), and size the AC circuit breaker and line from the max. AC current.
 - New: Standard tables in `Data/CableTables.json` with their sources: current-carrying capacities of solar cables (EN 50618) and of PVC copper cables (IEC 60364-5-52 / DIN VDE 0298-4), temperature and grouping factors, copper conductivity, standard fuse and breaker ratings, voltage drop limits (DC 1 %, AC 3 %). They are common values that the user still has to confirm; until then the card and the report say so.
