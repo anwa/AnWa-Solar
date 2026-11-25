@@ -93,6 +93,10 @@ public class Inverter : IMasterDataEntry
     [JsonIgnore]
     public bool IsUserEntry { get; set; }
 
+    /// <inheritdoc />
+    [JsonIgnore]
+    public string Series { get; set; } = string.Empty;
+
     [JsonIgnore]
     public string DisplayName => $"{Manufacturer} {Model} (MPPT {MpptVoltageRangeV} V)";
 }

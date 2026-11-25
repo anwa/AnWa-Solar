@@ -2,7 +2,7 @@
 
 ## "Some master data could not be loaded"
 
-After the start a message lists entries of `Modules.json` or `Inverters.json` that were skipped, with the reason. Correct the entry as described in [Master Data](master-data.md#checks-when-loading). The remaining entries are available.
+After the start a message lists master data entries that were skipped, with their series file and the reason. Correct the entry as described in [Master Data](master-data.md#checks-when-loading). The remaining entries are available.
 
 ## The last inverter or module is missing
 

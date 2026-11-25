@@ -1,0 +1,20 @@
+{
+  "Manufacturer": "Trina",
+  "Series": "TSM-NEG9R.25",
+  "Variants": [
+    {
+      "Model": "TSM-450-NEG9R.25",
+      "Pmax (W)": 450,
+      "Vmpp (V)": 44.6,
+      "Impp (A)": 10.09,
+      "Voc (V)": 52.9,
+      "Isc (A)": 10.74,
+      "Module efficiency (%)": 22.5,
+      "Temperature coefficient of Pmax (%/°C)": -0.29,
+      "Temperature coefficient of Voc (%/°C)": -0.24,
+      "Temperature coefficient of Isc (%/°C)": 0.04,
+      "Operating temperature min (°C)": -40,
+      "Operating temperature max (°C)": 85
+    }
+  ]
+}

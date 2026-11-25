@@ -48,10 +48,32 @@ public sealed class JsonDataStoreTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Data", Calculation.CableTables.FileName), Path.Combine(_directory, Calculation.CableTables.FileName));
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Data", JsonDataStore.BatteryFileName), Path.Combine(_directory, JsonDataStore.BatteryFileName));
+        CopyFolder(Path.Combine(AppContext.BaseDirectory, "Data", "Batteries"), Path.Combine(_directory, "Batteries"));
     }
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
+
+    private static void CopyFolder(string source, string target)
+    {
+        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            string to = Path.Combine(target, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(file, to);
+        }
+    }
+
+    private static Models.ComponentSeries<T> Series<T>(string manufacturer, string series, params T[] variants)
+        where T : class, Models.IMasterDataEntry => new() { Manufacturer = manufacturer, Series = series, Variants = [.. variants] };
+
+    private static Models.Inverter Deye(string model, double startVoltage = 160)
+    {
+        Dictionary<string, string?> values = DatasheetEntryBuilderTests.Deye18K();
+        values[Datasheets.DatasheetFields.Model] = model;
+        values[Datasheets.DatasheetFields.StartVoltageV] = startVoltage.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(values, out Models.Inverter? inverter));
+        return inverter!;
+    }
 
     private JsonDataStore Load(string? inverters, string? modules)
     {
@@ -200,55 +222,130 @@ public sealed class JsonDataStoreTests : IDisposable
     }
 
     [Fact]
-    public void Saving_writes_the_own_file_and_copies_the_datasheet()
+    public void Saving_a_series_writes_one_file_with_the_datasheet_next_to_it()
     {
         JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
         string shipped = File.ReadAllText(Path.Combine(_directory, JsonDataStore.ModuleFileName));
         string pdf = Path.Combine(_directory, "trina.pdf");
         File.WriteAllText(pdf, "%PDF-1.7 test");
-        Dictionary<string, string?> values = DatasheetEntryBuilderTests.Trina445();
-        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildModule(values, out Models.PVModule? module));
+        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildModule(DatasheetEntryBuilderTests.Trina445(), out Models.PVModule? module));
 
-        Models.PVModule saved = store.SaveModule(module!, pdf);
+        Models.PVModule saved = Assert.Single(store.SaveSeries(Series("Trina", "TSM-NEG9R.28", module!), pdf));
 
+        string folder = Path.Combine(UserDirectory, "Modules", "Trina");
         Assert.True(saved.IsUserEntry);
-        Assert.Equal("Datasheets/Trina TSM-445-NEG9R.28.pdf", saved.DatasheetFile);
+        Assert.Equal("TSM-NEG9R.28", saved.Series);
+        Assert.Equal("Modules/Trina/TSM-NEG9R.28.pdf", saved.DatasheetFile);
         Assert.Equal(2, store.Modules.Count);
         Assert.Equal(File.ReadAllText(pdf), File.ReadAllText(store.GetDatasheetPath(saved)!));
         Assert.Equal(shipped, File.ReadAllText(Path.Combine(_directory, JsonDataStore.ModuleFileName)));
-        string own = File.ReadAllText(Path.Combine(UserDirectory, JsonDataStore.ModuleFileName));
+        string own = File.ReadAllText(Path.Combine(folder, "TSM-NEG9R.28.json"));
+        Assert.Contains("\"Series\": \"TSM-NEG9R.28\"", own, StringComparison.Ordinal);
+        Assert.Contains("\"Datasheet file\": \"TSM-NEG9R.28.pdf\"", own, StringComparison.Ordinal);
         Assert.Contains("\"Temperature coefficient of Voc (%/°C)\": -0.24", own, StringComparison.Ordinal);
         Assert.DoesNotContain("Vmpp (%/°C)", own, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Saving_again_replaces_the_own_entry()
+    public void Saving_again_replaces_the_series_and_keeps_its_datasheet()
     {
         JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
-        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(DatasheetEntryBuilderTests.Deye18K(), out Models.Inverter? first));
-        store.SaveInverter(first!, datasheetSourcePath: null);
-        Dictionary<string, string?> changed = DatasheetEntryBuilderTests.Deye18K();
-        changed[Datasheets.DatasheetFields.StartVoltageV] = "170";
-        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(changed, out Models.Inverter? second));
+        string pdf = Path.Combine(_directory, "deye.pdf");
+        File.WriteAllText(pdf, "%PDF-1.7 test");
+        store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2")), pdf);
 
-        Models.Inverter saved = store.SaveInverter(second!, datasheetSourcePath: null);
+        IReadOnlyList<Models.Inverter> saved = store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2",
+            Deye("SUN-18K-SG05LP3-EU-SM2", 170), Deye("SUN-20K-SG05LP3-EU-SM2")), datasheetSourcePath: null);
 
-        Assert.Equal(170, saved.StartVoltageV);
-        Assert.Equal(170, Assert.Single(store.Inverters).StartVoltageV);
-        Assert.Null(store.GetDatasheetPath(saved));
+        Assert.Equal(2, saved.Count);
+        Assert.Equal(2, store.Inverters.Count); // the own SUN-18K replaces the shipped one
+        Assert.Equal(170, store.Inverters.Single(i => i.Model == "SUN-18K-SG05LP3-EU-SM2").StartVoltageV);
+        Assert.All(saved, i => Assert.NotNull(store.GetDatasheetPath(i)));
     }
 
     [Fact]
-    public void Unreadable_own_file_is_not_overwritten()
+    public void Invalid_series_is_not_saved()
     {
-        Directory.CreateDirectory(UserDirectory);
-        string ownPath = Path.Combine(UserDirectory, JsonDataStore.InverterFileName);
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+        Models.Inverter invalid = Deye("SUN-20K-SG05LP3-EU-SM2");
+        invalid.MpptCount = 0;
+
+        Assert.Throws<ArgumentException>(() => store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2"), invalid), null));
+        Assert.Throws<ArgumentException>(() => store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2"), Deye("SUN-18K-SG05LP3-EU-SM2")), null));
+        Assert.Throws<ArgumentException>(() => store.SaveSeries(Series("Deye", " ", Deye("SUN-18K-SG05LP3-EU-SM2")), null));
+        Assert.False(Directory.Exists(Path.Combine(UserDirectory, "Inverters")));
+    }
+
+    [Fact]
+    public void Unreadable_own_series_file_is_not_overwritten()
+    {
+        string ownPath = Path.Combine(UserDirectory, "Inverters", "Deye", "SUN-SG05LP3-EU-SM2.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(ownPath)!);
         File.WriteAllText(ownPath, "{ broken");
         JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
-        Assert.Empty(Datasheets.DatasheetEntryBuilder.TryBuildInverter(DatasheetEntryBuilderTests.Deye18K(), out Models.Inverter? inverter));
 
-        Assert.Throws<IOException>(() => store.SaveInverter(inverter!, datasheetSourcePath: null));
+        Assert.Contains(store.Issues, i => i.FileName == "Inverters/Deye/SUN-SG05LP3-EU-SM2.json (own data)");
+        Assert.Throws<IOException>(() => store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2")), null));
         Assert.Equal("{ broken", File.ReadAllText(ownPath));
+    }
+
+    [Fact]
+    public void Own_single_list_file_is_converted_into_series_files()
+    {
+        Directory.CreateDirectory(Path.Combine(UserDirectory, JsonDataStore.DatasheetFolder));
+        File.WriteAllText(Path.Combine(UserDirectory, JsonDataStore.DatasheetFolder, "Deye SUN-14K.pdf"), "%PDF-1.7 deye");
+        string own = ValidInverter.Replace("SUN-18K", "SUN-14K", StringComparison.Ordinal)
+            .Replace("\"Max. strings per MPPT\": 2", "\"Max. strings per MPPT\": 2, \"Datasheet file\": \"Datasheets/Deye SUN-14K.pdf\"", StringComparison.Ordinal);
+        File.WriteAllText(Path.Combine(UserDirectory, JsonDataStore.InverterFileName), Inverters(own));
+
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+
+        Models.Inverter converted = store.Inverters.Single(i => i.IsUserEntry);
+        Assert.Equal("SUN-14K-SG05LP3-EU-SM2", converted.Series);
+        Assert.Equal("Inverters/Deye/SUN-14K-SG05LP3-EU-SM2.pdf", converted.DatasheetFile);
+        Assert.Equal("%PDF-1.7 deye", File.ReadAllText(store.GetDatasheetPath(converted)!));
+        Assert.True(File.Exists(Path.Combine(UserDirectory, JsonDataStore.InverterFileName + ".migrated")));
+        Assert.False(File.Exists(Path.Combine(UserDirectory, JsonDataStore.InverterFileName)));
+        Assert.Empty(store.Issues);
+    }
+
+    [Fact]
+    public void Saving_a_series_moves_its_models_out_of_other_own_series()
+    {
+        JsonDataStore store = Load(Inverters(ValidInverter), Modules(ValidModule));
+        store.SaveSeries(Series("Deye", "SUN-18K-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2")), null);
+
+        store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2"), Deye("SUN-20K-SG05LP3-EU-SM2")), null);
+
+        Assert.False(File.Exists(Path.Combine(UserDirectory, "Inverters", "Deye", "SUN-18K-SG05LP3-EU-SM2.json")));
+        Assert.All(store.Inverters, i => Assert.Equal("SUN-SG05LP3-EU-SM2", i.Series));
+        Assert.Empty(store.Issues);
+    }
+
+    [Fact]
+    public void Series_file_keeps_its_valid_variants_and_an_own_series_replaces_the_shipped_one()
+    {
+        string shipped = Path.Combine(_directory, "Inverters", "Deye", "SUN-SG05LP3-EU-SM2.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(shipped)!);
+        File.WriteAllText(shipped, $$"""
+            { "Manufacturer": "Deye", "Series": "SUN-SG05LP3-EU-SM2", "Variants": [
+              {{ValidInverter}},
+              {{ValidInverter.Replace("SUN-18K", "SUN-20K", StringComparison.Ordinal).Replace("\"MPPT count\": 2", "\"MPPT count\": 0", StringComparison.Ordinal)}},
+              {{ValidInverter.Replace("SUN-18K", "SUN-15K", StringComparison.Ordinal)}} ] }
+            """);
+        File.Delete(Path.Combine(_directory, JsonDataStore.InverterFileName));
+        var store = new JsonDataStore(NullLogger<JsonDataStore>.Instance, new JsonSerializerOptions(), new TestPaths(_directory));
+        File.WriteAllText(Path.Combine(_directory, JsonDataStore.ModuleFileName), Modules(ValidModule));
+        store.Load();
+
+        Assert.Equal(["SUN-18K-SG05LP3-EU-SM2", "SUN-15K-SG05LP3-EU-SM2"], store.Inverters.Select(i => i.Model));
+        DataLoadIssue issue = Assert.Single(store.Issues);
+        Assert.Equal("Inverters/Deye/SUN-SG05LP3-EU-SM2.json", issue.FileName);
+        Assert.Contains("SUN-20K", issue.Entry, StringComparison.Ordinal);
+
+        store.SaveSeries(Series("Deye", "SUN-SG05LP3-EU-SM2", Deye("SUN-18K-SG05LP3-EU-SM2", 170)), null);
+
+        Assert.Equal(170, Assert.Single(store.Inverters).StartVoltageV); // the shipped SUN-15K belongs to the replaced series
     }
 
     [Fact]

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace AnWaSolar.Core.Services;
 
 /// <summary>A master data file or entry that could not be used.</summary>
-/// <param name="FileName">Name of the master data file.</param>
+/// <param name="FileName">Name of the master data file, for a series file its path below the data folder.</param>
 /// <param name="Entry">Position of the entry (1-based) and, when readable, its manufacturer and model; null for the whole file.</param>
 /// <param name="Message">Reason, as shown to the user.</param>
 public sealed record DataLoadIssue(string FileName, string? Entry, string Message)
@@ -38,17 +38,14 @@ public interface IDataStore
     string? GetDatasheetPath(IMasterDataEntry entry);
 
     /// <summary>
-    /// Saves a module into the own master data, replacing an own entry with the same manufacturer and model, copies
-    /// the datasheet (when given) into the user data folder and reloads the master data. Returns the loaded entry.
+    /// Saves a series into the own master data (<c>Data\&lt;Kind&gt;\&lt;Manufacturer&gt;\&lt;Series&gt;.json</c>), replacing an
+    /// own series with the same manufacturer and name; its models are removed from other own series. The datasheet
+    /// (when given) is copied next to the series file. The master data is reloaded; returns the loaded variants.
     /// </summary>
+    /// <exception cref="ArgumentException">The series or one of its variants is invalid.</exception>
     /// <exception cref="IOException">The own master data or the datasheet cannot be written.</exception>
-    PVModule SaveModule(PVModule module, string? datasheetSourcePath);
-
-    /// <inheritdoc cref="SaveModule"/>
-    Inverter SaveInverter(Inverter inverter, string? datasheetSourcePath);
-
-    /// <inheritdoc cref="SaveModule"/>
-    Battery SaveBattery(Battery battery, string? datasheetSourcePath);
+    IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath)
+        where T : class, IMasterDataEntry;
 }
 
 public interface IDataPathProvider
@@ -77,10 +74,13 @@ public class DataPathProvider : IDataPathProvider
 }
 
 /// <summary>
-/// Loads the shipped master data and the own master data from the user data folder. Every entry is read and validated
-/// on its own, so one invalid entry does not discard the whole file; skipped entries and unreadable files are reported
-/// in <see cref="Issues"/>. An own entry replaces a shipped entry with the same manufacturer and model. The shipped
-/// files are never written.
+/// Loads the shipped master data and the own master data from the user data folder. The master data is organised in
+/// series: one JSON file per series in <c>Data\Modules</c>, <c>Data\Inverters</c> and <c>Data\Batteries</c>, below a
+/// folder per manufacturer; each variant (power class) is one entry. Single-list files of earlier versions
+/// (<c>Modules.json</c> and so on) are still read; the own ones are converted into series files once. Every entry is
+/// read and validated on its own, so one invalid entry does not discard a file; skipped entries and unreadable files
+/// are reported in <see cref="Issues"/>. An own series replaces a shipped series with the same manufacturer and name,
+/// and an own entry a shipped entry with the same manufacturer and model. The shipped files are never written.
 /// </summary>
 public class JsonDataStore : IDataStore
 {
@@ -97,6 +97,8 @@ public class JsonDataStore : IDataStore
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };
+
+    private static readonly JsonDocumentOptions s_documentOptions = new() { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip };
 
     private readonly ILogger<JsonDataStore> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -124,18 +126,26 @@ public class JsonDataStore : IDataStore
 
     public CableTables? CableTables { get; private set; }
 
+    // A kind of master data: its folder of series files, its single-list file of earlier versions and its validation.
+    private sealed record Kind<T>(string Folder, string LegacyFile, string ArrayProperty, Func<T, string?> Validate)
+        where T : class, IMasterDataEntry;
+
+    private static readonly Kind<PVModule> s_modules = new("Modules", ModuleFileName, "Modules", ValidateModule);
+    private static readonly Kind<Inverter> s_inverters = new("Inverters", InverterFileName, "Inverters", ValidateInverter);
+    private static readonly Kind<Battery> s_batteries = new("Batteries", BatteryFileName, "Batteries", ValidateBattery);
+
+    private static Kind<T> KindOf<T>()
+        where T : class, IMasterDataEntry =>
+        (typeof(T) == typeof(PVModule) ? s_modules as Kind<T>
+            : typeof(T) == typeof(Inverter) ? s_inverters as Kind<T>
+            : s_batteries as Kind<T>) ?? throw new NotSupportedException($"No master data kind for {typeof(T).Name}.");
+
     public void Load()
     {
         var issues = new List<DataLoadIssue>();
-        _modules = Merge(
-            LoadEntries<PVModule>(_paths.GetFilePath(ModuleFileName), ModuleFileName, "Modules", ValidateModule, issues, own: false),
-            LoadEntries<PVModule>(UserFilePath(ModuleFileName), ModuleFileName + OwnSuffix, "Modules", ValidateModule, issues, own: true));
-        _inverters = Merge(
-            LoadEntries<Inverter>(_paths.GetFilePath(InverterFileName), InverterFileName, "Inverters", ValidateInverter, issues, own: false),
-            LoadEntries<Inverter>(UserFilePath(InverterFileName), InverterFileName + OwnSuffix, "Inverters", ValidateInverter, issues, own: true));
-        _batteries = Merge(
-            LoadEntries<Battery>(_paths.GetFilePath(BatteryFileName), BatteryFileName, "Batteries", ValidateBattery, issues, own: false),
-            LoadEntries<Battery>(UserFilePath(BatteryFileName), BatteryFileName + OwnSuffix, "Batteries", ValidateBattery, issues, own: true));
+        _modules = LoadKind(s_modules, issues);
+        _inverters = LoadKind(s_inverters, issues);
+        _batteries = LoadKind(s_batteries, issues);
         CableTables = CableTables.Load(_paths.GetFilePath(CableTables.FileName), out string? tableError);
         if (tableError is not null)
         {
@@ -166,62 +176,128 @@ public class JsonDataStore : IDataStore
         return path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
     }
 
-    public PVModule SaveModule(PVModule module, string? datasheetSourcePath)
+    public IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath)
+        where T : class, IMasterDataEntry
     {
-        ArgumentNullException.ThrowIfNull(module);
-        if (ValidateModule(module) is { } error)
+        ArgumentNullException.ThrowIfNull(series);
+        Kind<T> kind = KindOf<T>();
+        series.Manufacturer = series.Manufacturer.Trim();
+        series.Series = series.Series.Trim();
+        if (series.Manufacturer.Length == 0 || series.Series.Length == 0)
         {
-            throw new ArgumentException($"The module is invalid: {error}", nameof(module));
+            throw new ArgumentException("Manufacturer and series are required.", nameof(series));
         }
 
-        Save(module, datasheetSourcePath, ModuleFileName, "Modules");
-        return _modules.First(m => m.IsUserEntry && SameKey(m, module));
-    }
-
-    public Inverter SaveInverter(Inverter inverter, string? datasheetSourcePath)
-    {
-        ArgumentNullException.ThrowIfNull(inverter);
-        if (ValidateInverter(inverter) is { } error)
+        if (series.Variants.Count == 0)
         {
-            throw new ArgumentException($"The inverter is invalid: {error}", nameof(inverter));
+            throw new ArgumentException("The series has no power class.", nameof(series));
         }
 
-        Save(inverter, datasheetSourcePath, InverterFileName, "Inverters");
-        return _inverters.First(i => i.IsUserEntry && SameKey(i, inverter));
-    }
-
-    public Battery SaveBattery(Battery battery, string? datasheetSourcePath)
-    {
-        ArgumentNullException.ThrowIfNull(battery);
-        if (ValidateBattery(battery) is { } error)
+        var errors = new List<string>();
+        foreach (T variant in series.Variants)
         {
-            throw new ArgumentException($"The battery is invalid: {error}", nameof(battery));
+            variant.Manufacturer = series.Manufacturer;
+            if (kind.Validate(variant) is { } error)
+            {
+                errors.Add($"{variant.Model}: {error}");
+            }
         }
 
-        Save(battery, datasheetSourcePath, BatteryFileName, "Batteries");
-        return _batteries.First(b => b.IsUserEntry && SameKey(b, battery));
+        if (series.Variants.GroupBy(v => v.Model.Trim(), StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
+        {
+            errors.Add($"The model {duplicate.Key} appears twice.");
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ArgumentException("The series is invalid: " + string.Join(" ", errors), nameof(series));
+        }
+
+        string folder = Path.Combine(_paths.UserDirectory, kind.Folder, FileNameOf(series.Manufacturer));
+        string path = Path.Combine(folder, FileNameOf(series.Series) + ".json");
+
+        // Read an existing file first, so that nothing is changed when it cannot be replaced.
+        string? previousDatasheet = null;
+        if (File.Exists(path))
+        {
+            try
+            {
+                using JsonDocument existing = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
+                previousDatasheet = existing.RootElement.TryGetProperty("Datasheet file", out JsonElement sheet) && sheet.ValueKind == JsonValueKind.String ? sheet.GetString() : null;
+            }
+            catch (JsonException ex)
+            {
+                throw new IOException($"The own series file {path} cannot be read ({ex.Message}). Correct or remove it first.", ex);
+            }
+        }
+
+        RemoveModelsFromOtherSeries(kind, series, path);
+
+        Directory.CreateDirectory(folder);
+        series.DatasheetFile = datasheetSourcePath is null ? previousDatasheet : CopyDatasheet(datasheetSourcePath, Path.Combine(folder, FileNameOf(series.Series) + ".pdf"));
+        WriteSeries(path, series);
+        _logger.LogInformation("Own series saved: {Manufacturer} {Series} with {Count} variants in {Path}, datasheet {Datasheet}.",
+            series.Manufacturer, series.Series, series.Variants.Count, path, series.DatasheetFile ?? "(none)");
+        Load();
+
+        HashSet<string> models = new(series.Variants.Select(v => v.Model), StringComparer.OrdinalIgnoreCase);
+        return [.. Entries(kind).Where(e => e.IsUserEntry && SameManufacturer(e.Manufacturer, series.Manufacturer) && models.Contains(e.Model))];
     }
 
     /// <summary>File name of a stored datasheet: manufacturer and model without characters Windows does not allow.</summary>
     public static string DatasheetFileName(IMasterDataEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        char[] invalid = Path.GetInvalidFileNameChars();
-        string name = new([.. $"{entry.Manufacturer} {entry.Model}".Select(c => invalid.Contains(c) ? '_' : c)]);
-        return name.Trim().TrimEnd('.') + ".pdf";
+        return FileNameOf($"{entry.Manufacturer} {entry.Model}") + ".pdf";
     }
 
-    private string UserFilePath(string fileName) => Path.Combine(_paths.UserDirectory, fileName);
+    /// <summary>A file or folder name without characters Windows does not allow.</summary>
+    public static string FileNameOf(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        char[] invalid = Path.GetInvalidFileNameChars();
+        string clean = new string([.. name.Select(c => invalid.Contains(c) ? '_' : c)]).Trim().TrimEnd('.');
+        return clean.Length == 0 ? "_" : clean;
+    }
+
+    private IReadOnlyList<T> Entries<T>(Kind<T> kind)
+        where T : class, IMasterDataEntry =>
+        (IReadOnlyList<T>)(object)(kind.Folder switch
+        {
+            "Modules" => _modules,
+            "Inverters" => _inverters,
+            _ => (object)_batteries,
+        });
+
+    private static bool SameManufacturer(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     private static bool SameKey(IMasterDataEntry a, IMasterDataEntry b) =>
-        string.Equals(a.Manufacturer, b.Manufacturer, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(a.Model, b.Model, StringComparison.OrdinalIgnoreCase);
+        SameManufacturer(a.Manufacturer, b.Manufacturer) && string.Equals(a.Model, b.Model, StringComparison.OrdinalIgnoreCase);
 
-    // Shipped entries in their order; an own entry replaces the shipped one with the same key, the others follow.
-    private static List<T> Merge<T>(List<T> shipped, List<T> own)
-        where T : IMasterDataEntry
+    private List<T> LoadKind<T>(Kind<T> kind, List<DataLoadIssue> issues)
+        where T : class, IMasterDataEntry
     {
-        var result = new List<T>(shipped);
+        // Shipped: the series folder and, from earlier versions, the single-list file.
+        string shippedFolder = _paths.GetFilePath(kind.Folder);
+        string shippedLegacy = _paths.GetFilePath(kind.LegacyFile);
+        var shipped = new List<T>();
+        if (!Directory.Exists(shippedFolder) && !File.Exists(shippedLegacy))
+        {
+            issues.Add(new DataLoadIssue(kind.LegacyFile, null, "File not found."));
+        }
+
+        var seen = new HashSet<(string, string)>();
+        shipped.AddRange(LoadEntries(kind, shippedLegacy, kind.LegacyFile, issues, own: false, seen));
+        shipped.AddRange(LoadSeriesFolder(kind, shippedFolder, issues, own: false, seen));
+
+        // Own: single-list files of earlier versions become series files.
+        var ownSeen = new HashSet<(string, string)>();
+        List<T> ownLegacy = MigrateOwnLegacy(kind, issues, ownSeen);
+        List<T> own = [.. ownLegacy, .. LoadSeriesFolder(kind, Path.Combine(_paths.UserDirectory, kind.Folder), issues, own: true, ownSeen)];
+
+        // An own series replaces the shipped series of the same name; an own entry the shipped entry of the same model.
+        HashSet<(string, string)> ownSeries = [.. own.Select(e => (e.Manufacturer.ToUpperInvariant(), e.Series.ToUpperInvariant()))];
+        var result = shipped.Where(s => !ownSeries.Contains((s.Manufacturer.ToUpperInvariant(), s.Series.ToUpperInvariant()))).ToList();
         foreach (T entry in own)
         {
             int index = result.FindIndex(s => SameKey(s, entry));
@@ -238,63 +314,153 @@ public class JsonDataStore : IDataStore
         return result;
     }
 
-    private void Save<T>(T entry, string? datasheetSourcePath, string fileName, string arrayProperty)
+    // Converts an own single-list file of an earlier version into series files (one series per datasheet, or per
+    // entry without datasheet) and keeps the old file as *.migrated. Returns the entries when the conversion failed.
+    private List<T> MigrateOwnLegacy<T>(Kind<T> kind, List<DataLoadIssue> issues, HashSet<(string, string)> seen)
         where T : class, IMasterDataEntry
     {
-        Directory.CreateDirectory(_paths.UserDirectory);
-        string jsonPath = UserFilePath(fileName);
-
-        // Read the own file first, so that nothing is copied when it cannot be updated.
-        JsonObject root;
-        if (File.Exists(jsonPath))
+        string legacy = Path.Combine(_paths.UserDirectory, kind.LegacyFile);
+        if (!File.Exists(legacy))
         {
-            try
+            return [];
+        }
+
+        var legacyIssues = new List<DataLoadIssue>();
+        List<T> entries = LoadEntries(kind, legacy, kind.LegacyFile + OwnSuffix, legacyIssues, own: true, new HashSet<(string, string)>(), keepDatasheet: true);
+        issues.AddRange(legacyIssues);
+        if (legacyIssues.Any(i => i.Entry is null))
+        {
+            // The file cannot be read as a whole; it stays for the user to correct.
+            return [.. entries.Where(e => seen.Add(Key(e)))];
+        }
+
+        try
+        {
+            foreach (IGrouping<string, T> group in entries.GroupBy(e => e.DatasheetFile ?? $"\u0000{e.Manufacturer}\u0000{e.Model}", StringComparer.OrdinalIgnoreCase))
             {
-                root = JsonNode.Parse(File.ReadAllText(jsonPath), documentOptions: new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }) as JsonObject
-                    ?? throw new InvalidDataException("The file does not contain a JSON object.");
+                T first = group.First();
+                var series = new ComponentSeries<T> { Manufacturer = first.Manufacturer, Series = first.Model, Variants = [.. group] };
+                string folder = Path.Combine(_paths.UserDirectory, kind.Folder, FileNameOf(series.Manufacturer));
+                Directory.CreateDirectory(folder);
+                string target = Path.Combine(folder, FileNameOf(series.Series) + ".json");
+                if (first.DatasheetFile is { } sheet && File.Exists(Path.Combine(_paths.UserDirectory, sheet)))
+                {
+                    series.DatasheetFile = CopyDatasheet(Path.Combine(_paths.UserDirectory, sheet), Path.Combine(folder, FileNameOf(series.Series) + ".pdf"));
+                }
+
+                if (!File.Exists(target))
+                {
+                    WriteSeries(target, series);
+                }
             }
-            catch (Exception ex) when (ex is JsonException or InvalidDataException)
-            {
-                throw new IOException($"The own master data file {jsonPath} cannot be read ({ex.Message}). Correct or remove it first.", ex);
-            }
+
+            File.Move(legacy, legacy + ".migrated", overwrite: true);
+            _logger.LogInformation("Own master data {File} converted into series files.", kind.LegacyFile);
+            return [];
         }
-        else
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            root = [];
+            _logger.LogError(ex, "Own master data {File} could not be converted into series files.", kind.LegacyFile);
+            issues.Add(new DataLoadIssue(kind.LegacyFile + OwnSuffix, null, $"Could not be converted into series files ({ex.Message}); the entries are used as they are."));
+            return [.. entries.Where(e => seen.Add(Key(e)))];
         }
-
-        if (root[arrayProperty] is not JsonArray array)
-        {
-            array = [];
-            root[arrayProperty] = array;
-        }
-
-        entry.DatasheetFile = datasheetSourcePath is null ? null : CopyDatasheet(entry, datasheetSourcePath);
-
-        for (int i = array.Count - 1; i >= 0; i--)
-        {
-            if (array[i] is JsonObject existing
-                && string.Equals((string?)existing["Manufacturer"], entry.Manufacturer, StringComparison.OrdinalIgnoreCase)
-                && string.Equals((string?)existing["Model"], entry.Model, StringComparison.OrdinalIgnoreCase))
-            {
-                array.RemoveAt(i);
-            }
-        }
-
-        array.Add(JsonSerializer.SerializeToNode(entry, s_writeOptions));
-        WriteAtomically(jsonPath, root.ToJsonString(s_writeOptions));
-        _logger.LogInformation("Own master data saved: {Manufacturer} {Model} in {Path}, datasheet {Datasheet}.",
-            entry.Manufacturer, entry.Model, jsonPath, entry.DatasheetFile ?? "(none)");
-        Load();
     }
 
-    // Copies the datasheet into the user data folder and returns its path relative to that folder.
-    private string CopyDatasheet(IMasterDataEntry entry, string sourcePath)
+    // Removes the models of a saved series from the other own series of the manufacturer, so that a model belongs
+    // to one series; a series without models is deleted with its datasheet.
+    private void RemoveModelsFromOtherSeries<T>(Kind<T> kind, ComponentSeries<T> saved, string savedPath)
+        where T : class, IMasterDataEntry
     {
-        string folder = Path.Combine(_paths.UserDirectory, DatasheetFolder);
-        Directory.CreateDirectory(folder);
-        string name = DatasheetFileName(entry);
-        string target = Path.Combine(folder, name);
+        string folder = Path.Combine(_paths.UserDirectory, kind.Folder);
+        if (!Directory.Exists(folder))
+        {
+            return;
+        }
+
+        HashSet<string> models = new(saved.Variants.Select(v => v.Model.Trim()), StringComparer.OrdinalIgnoreCase);
+        foreach (string file in Directory.EnumerateFiles(folder, "*.json", SearchOption.AllDirectories))
+        {
+            if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(savedPath), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            JsonObject? root;
+            try
+            {
+                root = JsonNode.Parse(File.ReadAllText(file), documentOptions: s_documentOptions) as JsonObject;
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            if (root is null || !SameManufacturer((string?)root["Manufacturer"] ?? string.Empty, saved.Manufacturer) || root["Variants"] is not JsonArray variants)
+            {
+                continue;
+            }
+
+            int before = variants.Count;
+            for (int i = variants.Count - 1; i >= 0; i--)
+            {
+                if (variants[i] is JsonObject v && (string?)v["Model"] is { } model && models.Contains(model.Trim()))
+                {
+                    variants.RemoveAt(i);
+                }
+            }
+
+            if (variants.Count == before)
+            {
+                continue;
+            }
+
+            if (variants.Count == 0)
+            {
+                File.Delete(file);
+                if ((string?)root["Datasheet file"] is { } sheet && Path.Combine(Path.GetDirectoryName(file)!, sheet) is var pdf && File.Exists(pdf))
+                {
+                    File.Delete(pdf);
+                }
+
+                _logger.LogInformation("Own series {Path} removed; its models moved to {Series}.", file, saved.Series);
+            }
+            else
+            {
+                WriteAtomically(file, root.ToJsonString(s_writeOptions));
+            }
+        }
+    }
+
+    private static void WriteSeries<T>(string path, ComponentSeries<T> series)
+        where T : class, IMasterDataEntry
+    {
+        var variants = new JsonArray();
+        foreach (T variant in series.Variants)
+        {
+            // Manufacturer and datasheet belong to the series.
+            JsonObject node = JsonSerializer.SerializeToNode(variant, s_writeOptions)!.AsObject();
+            node.Remove("Manufacturer");
+            node.Remove("Datasheet file");
+            variants.Add(node);
+        }
+
+        var root = new JsonObject
+        {
+            ["Manufacturer"] = series.Manufacturer,
+            ["Series"] = series.Series,
+        };
+        if (series.DatasheetFile is not null)
+        {
+            root["Datasheet file"] = series.DatasheetFile;
+        }
+
+        root["Variants"] = variants;
+        WriteAtomically(path, root.ToJsonString(s_writeOptions));
+    }
+
+    // Copies a datasheet to the target (unless it is the target) and returns its file name.
+    private static string CopyDatasheet(string sourcePath, string target)
+    {
         if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
         {
             string temp = target + ".tmp";
@@ -302,7 +468,7 @@ public class JsonDataStore : IDataStore
             File.Move(temp, target, overwrite: true);
         }
 
-        return DatasheetFolder + "/" + name;
+        return Path.GetFileName(target);
     }
 
     private static void WriteAtomically(string path, string content)
@@ -312,31 +478,111 @@ public class JsonDataStore : IDataStore
         File.Move(temp, path, overwrite: true);
     }
 
-    private List<T> LoadEntries<T>(
-        string path,
-        string fileName,
-        string arrayProperty,
-        Func<T, string?> validate,
-        List<DataLoadIssue> issues,
-        bool own)
+    private static (string, string) Key(IMasterDataEntry e) => (e.Manufacturer.ToUpperInvariant(), e.Model.ToUpperInvariant());
+
+    // Series files below a folder; each variant is validated on its own.
+    private List<T> LoadSeriesFolder<T>(Kind<T> kind, string folder, List<DataLoadIssue> issues, bool own, HashSet<(string, string)> seen)
+        where T : class, IMasterDataEntry
+    {
+        var result = new List<T>();
+        if (!Directory.Exists(folder))
+        {
+            return result;
+        }
+
+        foreach (string file in Directory.EnumerateFiles(folder, "*.json", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase))
+        {
+            string name = Path.Combine(kind.Folder, Path.GetRelativePath(folder, file)).Replace('\\', '/') + (own ? OwnSuffix : string.Empty);
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(File.ReadAllText(file), s_documentOptions);
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                _logger.LogError(ex, "Error reading {Path}.", file);
+                issues.Add(new DataLoadIssue(name, null, $"File cannot be read ({ex.Message})."));
+                continue;
+            }
+
+            using (document)
+            {
+                JsonElement root = document.RootElement;
+                string? manufacturer = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("Manufacturer", out JsonElement m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null;
+                string? seriesName = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("Series", out JsonElement s) && s.ValueKind == JsonValueKind.String ? s.GetString() : null;
+                if (string.IsNullOrWhiteSpace(manufacturer) || string.IsNullOrWhiteSpace(seriesName)
+                    || !root.TryGetProperty("Variants", out JsonElement variants) || variants.ValueKind != JsonValueKind.Array)
+                {
+                    issues.Add(new DataLoadIssue(name, null, "Manufacturer, series or the list \"Variants\" is missing."));
+                    continue;
+                }
+
+                string? datasheet = null;
+                if (own && root.TryGetProperty("Datasheet file", out JsonElement sheet) && sheet.ValueKind == JsonValueKind.String)
+                {
+                    datasheet = Path.GetRelativePath(_paths.UserDirectory, Path.Combine(Path.GetDirectoryName(file)!, sheet.GetString()!)).Replace('\\', '/');
+                }
+
+                int index = 0;
+                foreach (JsonElement element in variants.EnumerateArray())
+                {
+                    index++;
+                    string entry = DescribeEntry(element, index, manufacturer);
+                    T? item;
+                    try
+                    {
+                        item = element.Deserialize<T>(_jsonOptions);
+                    }
+                    catch (JsonException ex)
+                    {
+                        issues.Add(new DataLoadIssue(name, entry, $"Entry skipped: invalid value ({ex.Path?.TrimStart('$', '.')})."));
+                        continue;
+                    }
+
+                    if (item is null)
+                    {
+                        issues.Add(new DataLoadIssue(name, entry, "Entry skipped: not an object."));
+                        continue;
+                    }
+
+                    item.Manufacturer = manufacturer;
+                    item.Series = seriesName;
+                    item.DatasheetFile = datasheet;
+                    item.IsUserEntry = own;
+                    if (kind.Validate(item) is { } error)
+                    {
+                        issues.Add(new DataLoadIssue(name, entry, $"Entry skipped: {error}"));
+                        continue;
+                    }
+
+                    if (!seen.Add(Key(item)))
+                    {
+                        issues.Add(new DataLoadIssue(name, entry, "Entry skipped: duplicate manufacturer and model."));
+                        continue;
+                    }
+
+                    result.Add(item);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // A single-list file of an earlier version; its entries form a series of their own each.
+    private List<T> LoadEntries<T>(Kind<T> kind, string path, string fileName, List<DataLoadIssue> issues, bool own, HashSet<(string, string)> seen, bool keepDatasheet = false)
         where T : class, IMasterDataEntry
     {
         var result = new List<T>();
         if (!File.Exists(path))
         {
-            // The own master data is optional.
-            if (!own)
-            {
-                issues.Add(new DataLoadIssue(fileName, null, "File not found."));
-            }
-
             return result;
         }
 
         JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            document = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -348,19 +594,18 @@ public class JsonDataStore : IDataStore
         using (document)
         {
             if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty(arrayProperty, out JsonElement array)
+                || !document.RootElement.TryGetProperty(kind.ArrayProperty, out JsonElement array)
                 || array.ValueKind != JsonValueKind.Array)
             {
-                issues.Add(new DataLoadIssue(fileName, null, $"List \"{arrayProperty}\" is missing."));
+                issues.Add(new DataLoadIssue(fileName, null, $"List \"{kind.ArrayProperty}\" is missing."));
                 return result;
             }
 
-            var seen = new HashSet<(string, string)>();
             int index = 0;
             foreach (JsonElement element in array.EnumerateArray())
             {
                 index++;
-                string entry = DescribeEntry(element, index);
+                string entry = DescribeEntry(element, index, null);
                 T? item;
                 try
                 {
@@ -378,23 +623,24 @@ public class JsonDataStore : IDataStore
                     continue;
                 }
 
-                if (validate(item) is { } error)
+                if (kind.Validate(item) is { } error)
                 {
                     issues.Add(new DataLoadIssue(fileName, entry, $"Entry skipped: {error}"));
                     continue;
                 }
 
-                if (!seen.Add((item.Manufacturer.ToUpperInvariant(), item.Model.ToUpperInvariant())))
+                if (!seen.Add(Key(item)))
                 {
                     issues.Add(new DataLoadIssue(fileName, entry, "Entry skipped: duplicate manufacturer and model."));
                     continue;
                 }
 
                 item.IsUserEntry = own;
-                if (!own)
+                item.Series = item.Model;
+                if (!own || !keepDatasheet)
                 {
-                    // Datasheets belong to the own master data only.
-                    item.DatasheetFile = null;
+                    // Datasheets of single-list files are only kept for the conversion into series files.
+                    item.DatasheetFile = own ? item.DatasheetFile : null;
                 }
 
                 result.Add(item);
@@ -404,13 +650,13 @@ public class JsonDataStore : IDataStore
         return result;
     }
 
-    private static string DescribeEntry(JsonElement element, int index)
+    private static string DescribeEntry(JsonElement element, int index, string? manufacturer)
     {
         if (element.ValueKind == JsonValueKind.Object
-            && element.TryGetProperty("Manufacturer", out JsonElement manufacturer) && manufacturer.ValueKind == JsonValueKind.String
             && element.TryGetProperty("Model", out JsonElement model) && model.ValueKind == JsonValueKind.String)
         {
-            return $"Entry {index} ({manufacturer.GetString()} {model.GetString()})";
+            string? maker = manufacturer ?? (element.TryGetProperty("Manufacturer", out JsonElement m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null);
+            return maker is null ? $"Entry {index} ({model.GetString()})" : $"Entry {index} ({maker} {model.GetString()})";
         }
 
         return $"Entry {index}";

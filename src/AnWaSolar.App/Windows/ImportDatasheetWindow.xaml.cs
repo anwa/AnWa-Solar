@@ -28,6 +28,11 @@ public partial class ImportDatasheetWindow : ChromeWindow
     private DatasheetParseResult? _result;
     private bool _loading;
 
+    // Values and inclusion per power class of the datasheet; the shown class is written back when another is chosen.
+    private readonly List<Dictionary<string, string?>> _variantValues = [];
+    private readonly List<bool> _included = [];
+    private int _shown = -1;
+
     public ImportDatasheetWindow(string path, IReadOnlyList<DatasheetWord> words, DatasheetKind kind, IDataStore store, DatasheetService datasheets)
     {
         _path = path;
@@ -63,7 +68,17 @@ public partial class ImportDatasheetWindow : ChromeWindow
         _result = DatasheetParser.Parse(_words, Kind, manufacturers);
         BuildFields();
 
+        _variantValues.Clear();
+        _included.Clear();
+        _shown = -1;
+        for (int i = 0; i < _result.Variants.Count; i++)
+        {
+            _variantValues.Add(DatasheetFields.For(Kind).ToDictionary(f => f.Key, f => _result.Get(f.Key, i)?.Text));
+            _included.Add(true);
+        }
+
         _loading = true;
+        SeriesInput.Text = SeriesNames.Suggest(_result.Variants) ?? Path.GetFileNameWithoutExtension(_path);
         // A column without heading (model names as graphics) is told apart by its energy.
         VariantCombo.ItemsSource = _result.Variants.Select((v, i) => !string.IsNullOrWhiteSpace(v) ? v
             : _result.Get(DatasheetFields.NominalEnergyKWh, i) is { } energy ? $"Column {i + 1} · {energy.Text} kWh" : $"Column {i + 1}").ToList();
@@ -78,6 +93,44 @@ public partial class ImportDatasheetWindow : ChromeWindow
         if (!_loading && VariantCombo.SelectedIndex >= 0)
         {
             FillValues(VariantCombo.SelectedIndex);
+        }
+    }
+
+    private void OnIncludeChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_loading && _shown >= 0)
+        {
+            _included[_shown] = IncludeCheck.IsChecked == true;
+            UpdateIncludedText();
+        }
+    }
+
+    private void OnSeriesChanged(object sender, TextChangedEventArgs e) => UpdateExistingNote();
+
+    private void UpdateIncludedText()
+    {
+        int count = _included.Count(i => i);
+        IncludedText.Text = $"{count} of {_included.Count} power classes are saved";
+        IncludeCheck.Visibility = _included.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        IncludedText.Visibility = IncludeCheck.Visibility;
+    }
+
+    // Keeps the texts of the shown power class; the manufacturer applies to the whole series.
+    private void StoreShownValues()
+    {
+        if (_shown < 0 || _shown >= _variantValues.Count)
+        {
+            return;
+        }
+
+        foreach ((string key, FieldRow row) in _rows)
+        {
+            _variantValues[_shown][key] = row.Box.Text;
+        }
+
+        foreach (Dictionary<string, string?> values in _variantValues)
+        {
+            values[DatasheetFields.Manufacturer] = _rows[DatasheetFields.Manufacturer].Box.Text;
         }
     }
 
@@ -130,18 +183,24 @@ public partial class ImportDatasheetWindow : ChromeWindow
 
     private void FillValues(int variant)
     {
-        if (_result is null)
+        if (_result is null || variant >= _variantValues.Count)
         {
             return;
         }
 
+        StoreShownValues();
+        _shown = variant;
         foreach (FieldRow row in _rows.Values)
         {
             row.Found = _result.Get(row.Field.Key, variant);
-            row.Box.Text = row.Found?.Text ?? string.Empty;
+            row.Box.Text = _variantValues[variant].TryGetValue(row.Field.Key, out string? text) ? text ?? string.Empty : string.Empty;
             UpdateState(row);
         }
 
+        _loading = true;
+        IncludeCheck.IsChecked = _included[variant];
+        _loading = false;
+        UpdateIncludedText();
         UpdateExistingNote();
     }
 
@@ -166,11 +225,16 @@ public partial class ImportDatasheetWindow : ChromeWindow
         }
     }
 
-    // Tells whether Apply adds an entry or replaces one with the same manufacturer and model.
+    // Tells whether Apply adds a series or replaces one with the same manufacturer and name.
     private void UpdateExistingNote()
     {
-        string manufacturer = Value(DatasheetFields.Manufacturer) ?? string.Empty;
-        string model = Value(DatasheetFields.Model) ?? string.Empty;
+        if (!IsInitialized || _rows.Count == 0)
+        {
+            return;
+        }
+
+        string manufacturer = (Value(DatasheetFields.Manufacturer) ?? string.Empty).Trim();
+        string series = SeriesInput.Text.Trim();
         IEnumerable<IMasterDataEntry> entries = Kind switch
         {
             DatasheetKind.Inverter => _store.Inverters,
@@ -178,14 +242,14 @@ public partial class ImportDatasheetWindow : ChromeWindow
             _ => _store.Modules,
         };
         IMasterDataEntry? existing = entries.FirstOrDefault(e =>
-            string.Equals(e.Manufacturer, manufacturer.Trim(), StringComparison.OrdinalIgnoreCase)
-            && string.Equals(e.Model, model.Trim(), StringComparison.OrdinalIgnoreCase));
+            string.Equals(e.Manufacturer, manufacturer, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(e.Series, series, StringComparison.OrdinalIgnoreCase));
 
         ExistingText.Text = existing switch
         {
             null => string.Empty,
-            { IsUserEntry: true } => $"Apply replaces your imported entry {existing.Manufacturer} {existing.Model}.",
-            _ => $"{existing.Manufacturer} {existing.Model} is in the shipped master data. Apply saves your values as an own entry that replaces it in the selection; the shipped data stays unchanged.",
+            { IsUserEntry: true } => $"Apply replaces your series {existing.Manufacturer} {existing.Series}.",
+            _ => $"{existing.Manufacturer} {existing.Series} is in the shipped master data. Apply saves your values as an own series that replaces it in the selection; the shipped data stays unchanged.",
         };
         ExistingText.Visibility = existing is null ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -194,43 +258,90 @@ public partial class ImportDatasheetWindow : ChromeWindow
 
     private void OnOpenDatasheetClick(object sender, RoutedEventArgs e) => _datasheets.ShowFile(this, _path, Path.GetFileName(_path));
 
-    private void OnApplyClick(object sender, RoutedEventArgs e)
+    // Builds every included power class; the errors name the power class.
+    private List<T> BuildVariants<T>(BuildEntry<T> build, List<string> errors)
+        where T : class, IMasterDataEntry
     {
-        Dictionary<string, string?> values = _rows.ToDictionary(r => r.Key, r => (string?)r.Value.Box.Text);
-        IReadOnlyList<string> errors;
-        IMasterDataEntry? entry;
-        if (Kind == DatasheetKind.Module)
+        var result = new List<T>();
+        for (int i = 0; i < _variantValues.Count; i++)
         {
-            errors = DatasheetEntryBuilder.TryBuildModule(values, out PVModule? module);
-            entry = module;
-        }
-        else if (Kind == DatasheetKind.Battery)
-        {
-            errors = DatasheetEntryBuilder.TryBuildBattery(values, out Battery? battery);
-            entry = battery;
-        }
-        else
-        {
-            errors = DatasheetEntryBuilder.TryBuildInverter(values, out Inverter? inverter);
-            entry = inverter;
+            if (!_included[i])
+            {
+                continue;
+            }
+
+            string name = VariantCombo.Items.Count > i ? VariantCombo.Items[i]?.ToString() ?? $"Column {i + 1}" : $"Column {i + 1}";
+            IReadOnlyList<string> problems = build(_variantValues[i], out T? entry);
+            if (problems.Count > 0 || entry is null)
+            {
+                errors.AddRange(problems.Select(p => _variantValues.Count > 1 ? $"{name}: {p}" : p));
+            }
+            else
+            {
+                result.Add(entry);
+            }
         }
 
-        if (errors.Count > 0 || entry is null)
+        return result;
+    }
+
+    private delegate IReadOnlyList<string> BuildEntry<T>(IReadOnlyDictionary<string, string?> values, out T? entry);
+
+    private IReadOnlyList<T> SaveSeries<T>(BuildEntry<T> build, List<string> errors)
+        where T : class, IMasterDataEntry
+    {
+        List<T> variants = BuildVariants(build, errors);
+        if (errors.Count > 0)
         {
-            ErrorText.Text = "Please correct:\n• " + string.Join("\n• ", errors);
-            ErrorText.Visibility = Visibility.Visible;
+            return [];
+        }
+
+        var series = new ComponentSeries<T>
+        {
+            Manufacturer = (Value(DatasheetFields.Manufacturer) ?? string.Empty).Trim(),
+            Series = SeriesInput.Text.Trim(),
+            Variants = variants,
+        };
+        return _store.SaveSeries(series, _path);
+    }
+
+    private void OnApplyClick(object sender, RoutedEventArgs e)
+    {
+        StoreShownValues();
+        var errors = new List<string>();
+        if (string.IsNullOrWhiteSpace(SeriesInput.Text))
+        {
+            errors.Add("Series is missing.");
+        }
+
+        if (!_included.Any(i => i))
+        {
+            errors.Add("Choose at least one power class to save.");
+        }
+
+        if (errors.Count > 0)
+        {
+            ShowErrors(errors);
             return;
         }
 
         try
         {
-            Saved = entry switch
+            IReadOnlyList<IMasterDataEntry> saved = Kind switch
             {
-                PVModule module => _store.SaveModule(module, _path),
-                Inverter inverter => _store.SaveInverter(inverter, _path),
-                Battery battery => _store.SaveBattery(battery, _path),
-                _ => null,
+                DatasheetKind.Module => SaveSeries<PVModule>(DatasheetEntryBuilder.TryBuildModule, errors),
+                DatasheetKind.Battery => SaveSeries<Battery>(DatasheetEntryBuilder.TryBuildBattery, errors),
+                _ => SaveSeries<Inverter>(DatasheetEntryBuilder.TryBuildInverter, errors),
             };
+            if (errors.Count > 0)
+            {
+                ShowErrors(errors);
+                return;
+            }
+
+            // The power class shown last is the one the caller selects.
+            string shownModel = (_shown >= 0 ? _variantValues[_shown][DatasheetFields.Model] : null)?.Trim() ?? string.Empty;
+            Saved = saved.FirstOrDefault(s => string.Equals(s.Model, shownModel, StringComparison.OrdinalIgnoreCase)) ?? saved.FirstOrDefault();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -239,5 +350,11 @@ public partial class ImportDatasheetWindow : ChromeWindow
         }
 
         DialogResult = true;
+    }
+
+    private void ShowErrors(IEnumerable<string> errors)
+    {
+        ErrorText.Text = "Please correct:\n• " + string.Join("\n• ", errors);
+        ErrorText.Visibility = Visibility.Visible;
     }
 }

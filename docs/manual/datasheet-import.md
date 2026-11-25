@@ -1,6 +1,6 @@
 # Datasheet Import
 
-AnWa-Solar can read the values of a PV module, an inverter or a battery from its PDF datasheet. You check and complete the values in a dialog; **Apply** saves them, together with a copy of the datasheet, in your own master data. The entry can then be selected like the shipped ones.
+AnWa-Solar can read the values of a PV module, an inverter or a battery from its PDF datasheet. Most datasheets describe a whole series with several power classes; the import saves the series with all power classes you keep. You check and complete the values in a dialog; **Apply** saves them, together with a copy of the datasheet, in your own master data. The power classes can then be selected like the shipped ones.
 
 ## Importing a datasheet
 
@@ -8,7 +8,9 @@ AnWa-Solar can read the values of a PV module, an inverter or a battery from its
 2. Choose the PDF file of the datasheet.
 3. Check the dialog:
    - **PV module**, **Inverter** or **Battery**: AnWa-Solar recognises the kind of datasheet; switch it if it is wrong.
-   - **Model or power class in the datasheet**: many datasheets describe several power classes or models in columns. Choose the one you use; the values follow your choice.
+   - **Model or power class in the datasheet**: many datasheets describe several power classes or models in columns. Choose a power class to see and correct its values; your changes are kept when you switch to another one.
+   - **Series**: the name of the series, suggested from the model names (for example `SUN-SG05LP3-EU-SM2` for SUN-14K … SUN-20K-SG05LP3-EU-SM2) or from the file name. All saved power classes form this series.
+   - **Save this power class**: clear it for power classes you do not want to keep; the line below counts the saved ones. The manufacturer applies to the whole series.
    - Each value has a mark on the right:
 
      | Mark | Meaning |
@@ -18,7 +20,7 @@ AnWa-Solar can read the values of a PV module, an inverter or a battery from its
      | Grey info | Entered or changed by you, or an optional value that was not found. |
 
 4. Click **Open datasheet** to show the PDF next to the dialog and compare every value.
-5. Click **Apply**. When a value is missing or does not fit, the dialog lists what to correct.
+5. Click **Apply**. When a value of a saved power class is missing or does not fit, the dialog lists what to correct, with the power class.
 
 > The values are read automatically from the text of the PDF. Datasheets differ in layout, so a value can be missing or, rarely, wrong. The string check relies on these values: check every one, especially Voc, the temperature coefficient of Voc and the maximum DC input voltage.
 
@@ -54,10 +56,10 @@ Imported entries are stored per Windows user in `%LOCALAPPDATA%\AnWa-Solar\Data`
 
 | File | Content |
 |---|---|
-| `Modules.json`, `Inverters.json`, `Batteries.json` | Your entries, in the same format as the shipped [master data](master-data.md) |
-| `Datasheets\<Manufacturer> <Model>.pdf` | The imported datasheets |
+| `Modules\<Manufacturer>\<Series>.json` (and `Inverters`, `Batteries`) | Your series, in the same format as the shipped [master data](master-data.md) |
+| `…\<Series>.pdf` | The imported datasheet, next to its series file |
 
-An own entry with the same manufacturer and model as a shipped one replaces it in the selection; the shipped files are not changed. Importing the same model again replaces your entry and its datasheet.
+An own series with the same manufacturer and name as a shipped one replaces it in the selection; the shipped files are not changed. Importing the series again replaces your series and its datasheet.
 
 ## Showing a datasheet
 

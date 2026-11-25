@@ -1,0 +1,16 @@
+{
+  "Manufacturer": "Felicity",
+  "Series": "FLA-EU",
+  "Variants": [
+    {
+      "Model": "FLA48314-EU",
+      "Nominal voltage (V)": 51.2,
+      "Operating voltage range (V)": "44.8-57.6",
+      "Nominal energy (kWh)": 16,
+      "Depth of discharge (%)": 95,
+      "Max. charge current (A)": 160,
+      "Max. discharge current (A)": 160,
+      "Max. modules in parallel": 15
+    }
+  ]
+}
