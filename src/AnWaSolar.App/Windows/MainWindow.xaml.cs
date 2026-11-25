@@ -80,6 +80,8 @@ public partial class MainWindow : ChromeWindow
     private const string PreviewPageUrl = "https://" + PreviewHost + "/report.html";
     private const string ReportTitle = "AnWa-Solar report";
     private TaskCompletionSource<bool>? _navigation;
+    private bool _exportingReport;
+    private ulong _navigationId;
     private static readonly string s_katexDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "katex");
 
     // Suppress slider and toggle events while values are set programmatically
@@ -1103,7 +1105,7 @@ public partial class MainWindow : ChromeWindow
 
     private void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ReferenceEquals(e.OriginalSource, MainTabs) && ReportTab.IsSelected)
+        if (ReferenceEquals(e.OriginalSource, MainTabs) && ReportTab.IsSelected && !_exportingReport)
         {
             UpdateReportView();
         }
@@ -1178,13 +1180,17 @@ public partial class MainWindow : ChromeWindow
             if (!e.Uri.StartsWith($"https://{PreviewHost}/", StringComparison.Ordinal))
             {
                 e.Cancel = true;
+                return;
             }
+
+            _navigationId = e.NavigationId;
         };
 
         // KaTeX renders on DOMContentLoaded, so the formulas are rendered when the navigation is completed.
         core.NavigationCompleted += (_, e) =>
         {
-            if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
+            // Only the latest navigation reports: an older one ends as replaced, not as the result of the current one.
+            if (e.NavigationId == _navigationId && e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
             {
                 _navigation?.TrySetResult(e.IsSuccess);
             }
@@ -1302,20 +1308,23 @@ public partial class MainWindow : ChromeWindow
     {
         // The preview lives in the report tab and is only created while the tab is shown (project export from the
         // string calculation tab); the previous tab comes back afterwards.
+        // The tab change must not start a second preview navigation: it would cancel the one of the export.
         object previousTab = MainTabs.SelectedItem;
-        if (!ReportTab.IsSelected)
-        {
-            ReportTab.IsSelected = true;
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
-        }
-
+        _exportingReport = true;
         try
         {
+            if (!ReportTab.IsSelected)
+            {
+                ReportTab.IsSelected = true;
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+            }
+
             return await PrintLoadedReportPdfAsync(path);
         }
         finally
         {
             MainTabs.SelectedItem = previousTab;
+            _exportingReport = false;
         }
     }
 

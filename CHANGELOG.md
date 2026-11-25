@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.19.1)
+
+- Fixed: The ZIP export of a project could contain the report as Markdown instead of PDF: switching to the report tab started a second preview navigation that ended the export early. The export now renders the preview once, and only the latest preview navigation reports its result.
+
 ## v0.19.0 (2026-11-25)
 
 - New: Projects. Every design is a JSON file in `%LOCALAPPDATA%\AnWa-Solar\Projects` with name, customer, address and notes, the parameters, the inverter, the strings, the cable settings and the battery. Inverter, modules and battery are stored with their key, datasheet file and a copy of their values; the master data entry is used when it exists, otherwise the copy, with a message. Changes are saved automatically.
