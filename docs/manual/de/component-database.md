@@ -29,6 +29,8 @@ Rechts zeigt der Editor die gewählte Serie:
 - Eine **mitgelieferte Serie** lässt sich im Installationsordner nicht ändern: Speichern legt eine eigene Kopie an, die sie in der Auswahl ersetzt.
 - Benennst du eine Serie oder ihren Hersteller um, wandert deine Serie mit ihren Datenblättern zum neuen Namen.
 - **Serie löschen** löscht eine eigene Serie mit ihren Datenblättern nach einer Rückfrage. Hatte sie eine mitgelieferte Serie ersetzt, erscheint diese wieder.
+- **Serie löschen** bei einer mitgelieferten Serie blendet sie nach einer Rückfrage aus, zum Beispiel wenn sie veraltet ist und du sie durch eine korrigierte eigene Serie ersetzt. Sie erscheint nicht mehr im Baum und in den Auswahldialogen; der Installationsordner wird nicht geändert, und Projekte behalten ihre kopierten Werte. Die ausgeblendeten Serien stehen in `%LOCALAPPDATA%\AnWa-Solar\Data\Hidden series.json`.
+- **Mitgelieferte Serien wiederherstellen** zeigt alle ausgeblendeten mitgelieferten Serien wieder an.
 - **Änderungen verwerfen** kehrt zu den gespeicherten Werten zurück. Bevor du mit ungespeicherten Änderungen zu einer anderen Serie wechselst oder das Fenster schließt, fragt AnWa-Solar nach.
 
 Nach dem Schließen des Fensters verwendet das Hauptfenster die geänderten Werte; Wechselrichter, Module und Batterie des offenen Projekts werden neu zugeordnet.
