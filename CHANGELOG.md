@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.17.2)
+## v0.17.2 (2026-11-25)
 
 - Changed: The standard tables for cables and fuses in `Data/CableTables.json` are checked by the user and marked confirmed; the card, the report and the copied text no longer show the note about unconfirmed values. The values themselves are unchanged.
 
