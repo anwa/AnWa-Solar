@@ -171,6 +171,87 @@ public static class DatasheetEntryBuilder
         return errors;
     }
 
+    /// <summary>The values of a module as the texts of its fields; the inverse of <see cref="TryBuildModule"/>.</summary>
+    public static Dictionary<string, string?> ToValues(PVModule m)
+    {
+        ArgumentNullException.ThrowIfNull(m);
+        return new()
+        {
+            [DatasheetFields.Manufacturer] = m.Manufacturer,
+            [DatasheetFields.Model] = m.Model,
+            [DatasheetFields.PmaxW] = Text(m.PmaxW),
+            [DatasheetFields.VmppV] = Text(m.VmppV),
+            [DatasheetFields.ImppA] = Text(m.ImppA),
+            [DatasheetFields.VocV] = Text(m.VocV),
+            [DatasheetFields.IscA] = Text(m.IscA),
+            [DatasheetFields.EfficiencyPct] = Text(m.EfficiencyPct),
+            [DatasheetFields.PmaxCoeff] = Text(m.PmaxTempCoeffPctPerC),
+            [DatasheetFields.VocCoeff] = Text(m.VocTempCoeffPctPerC),
+            [DatasheetFields.VmppCoeff] = Text(m.VmppTempCoeffPctPerC),
+            [DatasheetFields.IscCoeff] = Text(m.IscTempCoeffPctPerC),
+            [DatasheetFields.MaxSeriesFuseA] = Text(m.MaxSeriesFuseA),
+            [DatasheetFields.OperatingMinC] = Text(m.OperatingTempMinC),
+            [DatasheetFields.OperatingMaxC] = Text(m.OperatingTempMaxC),
+            [DatasheetFields.CableCrossSectionMm2] = Text(m.CableCrossSectionMm2),
+            [DatasheetFields.CableLengthPlusMm] = Text(m.CableLengthPlusMm),
+            [DatasheetFields.CableLengthMinusMm] = Text(m.CableLengthMinusMm),
+        };
+    }
+
+    /// <summary>The values of an inverter as the texts of its fields; values stored as 0 for "not stated" stay empty.</summary>
+    public static Dictionary<string, string?> ToValues(Inverter w)
+    {
+        ArgumentNullException.ThrowIfNull(w);
+        return new()
+        {
+            [DatasheetFields.Manufacturer] = w.Manufacturer,
+            [DatasheetFields.Model] = w.Model,
+            [DatasheetFields.MaxDcPowerW] = Text(w.MaxDcInputPowerW),
+            [DatasheetFields.MaxDcVoltageV] = Text(w.MaxDcInputVoltageV),
+            [DatasheetFields.StartVoltageV] = Text(w.StartVoltageV),
+            [DatasheetFields.MpptRangeV] = w.MpptVoltageRangeV,
+            [DatasheetFields.NominalDcVoltageV] = Stated(w.NominalDcInputVoltageV),
+            [DatasheetFields.MaxInputCurrentA] = Text(w.MaxInputCurrentA),
+            [DatasheetFields.MaxShortCircuitCurrentA] = Text(w.MaxShortCircuitCurrentA),
+            [DatasheetFields.MpptCount] = Text(w.MpptCount),
+            [DatasheetFields.MaxStringsPerMppt] = Stated(w.MaxStringsPerMppt),
+            [DatasheetFields.RatedAcPowerW] = Stated(w.RatedAcPowerW),
+            [DatasheetFields.MaxAcApparentPowerVA] = Stated(w.MaxAcApparentPowerVA),
+            [DatasheetFields.RatedAcCurrentA] = Stated(w.RatedAcCurrentA),
+            [DatasheetFields.MaxAcCurrentA] = Stated(w.MaxAcCurrentA),
+            [DatasheetFields.AcPhases] = Stated(w.AcPhases),
+            [DatasheetFields.BatteryRangeV] = w.BatteryVoltageRangeV,
+            [DatasheetFields.MaxBatteryChargeA] = Stated(w.MaxBatteryChargeCurrentA),
+            [DatasheetFields.MaxBatteryDischargeA] = Stated(w.MaxBatteryDischargeCurrentA),
+            [DatasheetFields.BatteryInputs] = Stated(w.BatteryInputs),
+        };
+    }
+
+    /// <summary>The values of a battery module as the texts of its fields.</summary>
+    public static Dictionary<string, string?> ToValues(Battery b)
+    {
+        ArgumentNullException.ThrowIfNull(b);
+        return new()
+        {
+            [DatasheetFields.Manufacturer] = b.Manufacturer,
+            [DatasheetFields.Model] = b.Model,
+            [DatasheetFields.NominalVoltageV] = Text(b.NominalVoltageV),
+            [DatasheetFields.OperatingRangeV] = b.VoltageRangeV,
+            [DatasheetFields.NominalCapacityAh] = Text(b.NominalCapacityAh),
+            [DatasheetFields.NominalEnergyKWh] = Text(b.NominalEnergyKWh),
+            [DatasheetFields.UsableEnergyKWh] = Text(b.UsableEnergyKWh),
+            [DatasheetFields.DepthOfDischargePct] = Text(b.DepthOfDischargePct),
+            [DatasheetFields.MaxChargeA] = Text(b.MaxChargeCurrentA),
+            [DatasheetFields.MaxDischargeA] = Text(b.MaxDischargeCurrentA),
+            [DatasheetFields.MaxInSeries] = Stated(b.MaxModulesInSeries),
+            [DatasheetFields.MaxInParallel] = Stated(b.MaxModulesInParallel),
+        };
+    }
+
+    private static string? Text(double? value) => value?.ToString(CultureInfo.InvariantCulture);
+
+    private static string? Stated(double value) => value > 0 ? value.ToString(CultureInfo.InvariantCulture) : null;
+
     /// <summary>Reads a number typed by the user, with a decimal point or comma and an optional leading sign.</summary>
     public static bool TryParseNumber(string? text, out double value)
     {

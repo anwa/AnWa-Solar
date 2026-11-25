@@ -720,6 +720,18 @@ public partial class MainWindow : ChromeWindow
         }
     }
 
+    // Opens the component database; the selection is resolved again when the master data changed.
+    private void OnComponentDatabaseClick(object sender, RoutedEventArgs e)
+    {
+        var window = new ComponentDatabaseWindow(_datasheets) { Owner = this };
+        window.ShowDialog();
+        if (window.Changed)
+        {
+            ReloadMasterData();
+            Snackbar.MessageQueue?.Enqueue("The master data was updated.");
+        }
+    }
+
     private void OnInverterDatasheetClick(object sender, RoutedEventArgs e)
     {
         if (_selectedInverter is not null)

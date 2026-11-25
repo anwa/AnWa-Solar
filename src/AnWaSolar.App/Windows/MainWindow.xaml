@@ -19,9 +19,15 @@
         <StackPanel Orientation="Horizontal">
             <Button Style="{StaticResource AnWaSoft.TitleBarButton}"
                     Click="OnImportDatasheetClick"
-                    ToolTip="Import a PDF datasheet of a PV module or inverter"
+                    ToolTip="Import a PDF datasheet of a PV module, inverter or battery"
                     AutomationProperties.Name="Import datasheet">
                 <materialDesign:PackIcon Kind="Import" Width="22" Height="22" />
+            </Button>
+            <Button Style="{StaticResource AnWaSoft.TitleBarButton}"
+                    Click="OnComponentDatabaseClick"
+                    ToolTip="Component database: view and edit modules, inverters and batteries"
+                    AutomationProperties.Name="Component database">
+                <materialDesign:PackIcon Kind="DatabaseOutline" Width="22" Height="22" />
             </Button>
             <Button x:Name="ThemeButton"
                     Style="{StaticResource AnWaSoft.TitleBarButton}"

@@ -44,7 +44,12 @@ public interface IDataStore
     /// </summary>
     /// <exception cref="ArgumentException">The series or one of its variants is invalid.</exception>
     /// <exception cref="IOException">The own master data or the datasheet cannot be written.</exception>
-    IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath)
+    /// <param name="replaces">Manufacturer and name of the own series this one replaces when it was renamed; its file is removed.</param>
+    IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath, (string Manufacturer, string Series)? replaces = null)
+        where T : class, IMasterDataEntry;
+
+    /// <summary>Deletes an own series with its datasheet and reloads the master data; false when there is none.</summary>
+    bool DeleteSeries<T>(string manufacturer, string series)
         where T : class, IMasterDataEntry;
 }
 
@@ -176,7 +181,7 @@ public class JsonDataStore : IDataStore
         return path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(path) ? path : null;
     }
 
-    public IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath)
+    public IReadOnlyList<T> SaveSeries<T>(ComponentSeries<T> series, string? datasheetSourcePath, (string Manufacturer, string Series)? replaces = null)
         where T : class, IMasterDataEntry
     {
         ArgumentNullException.ThrowIfNull(series);
@@ -231,10 +236,16 @@ public class JsonDataStore : IDataStore
             }
         }
 
-        RemoveModelsFromOtherSeries(kind, series, path);
-
+        // The datasheet is copied first: it may be the datasheet of a series that is removed below (renamed series).
         Directory.CreateDirectory(folder);
         series.DatasheetFile = datasheetSourcePath is null ? previousDatasheet : CopyDatasheet(datasheetSourcePath, Path.Combine(folder, FileNameOf(series.Series) + ".pdf"));
+        RemoveModelsFromOtherSeries(kind, series, path);
+        if (replaces is { } old && OwnSeriesPath(kind, old.Manufacturer, old.Series) is var oldPath
+            && !string.Equals(Path.GetFullPath(oldPath), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
+        {
+            DeleteSeriesFile(oldPath, keep: Path.Combine(folder, series.DatasheetFile ?? string.Empty));
+        }
+
         WriteSeries(path, series);
         _logger.LogInformation("Own series saved: {Manufacturer} {Series} with {Count} variants in {Path}, datasheet {Datasheet}.",
             series.Manufacturer, series.Series, series.Variants.Count, path, series.DatasheetFile ?? "(none)");
@@ -242,6 +253,58 @@ public class JsonDataStore : IDataStore
 
         HashSet<string> models = new(series.Variants.Select(v => v.Model), StringComparer.OrdinalIgnoreCase);
         return [.. Entries(kind).Where(e => e.IsUserEntry && SameManufacturer(e.Manufacturer, series.Manufacturer) && models.Contains(e.Model))];
+    }
+
+    public bool DeleteSeries<T>(string manufacturer, string series)
+        where T : class, IMasterDataEntry
+    {
+        string path = OwnSeriesPath(KindOf<T>(), manufacturer, series);
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        DeleteSeriesFile(path, keep: null);
+        _logger.LogInformation("Own series {Manufacturer} {Series} deleted.", manufacturer, series);
+        Load();
+        return true;
+    }
+
+    private string OwnSeriesPath<T>(Kind<T> kind, string manufacturer, string series)
+        where T : class, IMasterDataEntry =>
+        Path.Combine(_paths.UserDirectory, kind.Folder, FileNameOf(manufacturer.Trim()), FileNameOf(series.Trim()) + ".json");
+
+    // Deletes a series file and its datasheet (unless it is the file to keep); an empty manufacturer folder goes too.
+    private static void DeleteSeriesFile(string path, string? keep)
+    {
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        string? sheet = null;
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path), s_documentOptions);
+            sheet = document.RootElement.TryGetProperty("Datasheet file", out JsonElement s) && s.ValueKind == JsonValueKind.String ? s.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            // An unreadable file is deleted without its datasheet.
+        }
+
+        File.Delete(path);
+        if (sheet is not null && Path.Combine(Path.GetDirectoryName(path)!, sheet) is var pdf && File.Exists(pdf)
+            && (keep is null || !string.Equals(Path.GetFullPath(pdf), Path.GetFullPath(keep), StringComparison.OrdinalIgnoreCase)))
+        {
+            File.Delete(pdf);
+        }
+
+        string folder = Path.GetDirectoryName(path)!;
+        if (Directory.Exists(folder) && !Directory.EnumerateFileSystemEntries(folder).Any())
+        {
+            Directory.Delete(folder);
+        }
     }
 
     /// <summary>File name of a stored datasheet: manufacturer and model without characters Windows does not allow.</summary>
