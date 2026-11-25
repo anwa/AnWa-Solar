@@ -2,6 +2,10 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v0.18.1 (2026-11-25)
+
+- Changed: The battery cable values in `Data/CableTables.json` (section `BatteryCable`) are checked by the user and marked confirmed; the cable card, the report and the copied text no longer show the note about unconfirmed battery cable values. The values themselves are unchanged.
+
 ## v0.18.0 (2026-11-25)
 
 - New: Module leads. The string voltage drop includes the plus and minus leads of every module of the string; the lengths and cross-section come from the module datasheet (new optional master data values, read by the datasheet import, for example "4,0 mm², Hochformat 1100/1100 mm"), otherwise from a default in the cable settings (0.5 m per lead, 4 mm²). The result card shows them per MPPT.
