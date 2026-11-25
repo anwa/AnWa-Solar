@@ -73,6 +73,10 @@ public static partial class DatasheetParser
 
     private static readonly Regex[] s_seriesFuse = [Re(@"maximaleabsicherung|max(imum)?\.?seriesfuse|seriesfuserating|max\.?rückstrom|reversecurrent|max\.?sicherung")];
 
+    private static readonly Regex s_cableLabel = Re(@"kabel|cable");
+
+    private static readonly Regex s_portrait = Re(@"hochformat|portrait");
+
     private static readonly Regex[] s_operatingTemperature = [Re(@"(?<!nenn)betriebstemperatur|operatingtemperature|operationaltemperature|operatingambienttemperature")];
 
     private static readonly Dictionary<string, Regex[]> s_inverterLabels = new()
@@ -170,6 +174,11 @@ public static partial class DatasheetParser
             }
 
             values[DatasheetFields.MaxSeriesFuseA] = Shared(columns, FirstValue(lines, s_seriesFuse, NumberOf, sameLineOnly: true));
+
+            (DatasheetValue? area, DatasheetValue? plus, DatasheetValue? minus) = ReadModuleCable(lines);
+            values[DatasheetFields.CableCrossSectionMm2] = Shared(columns, area);
+            values[DatasheetFields.CableLengthPlusMm] = Shared(columns, plus);
+            values[DatasheetFields.CableLengthMinusMm] = Shared(columns, minus);
 
             DatasheetValue?[] temperature = ReadOperatingTemperature(lines, columns);
             values[DatasheetFields.OperatingMinC] = [.. temperature.Select(v => v is null ? null : v with { Text = v.Text.Split('|')[0] })];
@@ -602,6 +611,48 @@ public static partial class DatasheetParser
         return null;
     }
 
+    // Module leads: "Kabel Photovoltaikkabel: 4,0 mm2" and on the same or the next lines "Hochformat: 1100/1100 mm" or
+    // "(+) 1200 mm (-) 1200 mm"; the portrait lengths are preferred over the landscape ones.
+    private static (DatasheetValue? Area, DatasheetValue? Plus, DatasheetValue? Minus) ReadModuleCable(List<Line> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string text = Normalize(lines[i].Text);
+            Match area = CableAreaPattern().Match(text);
+            if (!s_cableLabel.IsMatch(lines[i].Key) || !area.Success || !TryNumber(area.Groups[1].Value, out double mm2))
+            {
+                continue;
+            }
+
+            DatasheetValue areaValue = new(Format(mm2), lines[i].Text);
+            List<Line> near = [.. lines.Skip(i).Take(4).Where(l => l.Page == lines[i].Page)];
+            Line? lengthLine = near.FirstOrDefault(l => s_portrait.IsMatch(l.Key) && CableLengthPattern().IsMatch(Normalize(l.Text)))
+                ?? near.FirstOrDefault(l => CableLengthPattern().IsMatch(Normalize(l.Text)) || SignedLengthPattern().IsMatch(Normalize(l.Text)));
+            if (lengthLine is null)
+            {
+                return (areaValue, null, null);
+            }
+
+            string lengthText = Normalize(lengthLine.Text);
+            Match signed = SignedLengthPattern().Match(lengthText);
+            Match length = signed.Success ? signed : CableLengthPattern().Match(s_portrait.IsMatch(lengthLine.Key) ? lengthText[Math.Max(0, PortraitIndex(lengthText))..] : lengthText);
+            if (length.Success && TryNumber(length.Groups[1].Value, out double plus) && TryNumber(length.Groups[2].Value, out double minus))
+            {
+                return (areaValue, new DatasheetValue(Format(plus), lengthLine.Text), new DatasheetValue(Format(minus), lengthLine.Text));
+            }
+
+            return (areaValue, null, null);
+        }
+
+        return (null, null, null);
+    }
+
+    private static int PortraitIndex(string text)
+    {
+        Match match = PortraitWordPattern().Match(text);
+        return match.Success ? match.Index : 0;
+    }
+
     // A range whose numbers may be separate words: "44,8 V ~ 57,6 V" or "44.8-57.6V".
     private static DatasheetValue? FirstRange(List<Line> lines, Regex[] patterns)
     {
@@ -742,6 +793,18 @@ public static partial class DatasheetParser
 
     [GeneratedRegex(@"^(\d+(?:[.,]\d+)?)\s*V?\s*[-~]\s*(\d+(?:[.,]\d+)?)\s*V?$", RegexOptions.CultureInvariant)]
     private static partial Regex RangePattern();
+
+    [GeneratedRegex(@"(\d+(?:[.,]\d+)?)\s*mm[2²]", RegexOptions.CultureInvariant)]
+    private static partial Regex CableAreaPattern();
+
+    [GeneratedRegex(@"(\d{2,4})\s*/\s*(\d{2,4})\s*mm(?![2²])", RegexOptions.CultureInvariant)]
+    private static partial Regex CableLengthPattern();
+
+    [GeneratedRegex(@"\(\+\)\s*(\d{2,4})\s*mm.*?\(-\)\s*(\d{2,4})\s*mm", RegexOptions.CultureInvariant)]
+    private static partial Regex SignedLengthPattern();
+
+    [GeneratedRegex(@"(?i)hochformat|portrait", RegexOptions.CultureInvariant)]
+    private static partial Regex PortraitWordPattern();
 
     [GeneratedRegex(@"^(\d+(?:[.,]\d+)?)V?[-~](\d+(?:[.,]\d+)?)V?", RegexOptions.CultureInvariant)]
     private static partial Regex SpacedRangePattern();

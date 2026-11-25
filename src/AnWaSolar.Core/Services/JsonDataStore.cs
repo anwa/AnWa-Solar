@@ -435,6 +435,11 @@ public class JsonDataStore : IDataStore
             return "Voc must exceed Vmpp, and Isc must be at least Impp.";
         }
 
+        if (m.CableCrossSectionMm2 is <= 0 || m.CableLengthPlusMm is <= 0 || m.CableLengthMinusMm is <= 0)
+        {
+            return "the cable cross-section and lengths must be greater than 0 when they are given.";
+        }
+
         return null;
     }
 

@@ -146,6 +146,21 @@ public static class CalculationTextFormatter
             sb.AppendLine($"- {CableTexts.Ac(ac)}");
         }
 
+        if (cables.Battery is { } batteryCables)
+        {
+            if (!cables.BatteryTablesConfirmed)
+            {
+                sb.AppendLine($"- {CableTexts.BatteryUnconfirmed}");
+            }
+
+            sb.AppendLine($"- {CableTexts.Battery(batteryCables)}");
+            sb.AppendLine($"- {CableTexts.Run(batteryCables.BatteryCables)}");
+            if (batteryCables.MainCable is { } main)
+            {
+                sb.AppendLine($"- {CableTexts.Run(main)}");
+            }
+        }
+
         return sb.ToString();
     }
 

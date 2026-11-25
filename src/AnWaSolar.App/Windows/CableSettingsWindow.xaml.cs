@@ -29,6 +29,18 @@ public partial class CableSettingsWindow : ChromeWindow
         DcInstallationCombo.DisplayMemberPath = "Value";
         DcInstallationCombo.SelectedValuePath = "Key";
         DcInstallationCombo.SelectedValue = Settings.DcInstallation;
+        Fill(DcCrossSectionCombo, tables.CrossSections, Settings.DcCrossSectionMm2, automatic: true);
+        Fill(LeadCrossSectionCombo, tables.CrossSections, Settings.ModuleLeadCrossSectionMm2, automatic: false);
+        LeadLengthInput.Text = Settings.ModuleLeadLengthM.ToString(c);
+
+        BusbarCheck.IsChecked = Settings.BatteryBusbar;
+        Fill(BatteryCrossSectionCombo, tables.BatteryCable.CrossSections, Settings.BatteryCableCrossSectionMm2, automatic: true);
+        Fill(MainCrossSectionCombo, tables.BatteryCable.CrossSections, Settings.BatteryMainCrossSectionMm2, automatic: true);
+        BatteryLengthInput.Text = Settings.BatteryCableLengthM.ToString(c);
+        MainLengthInput.Text = Settings.BatteryMainLengthM.ToString(c);
+        BatteryAmbientInput.Text = Settings.BatteryAmbientC.ToString(c);
+        BatteryDropInput.Text = (Settings.BatteryDropLimitPct ?? tables.BatteryCable.VoltageDropLimitPct).ToString(c);
+        UpdateBusbar();
 
         for (int i = 1; i <= Math.Max(1, mpptCount); i++)
         {
@@ -61,6 +73,34 @@ public partial class CableSettingsWindow : ChromeWindow
     }
 
     public CableSettings Settings { get; }
+
+    // Cross-sections as choices; "Automatic" (null) first when the calculation may choose.
+    private static void Fill(ComboBox combo, double[] areas, double? selected, bool automatic)
+    {
+        var items = new List<KeyValuePair<double?, string>>();
+        if (automatic)
+        {
+            items.Add(new(null, "Automatic"));
+        }
+
+        items.AddRange(areas.Select(a => new KeyValuePair<double?, string>(a, a.ToString("0.#", CultureInfo.CurrentCulture) + " mm²")));
+        combo.ItemsSource = items;
+        combo.DisplayMemberPath = "Value";
+        combo.SelectedItem = items.FirstOrDefault(i => i.Key == selected, items[0]);
+    }
+
+    private static double? Selected(ComboBox combo) => combo.SelectedItem is KeyValuePair<double?, string> item ? item.Key : null;
+
+    private void OnBusbarChanged(object sender, RoutedEventArgs e) => UpdateBusbar();
+
+    private void UpdateBusbar()
+    {
+        bool busbar = BusbarCheck.IsChecked == true;
+        MainCablePanel.IsEnabled = busbar;
+        BusbarText.Text = busbar
+            ? "Each battery has a cable to the busbar, and a main cable runs from the busbar to the inverter. Each cable gets a fuse."
+            : "Each battery has its own cable to the inverter (one battery: one cable). Each cable gets a fuse.";
+    }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
     {
@@ -98,9 +138,29 @@ public partial class CableSettingsWindow : ChromeWindow
         }
 
         if (!TryParse(DcDropInput.Text, out double dcDrop) || dcDrop <= 0 || dcDrop > 10
-            || !TryParse(AcDropInput.Text, out double acDrop) || acDrop <= 0 || acDrop > 10)
+            || !TryParse(AcDropInput.Text, out double acDrop) || acDrop <= 0 || acDrop > 10
+            || !TryParse(BatteryDropInput.Text, out double batteryDrop) || batteryDrop <= 0 || batteryDrop > 10)
         {
             Fail("The voltage drop limits must be above 0 and at most 10 %.");
+            return;
+        }
+
+        if (!TryParse(LeadLengthInput.Text, out double leadLength) || leadLength <= 0 || leadLength > 10)
+        {
+            Fail("The length per module lead must be above 0 and at most 10 m.");
+            return;
+        }
+
+        if (!TryParse(BatteryLengthInput.Text, out double batteryLength) || batteryLength < 0
+            || !TryParse(MainLengthInput.Text, out double mainLength) || mainLength < 0)
+        {
+            Fail("The battery cable lengths must be 0 or more metres.");
+            return;
+        }
+
+        if (!TryParse(BatteryAmbientInput.Text, out double batteryAmbient) || CableTables.Factor(_tables.AcCable.AmbientFactors, batteryAmbient) is null)
+        {
+            Fail("The ambient temperature of the battery cables lies above the tables.");
             return;
         }
 
@@ -114,6 +174,16 @@ public partial class CableSettingsWindow : ChromeWindow
         Settings.AcAmbientC = acAmbient;
         Settings.AcGroupedCircuits = acGroup;
         Settings.AcDropLimitPct = acDrop;
+        Settings.DcCrossSectionMm2 = Selected(DcCrossSectionCombo);
+        Settings.ModuleLeadLengthM = leadLength;
+        Settings.ModuleLeadCrossSectionMm2 = Selected(LeadCrossSectionCombo) ?? Settings.ModuleLeadCrossSectionMm2;
+        Settings.BatteryBusbar = BusbarCheck.IsChecked == true;
+        Settings.BatteryCableLengthM = batteryLength;
+        Settings.BatteryCableCrossSectionMm2 = Selected(BatteryCrossSectionCombo);
+        Settings.BatteryMainLengthM = mainLength;
+        Settings.BatteryMainCrossSectionMm2 = Selected(MainCrossSectionCombo);
+        Settings.BatteryAmbientC = batteryAmbient;
+        Settings.BatteryDropLimitPct = batteryDrop;
         DialogResult = true;
     }
 

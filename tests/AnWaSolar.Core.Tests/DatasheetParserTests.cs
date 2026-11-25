@@ -54,6 +54,9 @@ public sealed class DatasheetParserTests
         Add(370, "Leerlaufspannung-UOC (V)", "48,2", "48,7", "49,1", "49,4", "49,8", "50,1");
         Add(350, "NOCT(Nennbetriebstemperatur der Zelle) 43 °C (±2 K)");
         rows.Add((300, 350, "Betriebstemperatur –40 to +85 ºC"));
+        rows.Add((460, 412, "Kabel Photovoltaikkabel: 4,0 mm2"));
+        rows.Add((460, 404, "Hochformat: 1100/1100 mm"));
+        rows.Add((460, 396, "Querformat: 280/350 mm*"));
         Add(340, "Temperaturkoeffizient von PMAX –0,30 %/ K");
         rows.Add((300, 340, "Maximale Systemspannung 1500 V DC (IEC)"));
         Add(330, "Temperaturkoeffizient von VOC –0,24 %/ K");
@@ -148,6 +151,17 @@ public sealed class DatasheetParserTests
         Assert.Equal("-40", result.Get(DatasheetFields.OperatingMinC, 0)!.Text);
         Assert.Equal("85", result.Get(DatasheetFields.OperatingMaxC, 0)!.Text);
         Assert.Contains("Temperaturkoeffizient von VOC", result.Get(DatasheetFields.VocCoeff, 0)!.Source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Module_leads_take_the_portrait_lengths()
+    {
+        DatasheetParseResult result = DatasheetParser.Parse(Words(TrinaLayout()), DatasheetKind.Module);
+
+        Assert.Equal("4", result.Get(DatasheetFields.CableCrossSectionMm2, 4)!.Text);
+        Assert.Equal("1100", result.Get(DatasheetFields.CableLengthPlusMm, 4)!.Text);
+        Assert.Equal("1100", result.Get(DatasheetFields.CableLengthMinusMm, 4)!.Text);
+        Assert.Contains("Hochformat", result.Get(DatasheetFields.CableLengthPlusMm, 0)!.Source, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -44,6 +44,9 @@ public sealed class CableTables
     [JsonPropertyName("Voltage drop")]
     public VoltageDropTable VoltageDrop { get; set; } = new();
 
+    [JsonPropertyName("BatteryCable")]
+    public BatteryCableTable BatteryCable { get; set; } = new();
+
     public sealed class SolarCableTable
     {
         public string Source { get; set; } = string.Empty;
@@ -94,6 +97,30 @@ public sealed class CableTables
 
         [JsonPropertyName("Circuit breaker ratings (A)")]
         public double[] BreakerRatings { get; set; } = [];
+    }
+
+    /// <summary>
+    /// Single-core copper cables between battery, busbar and inverter, with their own cross-sections, fuse ratings and
+    /// voltage drop limit, and their own confirmation. The ambient factors of <see cref="AcCable"/> apply.
+    /// </summary>
+    public sealed class BatteryCableTable
+    {
+        [JsonPropertyName("Confirmed")]
+        public bool Confirmed { get; set; }
+
+        public string Source { get; set; } = string.Empty;
+
+        [JsonPropertyName("Cross-sections (mm2)")]
+        public double[] CrossSections { get; set; } = [];
+
+        [JsonPropertyName("Ampacity (A)")]
+        public double[] Ampacity { get; set; } = [];
+
+        [JsonPropertyName("Fuse ratings (A)")]
+        public double[] FuseRatings { get; set; } = [];
+
+        [JsonPropertyName("Voltage drop limit (%)")]
+        public double VoltageDropLimitPct { get; set; }
     }
 
     public sealed class VoltageDropTable
@@ -159,6 +186,13 @@ public sealed class CableTables
             || Protection.StringFuseRatings.Length == 0 || Protection.BreakerRatings.Length == 0)
         {
             return "The protection factors and rated currents are incomplete.";
+        }
+
+        if (BatteryCable.CrossSections.Length == 0 || BatteryCable.CrossSections.Length != BatteryCable.Ampacity.Length
+            || BatteryCable.CrossSections.Any(a => a <= 0) || BatteryCable.Ampacity.Any(a => a <= 0)
+            || BatteryCable.FuseRatings.Length == 0 || BatteryCable.VoltageDropLimitPct <= 0)
+        {
+            return "The battery cable table needs one current-carrying capacity per cross-section, fuse ratings and a voltage drop limit.";
         }
 
         return SolarCable.AmbientFactors.Count == 0 || AcCable.AmbientFactors.Count == 0 || Grouping.Factors.Count == 0

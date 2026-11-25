@@ -137,6 +137,7 @@ public static class ResultPresenter
             (_, _, 0) => (ResultState.Neutral, "All MPPTs are disabled"),
             _ when ac?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the AC side"),
             _ when batteryView?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the battery"),
+            _ when cableView?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the cables and fuses"),
             _ => (ResultState.Ok, "All limits are met"),
         };
 
@@ -264,12 +265,24 @@ public static class ResultPresenter
             notes.Add(new ResultNote(CableTexts.Unconfirmed, ResultState.Warning));
         }
 
+        if (cables.Battery is not null && !cables.BatteryTablesConfirmed)
+        {
+            notes.Add(new ResultNote(CableTexts.BatteryUnconfirmed, ResultState.Warning));
+        }
+
         foreach (DcCableResult d in cables.Dc)
         {
+            ResultState cableState = d.CrossSectionMm2 is null
+                ? (d.State == ResultState.Error ? ResultState.Error : ResultState.Neutral)
+                : d.CarryingCapacityA < (d.FuseRatingA ?? d.DesignCurrentA) - 1e-9 ? ResultState.Error
+                    : d.VoltageDropPct > d.DropLimitPct + 1e-9 ? ResultState.Warning : ResultState.Ok;
             rows.Add(new AcRow($"MPPT {d.MpptIndex} string cables",
-                d.CrossSectionMm2 is { } a ? $"{Number(a, "0.#")} mm² · {Number(d.VoltageDropPct!.Value, "F2")} %" : "not sized",
+                d.CrossSectionMm2 is { } a ? $"{Number(a, "0.#")} mm²{(d.CrossSectionChosen ? " (chosen)" : string.Empty)} · {Number(d.VoltageDropPct!.Value, "F2")} %" : "not sized",
                 $"≥ {Number(d.FuseRatingA ?? d.DesignCurrentA, "F1")} A · ≤ {Number(d.DropLimitPct, "0.##")} %",
-                d.CrossSectionMm2 is null ? (d.State == ResultState.Error ? ResultState.Error : ResultState.Neutral) : ResultState.Ok));
+                cableState));
+            rows.Add(new AcRow($"MPPT {d.MpptIndex} module leads",
+                $"{d.ModulesPerString} × {Number(d.LeadLengthPerModuleM, "0.##")} m · {Number(d.LeadCrossSectionMm2, "0.#")} mm² · {Number(d.LeadDropPct, "F2")} %",
+                d.LeadsFromDatasheet ? "datasheet" : "your default", ResultState.Neutral));
             rows.Add(new AcRow($"MPPT {d.MpptIndex} string fuses",
                 d.FuseRequired ? (d.FuseRatingA is { } f ? $"gPV {Number(f, "F0")} A" : "no rating fits") : "not needed",
                 d.FuseRequired ? $"{Number(d.FuseMinA!.Value, "F1")} … {Number(d.FuseMaxA!.Value, "F1")} A" : None,
@@ -287,6 +300,26 @@ public static class ResultPresenter
                 ac.BreakerA is { } breaker ? $"Iz ≥ {Number(breaker, "F0")} A · ≤ {Number(ac.DropLimitPct, "0.##")} %" : None,
                 ac.CrossSectionMm2 is null ? (ac.State == ResultState.Error ? ResultState.Error : ResultState.Neutral) : ResultState.Ok));
             notes.AddRange(ac.Notes.Select(n => n with { Text = $"AC line: {n.Text}" }));
+        }
+
+        if (cables.Battery is { } battery)
+        {
+            foreach (BatteryCableRun run in new[] { battery.BatteryCables, battery.MainCable }.OfType<BatteryCableRun>())
+            {
+                bool tooSmall = run.CrossSectionMm2 is not null && run.CarryingCapacityA < run.FuseA - 1e-9;
+                rows.Add(new AcRow(run.Count > 1 ? $"{run.Name} ({run.Count} ×)" : run.Name,
+                    run.CrossSectionMm2 is { } area
+                        ? $"{Number(area, "0.#")} mm²{(run.CrossSectionChosen ? " (chosen)" : string.Empty)} · fuse {Number(run.FuseA!.Value, "F0")} A"
+                        : run.FuseA is { } f ? $"not sized · fuse {Number(f, "F0")} A" : "no fuse rating",
+                    $"Ib {Number(run.DesignCurrentA, "F0")} A ≤ In ≤ Iz" + (run.CarryingCapacityA is { } iz ? $" {Number(iz, "F0")} A" : string.Empty),
+                    run.FuseA is null || tooSmall ? ResultState.Error : run.CrossSectionMm2 is null ? ResultState.Neutral : ResultState.Ok));
+            }
+
+            rows.Add(new AcRow("Battery voltage drop",
+                battery.TotalDropPct is { } drop ? $"{Number(drop, "F2")} % of {Number(battery.BankNominalV, "0.#")} V" : "not sized",
+                $"≤ {Number(battery.DropLimitPct, "0.##")} %",
+                battery.TotalDropPct is { } d2 ? (d2 > battery.DropLimitPct + 1e-9 ? ResultState.Warning : ResultState.Ok) : ResultState.Neutral));
+            notes.AddRange(battery.Notes.Select(n => n with { Text = $"Battery: {n.Text}" }));
         }
 
         ResultState state = cables.State;

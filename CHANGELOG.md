@@ -2,6 +2,14 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.18.0)
+
+- New: Module leads. The string voltage drop includes the plus and minus leads of every module of the string; the lengths and cross-section come from the module datasheet (new optional master data values, read by the datasheet import, for example "4,0 mm², Hochformat 1100/1100 mm"), otherwise from a default in the cable settings (0.5 m per lead, 4 mm²). The result card shows them per MPPT.
+- New: The cross-section of the string cables can be chosen (for example 4 or 6 mm²) or sized automatically; a chosen cross-section is checked: too low a current-carrying capacity is an error, a voltage drop above the limit a warning.
+- New: Battery cables. With a busbar, each battery has a cable to the busbar and a main cable runs to the inverter; without busbar, each battery has its own cable to the inverter. Each cable gets a fuse (Ib ≤ In ≤ Iz); cross-sections automatic or chosen; voltage drop of the nominal bank voltage; a warning when there are more battery cables than battery inputs of the inverter.
+- Changed: The status line also points to warnings of the cables and fuses.
+- New: Section `BatteryCable` in `Data/CableTables.json` with current-carrying capacities of single-core copper cables 25–150 mm² (IEC 60364-5-52 Table B.52.12, method F), fuse ratings 32–500 A and a voltage drop limit of 1 %; common values entered at the user's request, marked unconfirmed until the user has checked them.
+
 ## v0.17.2 (2026-11-25)
 
 - Changed: The standard tables for cables and fuses in `Data/CableTables.json` are checked by the user and marked confirmed; the card, the report and the copied text no longer show the note about unconfirmed values. The values themselves are unchanged.

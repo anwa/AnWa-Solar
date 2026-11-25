@@ -38,6 +38,7 @@ Numbers may use a decimal point or a decimal comma.
 - **Currents per MPPT**: datasheets often write "36+36" for two MPPTs. Enter the value of one MPPT, 36.
 - **MPPT count and strings**: "2/2+2" means 2 MPPTs with up to 2 strings each.
 - **AC currents**: datasheets often state two values such as "27.3/26.1" for 220/380 V and 230/400 V. AnWa-Solar takes the second value, for 230/400 V.
+- **Module leads**: "Photovoltaikkabel: 4,0 mm²" and "Hochformat: 1100/1100 mm" give the cross-section and the plus and minus lengths; the portrait lengths are taken, not the landscape ones. They are optional.
 - **Max. series fuse rating** (for example "Maximale Absicherung 20 A") is optional; without it the string fuse check only gives a note.
 - **Battery values of a hybrid inverter** (battery voltage range, max. charge and discharge current, battery inputs) are optional; leave them empty for inverters without battery input.
 - **Battery currents**: enter the continuous charge and discharge current of one module, not the peak value ("Spitzenwert 280 A (10 Sek.)").

@@ -44,6 +44,15 @@
     "String fuse ratings (A)": [ 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25, 30, 32 ],
     "Circuit breaker ratings (A)": [ 6, 10, 13, 16, 20, 25, 32, 40, 50, 63 ]
   },
+  "BatteryCable": {
+    "Confirmed": false,
+    "Note": "Common standard values, entered by the agent on 2026-11-25 at the user's request. Set Confirmed to true after checking every value of this section.",
+    "Source": "IEC 60364-5-52:2009, Table B.52.12, method F (single-core cables touching in free air), PVC, copper, ambient 30 °C, conductor 70 °C, two loaded conductors (= DIN VDE 0298-4, Table 11); ambient factors as for the AC cable; fuse ratings IEC 60269-1; voltage drop design recommendation",
+    "Cross-sections (mm2)": [ 25, 35, 50, 70, 95, 120, 150 ],
+    "Ampacity (A)": [ 131, 162, 196, 251, 304, 352, 406 ],
+    "Fuse ratings (A)": [ 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 355, 400, 425, 500 ],
+    "Voltage drop limit (%)": 1
+  },
   "Voltage drop": {
     "Source": "Design recommendations (DC 1 %; AC from the inverter to the grid connection 3 %, DIN VDE 0100-520 Annex G gives 3 % for lighting and 5 % for other loads)",
     "DC limit (%)": 1,

@@ -49,6 +49,18 @@ public class PVModule : IMasterDataEntry
     [JsonPropertyName("Max. series fuse rating (A)")]
     public double? MaxSeriesFuseA { get; set; }
 
+    /// <summary>Cross-section of the module leads; null when the datasheet does not state it.</summary>
+    [JsonPropertyName("Cable cross-section (mm2)")]
+    public double? CableCrossSectionMm2 { get; set; }
+
+    /// <summary>Length of the plus lead (portrait); null when the datasheet does not state it.</summary>
+    [JsonPropertyName("Cable length plus (mm)")]
+    public double? CableLengthPlusMm { get; set; }
+
+    /// <summary>Length of the minus lead (portrait); null when the datasheet does not state it.</summary>
+    [JsonPropertyName("Cable length minus (mm)")]
+    public double? CableLengthMinusMm { get; set; }
+
     [JsonPropertyName("Operating temperature min (°C)")]
     public double OperatingTempMinC { get; set; }
 

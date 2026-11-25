@@ -42,4 +42,6 @@ The usable energy is the value of the datasheet. Many datasheets state a depth o
 
 The battery management system keeps the battery voltage in its range, so the safety margin of the PV calculation does not apply to the battery. The check uses the datasheet values only; the manufacturers' compatibility lists (communication between inverter and battery management) are not part of it.
 
+The battery cables, the busbar and the fuses are sized in the **Cables and fuses** card; enter their lengths in the [cable settings](string-calculation.md#cables).
+
 The [report](report.md) contains the section **Battery storage** with the same values, the formulas and the notes.
