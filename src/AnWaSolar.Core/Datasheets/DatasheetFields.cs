@@ -46,6 +46,9 @@ public static class DatasheetFields
     public const string OperatingMinC = "OperatingMinC";
     public const string MaxSeriesFuseA = "MaxSeriesFuseA";
     public const string OperatingMaxC = "OperatingMaxC";
+    public const string CableCrossSectionMm2 = "CableCrossSectionMm2";
+    public const string CableLengthPlusMm = "CableLengthPlusMm";
+    public const string CableLengthMinusMm = "CableLengthMinusMm";
 
     public const string MaxDcPowerW = "MaxDcPowerW";
     public const string MaxDcVoltageV = "MaxDcVoltageV";
@@ -94,6 +97,9 @@ public static class DatasheetFields
         new(MaxSeriesFuseA, "Max. series fuse rating", "A", DatasheetValueType.Number, false, "Reverse current rating of the module; decides whether string fuses are needed."),
         new(OperatingMinC, "Operating temperature min", "°C", DatasheetValueType.Number, true),
         new(OperatingMaxC, "Operating temperature max", "°C", DatasheetValueType.Number, true),
+        new(CableCrossSectionMm2, "Cable cross-section", "mm²", DatasheetValueType.Number, false, "Of the module leads, for example 4."),
+        new(CableLengthPlusMm, "Cable length plus", "mm", DatasheetValueType.Number, false, "Portrait; for \"1100/1100 mm\" enter 1100."),
+        new(CableLengthMinusMm, "Cable length minus", "mm", DatasheetValueType.Number, false, "Portrait."),
     ];
 
     public static IReadOnlyList<DatasheetField> Inverter { get; } =

@@ -53,16 +53,20 @@ The **AC side and grid connection** card checks the inverter against the grid:
 
 AC values that the master data of the inverter does not contain are shown as "not stated" with a note; they are not estimated. Import the datasheet of the inverter to add them, see [Datasheet Import](datasheet-import.md).
 
-The **Cables and fuses** card sizes the string cables of each MPPT and the AC line:
+The **Cables and fuses** card sizes the string cables of each MPPT, the AC line and, when a [battery](battery.md) is planned, the battery cables:
 
 | Row | Meaning |
 |---|---|
-| MPPT n string cables | Smallest solar cable cross-section that carries the design current (1.25 × Isc, or the string fuse rating) with the temperature and grouping factors and keeps the voltage drop at the MPP below the limit. Each string has its own cable pair. |
+| MPPT n string cables | The cable from the string to the inverter. Automatic: the smallest solar cable cross-section that carries the design current (1.25 × Isc, or the string fuse rating) with the temperature and grouping factors and keeps the voltage drop at the MPP, module leads included, below the limit. A chosen cross-section is checked: too low a current-carrying capacity is an error, a voltage drop above the limit a warning. Each string has its own cable pair. |
+| MPPT n module leads | The leads of the modules of one string (modules × plus and minus lead) and their voltage drop. The lengths and the cross-section come from the module datasheet, otherwise from your default. |
 | MPPT n string fuses | Needed when (parallel strings − 1) × 1.25 × Isc exceeds the max. series fuse rating of the module (IEC 62548); the fuse rating lies between 1.5 × Isc and 2.4 × Isc and not above the module rating. |
 | AC circuit breaker | Next standard rating at or above the max. AC current of the inverter. |
 | AC line | Smallest cross-section whose current-carrying capacity (installation method, temperature, grouping) is at least the breaker rating and whose voltage drop stays below the limit. |
+| Battery cables | One cable per battery, to the busbar or, without busbar, to the inverter. It carries the current of one battery (its max. charge or discharge current, at most the inverter's): the fuse is the next rating at or above it, the cable carries the fuse rating (Ib ≤ In ≤ Iz). |
+| Main cable busbar to inverter | With a busbar only: it carries the battery current of the bank and inverter; its own fuse. |
+| Battery voltage drop | Of the nominal bank voltage, at the inverter's battery current shared by the battery cables. With a busbar, an automatic cross-section keeps each of the two cables below half of the limit. |
 
-The values come from the standard tables in `Data\CableTables.json` in the installation folder, with their sources. The values have been checked (`"Confirmed": true`); a table marked `"Confirmed": false`, for example after a value was changed, makes the card show a note. A cable is only sized when its length is entered. The result is a design aid; the installer remains responsible for the choice of cables and protective devices.
+The values come from the standard tables in `Data\CableTables.json` in the installation folder, with their sources. The values for string cables, AC line and string fuses have been checked (`"Confirmed": true`). The battery cable values (section `BatteryCable`: current-carrying capacities of single-core cables from 25 to 150 mm², fuse ratings, voltage drop limit 1 %) are not confirmed yet; as long as a section is marked `"Confirmed": false`, the card shows a note. A cable is only sized when its length is entered. The result is a design aid; the installer remains responsible for the choice of cables and protective devices.
 
 The **Inverter limits** card lists every limit from the datasheet and with the safety margin. **Copy** above the results copies them as text.
 
@@ -78,11 +82,18 @@ The meaning of every check is described in [How the Calculation Works](calculati
 | Cable length MPPT n | One-way length of the string cables of this MPPT; 0 means not entered. |
 | Ambient temperature (DC) | Reference 60 °C; above it the current-carrying capacity is reduced. |
 | Circuits laid together | Grouping factor, 1 to 9 circuits. |
-| Max. voltage drop DC | Of the string voltage at the MPP; default 1 %. |
+| Cross-section of the string cables | Automatic, or a cross-section you choose, for example 4 or 6 mm². |
+| Max. voltage drop DC | Of the string voltage at the MPP, module leads included; default 1 %. |
+| Length per lead, cross-section of the leads | Used for modules whose datasheet states no leads; default 0.5 m per lead and 4 mm². |
 | Installation method (AC) | A1, B1, B2, C or E (IEC 60364-5-52 / DIN VDE 0298-4). |
 | Length of the AC line | One way, from the inverter to the distribution board. |
 | Ambient temperature (AC) | Reference 30 °C. |
 | Max. voltage drop AC | Of 400 V (three-phase) or 230 V (single-phase); default 3 %. |
+| Batteries connected to a busbar | On: each battery has a cable to the busbar and a main cable runs to the inverter. Off: each battery has its own cable to the inverter. |
+| Length of each battery cable, cross-section | One way; automatic or chosen (25 to 150 mm²). |
+| Busbar to inverter, cross-section | With a busbar: length and cross-section of the main cable. |
+| Ambient temperature (battery) | Reference 30 °C. |
+| Max. voltage drop (battery) | Of the nominal bank voltage; default 1 %. |
 
 ## Parameters
 

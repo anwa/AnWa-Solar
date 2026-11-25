@@ -729,7 +729,12 @@ public partial class MainWindow : ChromeWindow
                 ? string.Create(c, $"MPPT {i} {_cableSettings.DcLength(i):0.#} m")
                 : $"MPPT {i} –"));
         string ac = _cableSettings.AcLengthM > 0 ? string.Create(c, $"AC {_cableSettings.AcLengthM:0.#} m, method {_cableSettings.AcMethod}") : "AC –";
-        CableSummaryText.Text = $"{dc} · {ac}";
+        string battery = !_batterySettings.Enabled ? string.Empty
+            : _cableSettings.BatteryCableLengthM <= 0 ? " · battery –"
+            : _cableSettings.BatteryBusbar
+                ? string.Create(c, $" · battery {_cableSettings.BatteryCableLengthM:0.#} m + busbar {_cableSettings.BatteryMainLengthM:0.#} m")
+                : string.Create(c, $" · battery {_cableSettings.BatteryCableLengthM:0.#} m");
+        CableSummaryText.Text = $"{dc} · {ac}{battery}";
     }
 
     private void OnEditBatteryClick(object sender, RoutedEventArgs e)
@@ -922,14 +927,14 @@ public partial class MainWindow : ChromeWindow
             ? null
             : StringCalculator.Calculate(_selectedInverter, _stringConfigs, _parameters);
 
-        _lastCables = _lastResult is { HasValidMpptRange: true } && _dataStore.CableTables is { } tables
-            ? CableCalculator.Calculate(_lastResult, _cableSettings, tables)
-            : null;
-        UpdateCableSummary();
         _lastBattery = _lastResult is { HasValidMpptRange: true } && _batterySettings.Enabled
             ? BatteryCalculator.Calculate(_lastResult.Inverter, FindBattery(_batterySettings.Battery), _batterySettings.InSeries, _batterySettings.InParallel)
             : null;
         UpdateBatterySummary();
+        _lastCables = _lastResult is { HasValidMpptRange: true } && _dataStore.CableTables is { } tables
+            ? CableCalculator.Calculate(_lastResult, _cableSettings, tables, _lastBattery)
+            : null;
+        UpdateCableSummary();
         ResultOverview overview = ResultPresenter.Present(_lastResult, _lastCables, _cableSettings, _lastBattery);
         ResultsPanel.DataContext = overview;
         StatusBar.DataContext = overview;

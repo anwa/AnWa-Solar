@@ -152,6 +152,12 @@ public static class ReportBuilder
                 md.AppendLine();
             }
 
+            if (cables.Battery is not null && !cables.BatteryTablesConfirmed)
+            {
+                md.AppendLine($"> {CableTexts.BatteryUnconfirmed}");
+                md.AppendLine();
+            }
+
             foreach (DcCableResult d in cables.Dc)
             {
                 md.AppendLine($"- {CableTexts.Dc(d)}");
@@ -170,12 +176,29 @@ public static class ReportBuilder
                 }
             }
 
+            if (cables.Battery is { } batteryCables)
+            {
+                md.AppendLine($"- {CableTexts.Battery(batteryCables)}");
+                md.AppendLine($"  - {CableTexts.Run(batteryCables.BatteryCables)}");
+                if (batteryCables.MainCable is { } mainCable)
+                {
+                    md.AppendLine($"  - {CableTexts.Run(mainCable)}");
+                }
+
+                foreach (ResultNote note in batteryCables.Notes)
+                {
+                    md.AppendLine($"  - {note.Text}");
+                }
+            }
+
             md.AppendLine();
             md.AppendLine("Rules: design current of a string $I_B = 1.25 \\cdot I_{SC,STC}$; string fuses when $(N_p - 1) \\cdot 1.25 \\cdot I_{SC,STC} > I_{MOD,max,OCPR}$ with $1.5 \\cdot I_{SC} \\le I_n \\le 2.4 \\cdot I_{SC}$ and $I_n \\le I_{MOD,max,OCPR}$ (IEC 62548); AC $I_B \\le I_n \\le I_z$.");
             md.AppendLine();
+            md.AppendLine("The string voltage drop includes the module leads: $\\Delta u_{leads} = \\frac{N \\cdot (l_+ + l_-) \\cdot I_{MPP}}{\\kappa \\cdot A_{lead} \\cdot U_{MPP}}$. Battery cables: $I_B \\le I_n \\le I_z$; a battery cable carries the current of one battery (at most the inverter's), the main cable from a busbar the battery current; with a busbar the voltage drop limit is shared equally by both; $\\Delta u_{bat} = \\frac{2 \\cdot L \\cdot I}{\\kappa \\cdot A \\cdot U_{bank,nominal}}$.");
+            md.AppendLine();
             md.AppendLine("$$\\Delta u_{DC} = \\frac{2 \\cdot L \\cdot I_{MPP}}{\\kappa \\cdot A \\cdot U_{MPP}}, \\quad \\Delta u_{AC,3} = \\frac{\\sqrt{3} \\cdot L \\cdot I}{\\kappa \\cdot A \\cdot 400\\,\\mathrm{V}}, \\quad \\Delta u_{AC,1} = \\frac{2 \\cdot L \\cdot I}{\\kappa \\cdot A \\cdot 230\\,\\mathrm{V}}$$");
             md.AppendLine();
-            md.AppendLine($"Sources: {tables.SolarCable.Source}; {tables.AcCable.Source}; {tables.Grouping.Source}; {tables.Protection.Source}; κ = {tables.CopperConductivity} m/(Ω·mm²).");
+            md.AppendLine($"Sources: {tables.SolarCable.Source}; {tables.AcCable.Source}; {tables.Grouping.Source}; {tables.Protection.Source}; κ = {tables.CopperConductivity} m/(Ω·mm²)." + (cables.Battery is null ? string.Empty : $" Battery cables: {tables.BatteryCable.Source}."));
             md.AppendLine();
         }
 

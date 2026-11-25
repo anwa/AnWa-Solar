@@ -36,6 +36,9 @@ public static class DatasheetEntryBuilder
             MaxSeriesFuseA = reader.OptionalNumber(DatasheetFields.MaxSeriesFuseA),
             OperatingTempMinC = reader.Number(DatasheetFields.OperatingMinC),
             OperatingTempMaxC = reader.Number(DatasheetFields.OperatingMaxC),
+            CableCrossSectionMm2 = reader.OptionalNumber(DatasheetFields.CableCrossSectionMm2),
+            CableLengthPlusMm = reader.OptionalNumber(DatasheetFields.CableLengthPlusMm),
+            CableLengthMinusMm = reader.OptionalNumber(DatasheetFields.CableLengthMinusMm),
         };
 
         if (errors.Count == 0)
@@ -58,6 +61,11 @@ public static class DatasheetEntryBuilder
             if (candidate.MaxSeriesFuseA is <= 0)
             {
                 errors.Add("The max. series fuse rating must be greater than 0 when it is given.");
+            }
+
+            if (candidate.CableCrossSectionMm2 is <= 0 || candidate.CableLengthPlusMm is <= 0 || candidate.CableLengthMinusMm is <= 0)
+            {
+                errors.Add("The cable cross-section and lengths must be greater than 0 when they are given.");
             }
 
             if (candidate.OperatingTempMinC >= candidate.OperatingTempMaxC)

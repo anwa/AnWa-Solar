@@ -30,7 +30,7 @@ Enter only values from the manufacturer datasheets. Numbers use a dot as decimal
 }
 ```
 
-`"Max. series fuse rating (A)"` is optional; it decides whether string fuses are needed, see [String Calculation](string-calculation.md#results). `"Temperature coefficient of Vmpp (%/°C)"` is optional. Without it the Pmax coefficient is used, see [How the Calculation Works](calculation.md#temperature-correction).
+`"Cable cross-section (mm2)"`, `"Cable length plus (mm)"` and `"Cable length minus (mm)"` describe the module leads (portrait) and are optional; without them your default from the cable settings applies. `"Max. series fuse rating (A)"` is optional; it decides whether string fuses are needed, see [String Calculation](string-calculation.md#results). `"Temperature coefficient of Vmpp (%/°C)"` is optional. Without it the Pmax coefficient is used, see [How the Calculation Works](calculation.md#temperature-correction).
 
 ## Inverter
 

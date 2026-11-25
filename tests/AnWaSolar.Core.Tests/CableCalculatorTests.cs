@@ -1,4 +1,5 @@
 using AnWaSolar.Core.Calculation;
+using AnWaSolar.Core.Datasheets;
 using AnWaSolar.Core.Models;
 
 using static AnWaSolar.Core.Tests.StringCalculatorTests;
@@ -7,7 +8,9 @@ namespace AnWaSolar.Core.Tests;
 
 /// <summary>
 /// Cable and fuse sizing with the shipped <c>Data/CableTables.json</c>, the AIKO-A500-MAH60Db (Isc 14.05 A, Impp
-/// 13.21 A, Vmpp 37.9 V) and the Deye SUN-18K-SG05LP3-EU-SM2 (max. AC current 28.7 A, three-phase).
+/// 13.21 A, Vmpp 37.9 V, no lead values: the default 0.5 m per lead and 4 mm² applies), the Trina TSM-445-NEG9R.28
+/// (leads 4.0 mm², 1100/1100 mm), the Deye SUN-18K-SG05LP3-EU-SM2 (max. AC current 28.7 A, three-phase, battery
+/// 330 A) and the Deye SE-F16 battery (charge 160 A, discharge 230 A).
 /// </summary>
 public sealed class CableCalculatorTests
 {
@@ -32,22 +35,81 @@ public sealed class CableCalculatorTests
     {
         Assert.NotNull(s_tables);
         Assert.True(s_tables.Confirmed);
+        Assert.False(s_tables.BatteryCable.Confirmed); // the battery cable values still need the user's check
         Assert.Equal(56, s_tables.CopperConductivity);
         Assert.Equal(["A1", "B1", "B2", "C", "E"], s_tables.AcMethods);
     }
 
+    private const double AikoLeadDropPct = 11 * 1.0 * 13.21 / (56 * 4.0) / (11 * 37.9) * 100; // 0.16 %
+
     [Fact]
-    public void String_cable_meets_current_and_voltage_drop()
+    public void String_cable_meets_current_and_voltage_drop_with_the_module_leads()
     {
-        // 11 modules: Vmpp 416.9 V. Design current 1.25 × 14.05 = 17.56 A (1.5 mm² carries 29 A on a surface), but
-        // 20 m on 1.5 mm² drop 2 · 20 · 13.21 / (56 · 1.5) = 6.29 V = 1.51 % > 1 %; 2.5 mm² drops 0.91 %.
+        // 11 modules: Vmpp 416.9 V. Design current 1.25 × 14.05 = 17.56 A (1.5 mm² carries 29 A on a surface). The
+        // leads add 11 × (0.5 + 0.5) m on 4 mm² = 0.16 %; 20 m on 2.5 mm² drop 0.91 %, together 1.06 % > 1 %, so
+        // 4 mm² (0.57 % + 0.16 % = 0.72 %).
         DcCableResult dc = Cables(Settings(), Aiko(1, 11), Aiko(2, 11)).Dc[0];
 
         Assert.Equal(17.5625, dc.DesignCurrentA, 6);
-        Assert.Equal(2.5, dc.CrossSectionMm2);
-        Assert.Equal(2 * 20 * 13.21 / (56 * 2.5) / (11 * 37.9) * 100, dc.VoltageDropPct!.Value, 6);
+        Assert.Equal(4, dc.CrossSectionMm2);
+        Assert.False(dc.LeadsFromDatasheet);
+        Assert.Equal(1.0, dc.LeadLengthPerModuleM, 6);
+        Assert.Equal(AikoLeadDropPct, dc.LeadDropPct, 6);
+        Assert.Equal(2 * 20 * 13.21 / (56 * 4.0) / (11 * 37.9) * 100, dc.HomeRunDropPct!.Value, 6);
+        Assert.Equal(dc.HomeRunDropPct!.Value + AikoLeadDropPct, dc.VoltageDropPct!.Value, 6);
         Assert.False(dc.FuseRequired);
         Assert.Equal(ResultState.Ok, dc.State);
+    }
+
+    [Fact]
+    public void Lead_values_from_the_datasheet_replace_the_default()
+    {
+        // Trina TSM-445: 11 × 44.3 V = 487.3 V, Impp 10.05 A. Leads 11 × 2.2 m on 4 mm² = 0.22 %; 20 m on 1.5 mm²
+        // would give 0.98 % + 0.22 % > 1 %, 2.5 mm² gives 0.59 % + 0.22 % = 0.81 %.
+        DatasheetEntryBuilder.TryBuildModule(DatasheetEntryBuilderTests.Trina445(), out PVModule? trina);
+        trina!.CableCrossSectionMm2 = 4.0;
+        trina.CableLengthPlusMm = 1100;
+        trina.CableLengthMinusMm = 1100;
+        var config = new StringConfiguration { MpptIndex = 1, SelectedModule = trina, ModulesPerString = 11, ParallelStrings = 1 };
+
+        DcCableResult dc = Cables(Settings(), config, Aiko(2, 11)).Dc[0];
+
+        Assert.True(dc.LeadsFromDatasheet);
+        Assert.Equal(2.2, dc.LeadLengthPerModuleM, 6);
+        Assert.Equal(11 * 2.2 * 10.05 / (56 * 4.0) / (11 * 44.3) * 100, dc.LeadDropPct, 6);
+        Assert.Equal(2.5, dc.CrossSectionMm2);
+        Assert.Equal(0.8121, dc.VoltageDropPct!.Value, 3);
+    }
+
+    [Fact]
+    public void Chosen_cross_section_is_checked_not_resized()
+    {
+        // 2.5 mm² chosen: it carries the current, but 0.91 % + 0.16 % = 1.06 % > 1 % is a warning.
+        CableSettings settings = Settings();
+        settings.DcCrossSectionMm2 = 2.5;
+
+        DcCableResult dc = Cables(settings, Aiko(1, 11), Aiko(2, 11)).Dc[0];
+
+        Assert.Equal(2.5, dc.CrossSectionMm2);
+        Assert.True(dc.CrossSectionChosen);
+        Assert.Equal(ResultState.Warning, dc.State);
+        Assert.Contains(dc.Notes, n => n.State == ResultState.Warning && n.Text.Contains("above the limit", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Chosen_cross_section_below_the_fuse_rating_is_an_error()
+    {
+        // 3 strings need gPV 25 A; two touching cables on a surface: 1.5 mm² carries 24 A < 25 A.
+        CableSettings settings = Settings();
+        settings.DcCrossSectionMm2 = 1.5;
+        settings.DcInstallation = SolarCableInstallation.TwoTouchingOnSurface;
+        StringConfiguration config = Aiko(1, 11, 3);
+        config.SelectedModule!.MaxSeriesFuseA = 25;
+
+        DcCableResult dc = Cables(settings, config, Aiko(2, 11)).Dc[0];
+
+        Assert.Equal(ResultState.Error, dc.State);
+        Assert.Contains(dc.Notes, n => n.State == ResultState.Error && n.Text.Contains("less than the required 25", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -63,7 +125,7 @@ public sealed class CableCalculatorTests
         Assert.Equal(21.075, dc.FuseMinA!.Value, 6);
         Assert.Equal(25, dc.FuseMaxA);
         Assert.Equal(25, dc.FuseRatingA);
-        Assert.Equal(2.5, dc.CrossSectionMm2); // carries the 25 A fuse rating (39 A) and meets the voltage drop
+        Assert.Equal(4, dc.CrossSectionMm2); // 2.5 mm² carries the 25 A fuse rating (39 A), but only 4 mm² meets the voltage drop
         Assert.Equal(ResultState.Warning, dc.State);
     }
 
@@ -87,7 +149,7 @@ public sealed class CableCalculatorTests
         DcCableResult dc = Cables(Settings(), Aiko(1, 11, 2), Aiko(2, 11)).Dc[0];
 
         Assert.False(dc.FuseRequired);
-        Assert.Empty(dc.Notes);
+        Assert.All(dc.Notes, n => Assert.Equal(ResultState.Neutral, n.State)); // only the note about the default leads
     }
 
     [Fact]
@@ -151,6 +213,108 @@ public sealed class CableCalculatorTests
         Assert.Equal(ResultState.Ok, view.State);
         Assert.DoesNotContain(view.Notes, n => n.Text == CableTexts.Unconfirmed);
         Assert.DoesNotContain(CableTexts.Unconfirmed, ReportBuilder.Build(result, Parameters(), new DateTime(2026, 11, 25), cables, s_tables), StringComparison.Ordinal);
+    }
+
+    private static CableCalculationResult BatteryCables(CableSettings settings, int parallel)
+    {
+        Inverter inverter = Deye18K();
+        inverter.BatteryVoltageRangeV = "40-60";
+        inverter.MaxBatteryChargeCurrentA = 330;
+        inverter.MaxBatteryDischargeCurrentA = 330;
+        inverter.BatteryInputs = 2;
+        var seF16 = new Battery
+        {
+            Manufacturer = "Deye",
+            Model = "SE-F16",
+            NominalVoltageV = 51.2,
+            VoltageRangeV = "44.8-57.6",
+            NominalCapacityAh = 314,
+            NominalEnergyKWh = 16,
+            DepthOfDischargePct = 90,
+            MaxChargeCurrentA = 160,
+            MaxDischargeCurrentA = 230,
+            MaxModulesInParallel = 32,
+        };
+        StringCalculationResult strings = StringCalculator.Calculate(inverter, [Aiko(1, 11), Aiko(2, 11)], Parameters());
+        BatteryCalculationResult battery = BatteryCalculator.Calculate(inverter, seF16, 1, parallel);
+        return CableCalculator.Calculate(strings, settings, s_tables, battery);
+    }
+
+    [Fact]
+    public void Battery_cables_without_busbar_run_from_each_battery_to_the_inverter()
+    {
+        // Each SE-F16 cable: Ib = min(230 A, 330 A) = 230 A → fuse 250 A → 70 mm² (251 A). Operating current of the
+        // inverter 330 A shared by 2 cables: 2 · 2 m · 165 A / (56 · 70) = 0.168 V = 0.33 % of 51.2 V.
+        CableSettings settings = Settings();
+        settings.BatteryCableLengthM = 2;
+
+        BatteryCableResult battery = BatteryCables(settings, 2).Battery!;
+
+        Assert.False(battery.Busbar);
+        Assert.Null(battery.MainCable);
+        Assert.Equal(2, battery.BatteryCables.Count);
+        Assert.Equal(230, battery.BatteryCables.DesignCurrentA);
+        Assert.Equal(250, battery.BatteryCables.FuseA);
+        Assert.Equal(70, battery.BatteryCables.CrossSectionMm2);
+        Assert.Equal(2 * 2 * 165 / (56.0 * 70) / 51.2 * 100, battery.TotalDropPct!.Value, 6);
+        Assert.Equal(ResultState.Ok, battery.State);
+    }
+
+    [Fact]
+    public void Battery_cables_with_busbar_add_the_main_cable()
+    {
+        // Battery cables 1 m: 70 mm², fuse 250 A, 0.16 %. Main cable: Ib = max(320 A charge, 330 A discharge) = 330 A
+        // → fuse 355 A → 150 mm² (406 A; 120 mm² carries 352 A); 2 · 3 m · 330 A / (56 · 150) = 0.24 V = 0.46 %.
+        CableSettings settings = Settings();
+        settings.BatteryBusbar = true;
+        settings.BatteryCableLengthM = 1;
+        settings.BatteryMainLengthM = 3;
+
+        CableCalculationResult cables = BatteryCables(settings, 2);
+        BatteryCableResult battery = cables.Battery!;
+
+        Assert.Equal(70, battery.BatteryCables.CrossSectionMm2);
+        BatteryCableRun main = battery.MainCable!;
+        Assert.Equal(330, main.DesignCurrentA);
+        Assert.Equal(355, main.FuseA);
+        Assert.Equal(150, main.CrossSectionMm2);
+        double expected = (2 * 1 * 165 / (56.0 * 70) + 2 * 3 * 330 / (56.0 * 150)) / 51.2 * 100;
+        Assert.Equal(expected, battery.TotalDropPct!.Value, 6);
+        Assert.Equal(ResultState.Warning, cables.State); // the battery cable values are not confirmed yet
+    }
+
+    [Fact]
+    public void Battery_problems_are_reported()
+    {
+        // 4 batteries need 4 cables but the inverter has 2 inputs; a chosen 95 mm² main cable carries 304 A < 355 A.
+        CableSettings settings = Settings();
+        settings.BatteryCableLengthM = 2;
+        Assert.Contains(BatteryCables(settings, 4).Battery!.Notes, n => n.State == ResultState.Warning && n.Text.Contains("2 battery inputs", StringComparison.Ordinal));
+
+        settings.BatteryBusbar = true;
+        settings.BatteryMainLengthM = 3;
+        settings.BatteryMainCrossSectionMm2 = 95;
+        BatteryCableResult battery = BatteryCables(settings, 2).Battery!;
+        Assert.Equal(ResultState.Error, battery.State);
+        Assert.Contains(battery.Notes, n => n.State == ResultState.Error && n.Text.Contains("less than the fuse rating 355", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Battery_cables_appear_in_the_card_and_the_report()
+    {
+        CableSettings settings = Settings();
+        settings.BatteryCableLengthM = 2;
+        CableCalculationResult cables = BatteryCables(settings, 2);
+        StringCalculationResult strings = StringCalculator.Calculate(Deye18K(), [Aiko(1, 11), Aiko(2, 11)], Parameters());
+
+        CableView view = ResultPresenter.Present(strings, cables, settings).Cables!;
+        string report = ReportBuilder.Build(strings, Parameters(), new DateTime(2026, 11, 25), cables, s_tables);
+
+        Assert.Contains(view.Rows, r => r.Quantity == "Battery cables to the inverter (2 ×)" && r.Value.StartsWith("70 mm²", StringComparison.Ordinal));
+        Assert.Contains(view.Notes, n => n.Text == CableTexts.BatteryUnconfirmed);
+        Assert.Contains(view.Rows, r => r.Quantity == "MPPT 1 module leads" && r.Limit == "your default");
+        Assert.Contains("Battery without busbar", report, StringComparison.Ordinal);
+        Assert.Contains(CableTexts.BatteryUnconfirmed, report, StringComparison.Ordinal);
     }
 
     [Theory]
