@@ -19,11 +19,11 @@ AnWa-Solar is a Windows desktop tool for designing photovoltaic systems. It curr
 
 - The migration to the rules of this file and the further milestones are tracked in `docs/IMPLEMENTATION_PLAN.md`. Read it before starting work; where the code does not yet follow a rule below, the plan names the milestone that changes it.
 - Implement one milestone at a time on its branch. Merge into `main` only when the user confirms the milestone is complete; that merge increases the minor version and is tagged.
-- Keep `README.md`, `CHANGELOG.md`, the user manual in `docs/manual` and the milestone checkboxes in `docs/IMPLEMENTATION_PLAN.md` current with every behavior change. The manual is written for users, in English, and describes the current GUI texts; its links and anchors are checked by a test.
+- Keep `README.md`, `CHANGELOG.md`, the user manual in `docs/manual` and the milestone checkboxes in `docs/IMPLEMENTATION_PLAN.md` current with every behavior change. The manual is written for users, in English and German, and describes the current GUI texts; its links and anchors are checked by a test.
 
 ## Language
 
-- All repository content is English, including GUI text, log messages, identifiers, master data property names, `README.md` and `CHANGELOG.md`. The German property names that `SettingsService` still reads exist only to convert old settings files.
+- All repository content is English, including log messages, identifiers, master data property names, `README.md` and `CHANGELOG.md`. GUI, result and report texts are written in English in the code and XAML; their German translations live in `src/AnWaSolar.Core/Localization/de.json` (English text as key), and every new user-visible text gets its German entry there. The user manual exists in English (`docs/manual`) and German (`docs/manual/de`, same file names); a change to one language is made in both. The German property names that `SettingsService` still reads exist only to convert old settings files.
 - Manufacturer and model names in master data keep their original spelling.
 
 ## Stack

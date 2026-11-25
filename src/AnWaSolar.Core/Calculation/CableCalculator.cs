@@ -172,61 +172,61 @@ public sealed class CableCalculationResult
 /// <summary>Texts of the cable and fuse sizing, shared by the result card, the copied text and the report.</summary>
 public static class CableTexts
 {
-    public const string Unconfirmed = "The standard values in Data/CableTables.json are not yet confirmed; check them before you rely on the cable sizes.";
+    public static string Unconfirmed => L.T("The standard values in Data/CableTables.json are not yet confirmed; check them before you rely on the cable sizes.");
 
-    public const string BatteryUnconfirmed = "The battery cable values in Data/CableTables.json (current-carrying capacities, fuse ratings, voltage drop limit) are not yet confirmed; check them before you rely on the battery cable sizes.";
+    public static string BatteryUnconfirmed => L.T("The battery cable values in Data/CableTables.json (current-carrying capacities, fuse ratings, voltage drop limit) are not yet confirmed; check them before you rely on the battery cable sizes.");
 
     public static string Installation(SolarCableInstallation installation) => installation switch
     {
-        SolarCableInstallation.FreeAir => "single cable in free air",
-        SolarCableInstallation.OnSurface => "single cable on a surface",
-        _ => "two cables touching on a surface",
+        SolarCableInstallation.FreeAir => L.T("single cable in free air"),
+        SolarCableInstallation.OnSurface => L.T("single cable on a surface"),
+        _ => L.T("two cables touching on a surface"),
     };
 
     public static string AcMethod(string method) => method switch
     {
-        "A1" => "A1, single cores in conduit in an insulated wall",
-        "B1" => "B1, single cores in conduit on a wall",
-        "B2" => "B2, multi-core cable in conduit on a wall",
-        "C" => "C, cable on a wall",
-        "E" => "E, cable in free air",
+        "A1" => L.T("A1, single cores in conduit in an insulated wall"),
+        "B1" => L.T("B1, single cores in conduit on a wall"),
+        "B2" => L.T("B2, multi-core cable in conduit on a wall"),
+        "C" => L.T("C, cable on a wall"),
+        "E" => L.T("E, cable in free air"),
         _ => method,
     };
 
     public static string Dc(DcCableResult d)
     {
         ArgumentNullException.ThrowIfNull(d);
-        string fuse = d.FuseRequired ? $", string fuses gPV {d.FuseRatingA?.ToString("F0", CultureInfo.CurrentCulture) ?? "?"} A" : ", no string fuses needed";
-        string leads = FormattableString.CurrentCulture($", module leads {d.ModulesPerString} × {d.LeadLengthPerModuleM:0.##} m {d.LeadCrossSectionMm2:0.#} mm² ({(d.LeadsFromDatasheet ? "datasheet" : "default")}) {d.LeadDropPct:F2} %");
+        string fuse = d.FuseRequired ? L.F($", string fuses gPV {d.FuseRatingA?.ToString("F0", CultureInfo.CurrentCulture) ?? "?"} A") : L.T(", no string fuses needed");
+        string leads = L.F($", module leads {d.ModulesPerString} × {d.LeadLengthPerModuleM:0.##} m {d.LeadCrossSectionMm2:0.#} mm² ({(d.LeadsFromDatasheet ? L.T("datasheet") : L.T("default"))}) {d.LeadDropPct:F2} %");
         return d.CrossSectionMm2 is { } a
-            ? FormattableString.CurrentCulture($"MPPT {d.MpptIndex}: {a:0.#} mm² solar cable{(d.CrossSectionChosen ? " (chosen)" : string.Empty)}, {d.LengthM:0.#} m, design current {d.DesignCurrentA:F2} A ≤ {d.CarryingCapacityA:F1} A, voltage drop {d.VoltageDropPct:F2} % (≤ {d.DropLimitPct:0.##} %){leads}{fuse}")
-            : $"MPPT {d.MpptIndex}: not sized{fuse}";
+            ? L.F($"MPPT {d.MpptIndex}: {a:0.#} mm² solar cable{(d.CrossSectionChosen ? L.T(" (chosen)") : string.Empty)}, {d.LengthM:0.#} m, design current {d.DesignCurrentA:F2} A ≤ {d.CarryingCapacityA:F1} A, voltage drop {d.VoltageDropPct:F2} % (≤ {d.DropLimitPct:0.##} %){leads}{fuse}")
+            : L.F($"MPPT {d.MpptIndex}: not sized{fuse}");
     }
 
     public static string Ac(AcCableResult a)
     {
         ArgumentNullException.ThrowIfNull(a);
-        string breaker = a.BreakerA is { } b ? FormattableString.CurrentCulture($"circuit breaker {b:F0} A for {a.DesignCurrentA:F1} A") : "no circuit breaker";
+        string breaker = a.BreakerA is { } b ? L.F($"circuit breaker {b:F0} A for {a.DesignCurrentA:F1} A") : L.T("no circuit breaker");
         return a.CrossSectionMm2 is { } area
-            ? FormattableString.CurrentCulture($"AC line: {area:0.#} mm², {a.LengthM:0.#} m, {breaker}, Iz {a.CarryingCapacityA:F1} A, voltage drop {a.VoltageDropPct:F2} % (≤ {a.DropLimitPct:0.##} %)")
-            : $"AC line: not sized, {breaker}";
+            ? L.F($"AC line: {area:0.#} mm², {a.LengthM:0.#} m, {breaker}, Iz {a.CarryingCapacityA:F1} A, voltage drop {a.VoltageDropPct:F2} % (≤ {a.DropLimitPct:0.##} %)")
+            : L.F($"AC line: not sized, {breaker}");
     }
 
     public static string Run(BatteryCableRun r)
     {
         ArgumentNullException.ThrowIfNull(r);
-        string fuse = r.FuseA is { } f ? FormattableString.CurrentCulture($"fuse {f:F0} A for {r.DesignCurrentA:F0} A") : FormattableString.CurrentCulture($"no fuse rating for {r.DesignCurrentA:F0} A");
+        string fuse = r.FuseA is { } f ? L.F($"fuse {f:F0} A for {r.DesignCurrentA:F0} A") : L.F($"no fuse rating for {r.DesignCurrentA:F0} A");
         string count = r.Count > 1 ? $"{r.Count} × " : string.Empty;
         return r.CrossSectionMm2 is { } a
-            ? FormattableString.CurrentCulture($"{r.Name}: {count}{a:0.#} mm²{(r.CrossSectionChosen ? " (chosen)" : string.Empty)}, {r.LengthM:0.#} m, {fuse}, Iz {r.CarryingCapacityA:F0} A, voltage drop {r.DropPct:F2} % at {r.OperatingCurrentA:F0} A")
-            : $"{r.Name}: {count}not sized, {fuse}";
+            ? L.F($"{r.Name}: {count}{a:0.#} mm²{(r.CrossSectionChosen ? L.T(" (chosen)") : string.Empty)}, {r.LengthM:0.#} m, {fuse}, Iz {r.CarryingCapacityA:F0} A, voltage drop {r.DropPct:F2} % at {r.OperatingCurrentA:F0} A")
+            : L.F($"{r.Name}: {count}not sized, {fuse}");
     }
 
     public static string Battery(BatteryCableResult b)
     {
         ArgumentNullException.ThrowIfNull(b);
-        string total = b.TotalDropPct is { } t ? FormattableString.CurrentCulture($"; total voltage drop {t:F2} % of {b.BankNominalV:0.#} V (≤ {b.DropLimitPct:0.##} %)") : string.Empty;
-        return (b.Busbar ? "Battery with busbar" : "Battery without busbar") + total;
+        string total = b.TotalDropPct is { } t ? L.F($"; total voltage drop {t:F2} % of {b.BankNominalV:0.#} V (≤ {b.DropLimitPct:0.##} %)") : string.Empty;
+        return (b.Busbar ? L.T("Battery with busbar") : L.T("Battery without busbar")) + total;
     }
 }
 
@@ -305,7 +305,7 @@ public static class CableCalculator
             {
                 if (parallel >= 3)
                 {
-                    notes.Add(new ResultNote("The max. series fuse rating of the module is not stated; with 3 or more parallel strings string fuses may be needed. Import the module datasheet.", ResultState.Warning));
+                    notes.Add(new ResultNote(L.T("The max. series fuse rating of the module is not stated; with 3 or more parallel strings string fuses may be needed. Import the module datasheet."), ResultState.Warning));
                 }
             }
             else if (reverse > moduleFuse + Tolerance)
@@ -315,15 +315,14 @@ public static class CableCalculator
                 fuseMax = Math.Min(tables.Protection.StringFuseMaxFactor * isc, moduleFuse);
                 fuse = tables.Protection.StringFuseRatings.Where(r => r >= fuseMin - Tolerance && r <= fuseMax + Tolerance).Order().Cast<double?>().FirstOrDefault();
                 notes.Add(fuse is null
-                    ? new ResultNote($"String fuses are required ({parallel - 1} × {design:F2} A > {moduleFuse:F0} A), but no standard rating lies between {fuseMin:F1} A and {fuseMax:F1} A.", ResultState.Error)
-                    : new ResultNote($"String fuses are required: {parallel - 1} × {design:F2} A = {reverse:F2} A > {moduleFuse:F0} A max. series fuse rating. Use gPV {fuse:F0} A in each string (plus and minus).", ResultState.Warning));
+                    ? new ResultNote(L.F($"String fuses are required ({parallel - 1} × {design:F2} A > {moduleFuse:F0} A), but no standard rating lies between {fuseMin:F1} A and {fuseMax:F1} A."), ResultState.Error)
+                    : new ResultNote(L.F($"String fuses are required: {parallel - 1} × {design:F2} A = {reverse:F2} A > {moduleFuse:F0} A max. series fuse rating. Use gPV {fuse:F0} A in each string (plus and minus)."), ResultState.Warning));
             }
         }
 
         if (!leadsFromDatasheet)
         {
-            notes.Add(new ResultNote(FormattableString.CurrentCulture(
-                $"The module datasheet states no lead length and cross-section; your default of {settings.ModuleLeadLengthM:0.##} m per lead and {settings.ModuleLeadCrossSectionMm2:0.#} mm² is used."), ResultState.Neutral));
+            notes.Add(new ResultNote(L.F($"The module datasheet states no lead length and cross-section; your default of {settings.ModuleLeadLengthM:0.##} m per lead and {settings.ModuleLeadCrossSectionMm2:0.#} mm² is used."), ResultState.Neutral));
         }
 
         double required = fuse ?? design;
@@ -343,7 +342,7 @@ public static class CableCalculator
 
         if (length <= 0)
         {
-            notes.Insert(0, new ResultNote("Enter the cable length of this MPPT to size the cable.", ResultState.Neutral));
+            notes.Insert(0, new ResultNote(L.T("Enter the cable length of this MPPT to size the cable."), ResultState.Neutral));
             return Result(0, null, null, null, notes.Any(n => n.State == ResultState.Error) ? ResultState.Error : ResultState.Neutral);
         }
 
@@ -352,7 +351,7 @@ public static class CableCalculator
         double[] ampacity = tables.SolarCable.Ampacity[settings.DcInstallation.ToString()];
         if (temperature is null || grouping is null)
         {
-            notes.Insert(0, new ResultNote("The ambient temperature or the number of grouped circuits lies outside the tables.", ResultState.Error));
+            notes.Insert(0, new ResultNote(L.T("The ambient temperature or the number of grouped circuits lies outside the tables."), ResultState.Error));
             return Result(length, null, null, null, ResultState.Error);
         }
 
@@ -365,18 +364,18 @@ public static class CableCalculator
             int fixedIndex = Array.IndexOf(tables.CrossSections, fixedArea);
             if (fixedIndex < 0)
             {
-                notes.Insert(0, new ResultNote($"The chosen cross-section {fixedArea} mm² is not in the solar cable table.", ResultState.Error));
+                notes.Insert(0, new ResultNote(L.F($"The chosen cross-section {fixedArea} mm² is not in the solar cable table."), ResultState.Error));
                 return Result(length, null, null, null, ResultState.Error);
             }
 
             double fixedIz = Iz(fixedIndex);
             if (fixedIz < required - Tolerance)
             {
-                notes.Insert(0, new ResultNote(FormattableString.CurrentCulture($"The chosen {fixedArea:0.#} mm² carries {fixedIz:F1} A, less than the required {required:F1} A; choose a larger cross-section."), ResultState.Error));
+                notes.Insert(0, new ResultNote(L.F($"The chosen {fixedArea:0.#} mm² carries {fixedIz:F1} A, less than the required {required:F1} A; choose a larger cross-section."), ResultState.Error));
             }
             else if (Drop(fixedArea) + leadDrop > limit + Tolerance)
             {
-                notes.Insert(0, new ResultNote(FormattableString.CurrentCulture($"With the chosen {fixedArea:0.#} mm² the voltage drop is {Drop(fixedArea) + leadDrop:F2} %, above the limit of {limit:0.##} %."), ResultState.Warning));
+                notes.Insert(0, new ResultNote(L.F($"With the chosen {fixedArea:0.#} mm² the voltage drop is {Drop(fixedArea) + leadDrop:F2} %, above the limit of {limit:0.##} %."), ResultState.Warning));
             }
 
             return Result(length, fixedArea, fixedIz, Drop(fixedArea), notes.Select(n => n.State).Append(ResultState.Ok).Max());
@@ -386,8 +385,8 @@ public static class CableCalculator
             .FirstOrDefault(i => Iz(i) >= required - Tolerance && Drop(tables.CrossSections[i]) + leadDrop <= limit + Tolerance, -1);
         if (index < 0)
         {
-            string reason = leadDrop >= limit ? FormattableString.CurrentCulture($" The module leads alone drop {leadDrop:F2} %.") : string.Empty;
-            notes.Insert(0, new ResultNote($"No cross-section up to {tables.CrossSections[^1]} mm² meets {required:F1} A and {limit:0.##} % voltage drop.{reason}", ResultState.Error));
+            string reason = leadDrop >= limit ? L.F($" The module leads alone drop {leadDrop:F2} %.") : string.Empty;
+            notes.Insert(0, new ResultNote(L.F($"No cross-section up to {tables.CrossSections[^1]} mm² meets {required:F1} A and {limit:0.##} % voltage drop.{reason}"), ResultState.Error));
             return Result(length, null, null, null, ResultState.Error);
         }
 
@@ -403,20 +402,20 @@ public static class CableCalculator
         double current = ac.MaxAcCurrentA ?? 0;
         if (current <= 0 || phases == 0)
         {
-            notes.Add(new ResultNote("The max. AC current or the phase count of the inverter is not stated; import its datasheet to size the AC line.", ResultState.Warning));
+            notes.Add(new ResultNote(L.T("The max. AC current or the phase count of the inverter is not stated; import its datasheet to size the AC line."), ResultState.Warning));
             return new AcCableResult(settings.AcLengthM, phases, current, null, null, null, null, limit, ResultState.Warning, notes);
         }
 
         double? breaker = tables.Protection.BreakerRatings.Where(r => r >= current - Tolerance).Order().Cast<double?>().FirstOrDefault();
         if (breaker is null)
         {
-            notes.Add(new ResultNote($"No circuit breaker rating up to {tables.Protection.BreakerRatings.Max():F0} A covers {current:F1} A.", ResultState.Error));
+            notes.Add(new ResultNote(L.F($"No circuit breaker rating up to {tables.Protection.BreakerRatings.Max():F0} A covers {current:F1} A."), ResultState.Error));
             return new AcCableResult(settings.AcLengthM, phases, current, null, null, null, null, limit, ResultState.Error, notes);
         }
 
         if (settings.AcLengthM <= 0)
         {
-            notes.Add(new ResultNote("Enter the length of the AC line to size the cable.", ResultState.Neutral));
+            notes.Add(new ResultNote(L.T("Enter the length of the AC line to size the cable."), ResultState.Neutral));
             return new AcCableResult(0, phases, current, breaker, null, null, null, limit, ResultState.Neutral, notes);
         }
 
@@ -425,7 +424,7 @@ public static class CableCalculator
         double? grouping = CableTables.Factor(tables.Grouping.Factors, settings.AcGroupedCircuits);
         if (!table.TryGetValue(settings.AcMethod, out double[]? ampacity) || temperature is null || grouping is null)
         {
-            notes.Add(new ResultNote("The installation method, ambient temperature or number of grouped circuits lies outside the tables.", ResultState.Error));
+            notes.Add(new ResultNote(L.T("The installation method, ambient temperature or number of grouped circuits lies outside the tables."), ResultState.Error));
             return new AcCableResult(settings.AcLengthM, phases, current, breaker, null, null, null, limit, ResultState.Error, notes);
         }
 
@@ -437,7 +436,7 @@ public static class CableCalculator
             .FirstOrDefault(i => ampacity[i] * temperature.Value * grouping.Value >= breaker.Value - Tolerance && Drop(tables.CrossSections[i]) <= limit + Tolerance, -1);
         if (index < 0)
         {
-            notes.Add(new ResultNote($"No cross-section up to {tables.CrossSections[^1]} mm² meets {breaker:F0} A and {limit:0.##} % voltage drop.", ResultState.Error));
+            notes.Add(new ResultNote(L.F($"No cross-section up to {tables.CrossSections[^1]} mm² meets {breaker:F0} A and {limit:0.##} % voltage drop."), ResultState.Error));
             return new AcCableResult(settings.AcLengthM, phases, current, breaker, null, null, null, limit, ResultState.Error, notes);
         }
 
@@ -462,27 +461,27 @@ public static class CableCalculator
 
         if (!busbar && inverter.BatteryInputs > 0 && count > inverter.BatteryInputs)
         {
-            notes.Add(new ResultNote($"{count} battery cables, but the inverter has {inverter.BatteryInputs} battery inputs; use a busbar.", ResultState.Warning));
+            notes.Add(new ResultNote(L.F($"{count} battery cables, but the inverter has {inverter.BatteryInputs} battery inputs; use a busbar."), ResultState.Warning));
         }
 
         // With a busbar the battery cables and the main cable share the voltage drop limit equally.
         double share = busbar ? limit / 2 : limit;
-        BatteryCableRun batteryRun = SizeRun(busbar ? "Battery cables to the busbar" : "Battery cables to the inverter", count, settings.BatteryCableLengthM,
+        BatteryCableRun batteryRun = SizeRun(busbar ? L.T("Battery cables to the busbar") : L.T("Battery cables to the inverter"), count, settings.BatteryCableLengthM,
             perBattery, main / count, settings.BatteryCableCrossSectionMm2, share, nominal, table, temperature, tables.CopperConductivity, notes);
         BatteryCableRun? mainRun = busbar
-            ? SizeRun("Main cable busbar to inverter", 1, settings.BatteryMainLengthM, main, main, settings.BatteryMainCrossSectionMm2, share, nominal,
+            ? SizeRun(L.T("Main cable busbar to inverter"), 1, settings.BatteryMainLengthM, main, main, settings.BatteryMainCrossSectionMm2, share, nominal,
                 table, temperature, tables.CopperConductivity, notes)
             : null;
 
         double? total = batteryRun.DropPct is { } d1 && (mainRun is null || mainRun.DropPct is not null) ? d1 + (mainRun?.DropPct ?? 0) : null;
         if (total is { } t && t > limit + Tolerance)
         {
-            notes.Add(new ResultNote(FormattableString.CurrentCulture($"The voltage drop of the battery cables is {t:F2} %, above the limit of {limit:0.##} %."), ResultState.Warning));
+            notes.Add(new ResultNote(L.F($"The voltage drop of the battery cables is {t:F2} %, above the limit of {limit:0.##} %."), ResultState.Warning));
         }
 
         if (batteryRun.FuseA is not null)
         {
-            notes.Add(new ResultNote("Many batteries have a built-in DC breaker; check in the battery manual whether it replaces the battery fuse.", ResultState.Neutral));
+            notes.Add(new ResultNote(L.T("Many batteries have a built-in DC breaker; check in the battery manual whether it replaces the battery fuse."), ResultState.Neutral));
         }
 
         ResultState state = notes.Select(n => n.State).Append(total is null ? ResultState.Neutral : ResultState.Ok).Max();
@@ -497,19 +496,19 @@ public static class CableCalculator
         bool chosen = chosenArea is not null;
         if (fuse is null)
         {
-            notes.Add(new ResultNote(FormattableString.CurrentCulture($"{name}: no fuse rating up to {table.FuseRatings.Max():F0} A covers {design:F0} A."), ResultState.Error));
+            notes.Add(new ResultNote(L.F($"{name}: no fuse rating up to {table.FuseRatings.Max():F0} A covers {design:F0} A."), ResultState.Error));
             return new BatteryCableRun(name, count, length, design, operating, null, null, null, null, chosen);
         }
 
         if (length <= 0)
         {
-            notes.Add(new ResultNote($"{name}: enter the length to size the cable.", ResultState.Neutral));
+            notes.Add(new ResultNote(L.F($"{name}: enter the length to size the cable."), ResultState.Neutral));
             return new BatteryCableRun(name, count, length, design, operating, fuse, null, null, null, chosen);
         }
 
         if (temperature is null)
         {
-            notes.Add(new ResultNote($"{name}: the ambient temperature lies outside the tables.", ResultState.Error));
+            notes.Add(new ResultNote(L.F($"{name}: the ambient temperature lies outside the tables."), ResultState.Error));
             return new BatteryCableRun(name, count, length, design, operating, fuse, null, null, null, chosen);
         }
 
@@ -520,13 +519,13 @@ public static class CableCalculator
             int fixedIndex = Array.IndexOf(table.CrossSections, fixedArea);
             if (fixedIndex < 0)
             {
-                notes.Add(new ResultNote($"{name}: the chosen cross-section {fixedArea} mm² is not in the battery cable table.", ResultState.Error));
+                notes.Add(new ResultNote(L.F($"{name}: the chosen cross-section {fixedArea} mm² is not in the battery cable table."), ResultState.Error));
                 return new BatteryCableRun(name, count, length, design, operating, fuse, null, null, null, chosen);
             }
 
             if (Iz(fixedIndex) < fuse.Value - Tolerance)
             {
-                notes.Add(new ResultNote(FormattableString.CurrentCulture($"{name}: the chosen {fixedArea:0.#} mm² carries {Iz(fixedIndex):F0} A, less than the fuse rating {fuse:F0} A; choose a larger cross-section."), ResultState.Error));
+                notes.Add(new ResultNote(L.F($"{name}: the chosen {fixedArea:0.#} mm² carries {Iz(fixedIndex):F0} A, less than the fuse rating {fuse:F0} A; choose a larger cross-section."), ResultState.Error));
             }
 
             return new BatteryCableRun(name, count, length, design, operating, fuse, fixedArea, Iz(fixedIndex), Drop(fixedArea), chosen);
@@ -536,7 +535,7 @@ public static class CableCalculator
             .FirstOrDefault(i => Iz(i) >= fuse.Value - Tolerance && Drop(table.CrossSections[i]) <= dropLimit + Tolerance, -1);
         if (index < 0)
         {
-            notes.Add(new ResultNote(FormattableString.CurrentCulture($"{name}: no cross-section up to {table.CrossSections[^1]} mm² meets {fuse:F0} A and {dropLimit:0.##} % voltage drop."), ResultState.Error));
+            notes.Add(new ResultNote(L.F($"{name}: no cross-section up to {table.CrossSections[^1]} mm² meets {fuse:F0} A and {dropLimit:0.##} % voltage drop."), ResultState.Error));
             return new BatteryCableRun(name, count, length, design, operating, fuse, null, null, null, chosen);
         }
 

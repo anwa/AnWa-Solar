@@ -23,7 +23,7 @@ public partial class DatasheetWindow : ChromeWindow
         _userData = userData;
         _logger = logger;
         InitializeComponent();
-        Title = $"Datasheet – {title}";
+        Title = L.F($"Datasheet – {title}");
         Loaded += async (_, _) => await ShowPdfAsync();
     }
 
@@ -49,7 +49,7 @@ public partial class DatasheetWindow : ChromeWindow
             _logger.LogError(ex, "The datasheet viewer (WebView2) could not be started.");
             Viewer.Visibility = Visibility.Collapsed;
             FallbackText.Visibility = Visibility.Visible;
-            FallbackText.Text = $"The datasheet cannot be shown here, because the Microsoft Edge WebView2 Runtime could not be started. The file is: {_path}";
+            FallbackText.Text = L.F($"The datasheet cannot be shown here, because the Microsoft Edge WebView2 Runtime could not be started. The file is: {_path}");
         }
     }
 }

@@ -60,7 +60,7 @@ public partial class MainWindow : ChromeWindow
 
     // The open project: everything entered is saved into it automatically.
     private readonly IProjectService _projects;
-    private Project _project = new() { Name = "Project" };
+    private Project _project = new() { Name = L.T("Project") };
     private string? _projectPath;
 
     // Entries that are missing in the master data and come from the copy in the project.
@@ -78,7 +78,7 @@ public partial class MainWindow : ChromeWindow
     // Local host name of the report preview; requests to it are answered by OnPreviewResourceRequested.
     private const string PreviewHost = "report.anwasolar.invalid";
     private const string PreviewPageUrl = "https://" + PreviewHost + "/report.html";
-    private const string ReportTitle = "AnWa-Solar report";
+    private static string ReportTitle => L.T("AnWa-Solar report");
     private TaskCompletionSource<bool>? _navigation;
     private bool _exportingReport;
     private ulong _navigationId;
@@ -120,7 +120,7 @@ public partial class MainWindow : ChromeWindow
         Loaded += (_, _) => ShowDataIssues();
 
         InitializeComponent();
-        Title = $"AnWa-Solar {AppVersion.Current}";
+        Title = L.F($"AnWa-Solar {AppVersion.Current}");
         CopyrightText.Text = AppInfo.Copyright(typeof(MainWindow).Assembly);
         _logger = logger;
         _markdown = markdown;
@@ -174,14 +174,14 @@ public partial class MainWindow : ChromeWindow
         if (_fromProjectCopy.Count > 0)
         {
             Dispatcher.BeginInvoke(new Action(() => MessageDialog.Show(this,
-                "These entries are not in the master data; the values saved in the project are used:\n\n• " + string.Join("\n• ", _fromProjectCopy)
-                + "\n\nImport their datasheets to add them to the master data.", "Project", StatusKind.Warning)), DispatcherPriority.ApplicationIdle);
+                L.T("These entries are not in the master data; the values saved in the project are used:\n\n• ") + string.Join("\n• ", _fromProjectCopy)
+                + L.T("\n\nImport their datasheets to add them to the master data."), L.T("Project"), StatusKind.Warning)), DispatcherPriority.ApplicationIdle);
         }
     }
 
     private void UpdateProjectCard()
     {
-        Title = $"AnWa-Solar {AppVersion.Current} – {_project.Name}";
+        Title = L.F($"AnWa-Solar {AppVersion.Current} – {_project.Name}");
         ProjectNameText.Text = _project.Name;
         string details = string.Join(" · ", new[] { _project.Customer, _project.Address?.ReplaceLineEndings(", ") }.Where(s => !string.IsNullOrWhiteSpace(s)));
         ProjectDetailsText.Text = details;
@@ -230,16 +230,16 @@ public partial class MainWindow : ChromeWindow
 
             var root = new StackPanel();
             var card = new Card { Content = root, Style = (Style)FindResource("AnWaSoft.Card") };
-            AutomationProperties.SetName(card, $"MPPT {cfg.MpptIndex} configuration");
+            AutomationProperties.SetName(card, L.F($"MPPT {cfg.MpptIndex} configuration"));
 
             // Header: title and the enable switch
             var header = new DockPanel();
             var toggle = new ToggleButton
             {
-                ToolTip = "Enable or disable this MPPT",
+                ToolTip = L.T("Enable or disable this MPPT"),
                 Style = (Style)FindResource("MaterialDesignSwitchToggleButton"),
             };
-            AutomationProperties.SetName(toggle, $"MPPT {cfg.MpptIndex} enabled");
+            AutomationProperties.SetName(toggle, L.F($"MPPT {cfg.MpptIndex} enabled"));
             DockPanel.SetDock(toggle, Dock.Right);
             header.Children.Add(toggle);
             var icon = new PackIcon { Kind = PackIconKind.SolarPanel, Width = 22, Height = 22, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -257,7 +257,7 @@ public partial class MainWindow : ChromeWindow
             var moduleRow = new DockPanel();
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             DockPanel.SetDock(buttons, Dock.Right);
-            var selectText = new TextBlock { Text = "Select module", VerticalAlignment = VerticalAlignment.Center };
+            var selectText = new TextBlock { Text = L.T("Select module"), VerticalAlignment = VerticalAlignment.Center };
             var btnSelect = new Button
             {
                 Style = (Style)FindResource("MaterialDesignOutlinedButton"),
@@ -265,7 +265,7 @@ public partial class MainWindow : ChromeWindow
                 Padding = new Thickness(12, 0, 12, 0),
                 Content = IconText(PackIconKind.SwapHorizontal, selectText),
             };
-            AutomationProperties.SetName(btnSelect, $"Select PV module for MPPT {cfg.MpptIndex}");
+            AutomationProperties.SetName(btnSelect, L.F($"Select PV module for MPPT {cfg.MpptIndex}"));
             btnSelect.Click += (_, _) => OnSelectModuleForMppt(cfg);
             var btnRemove = new Button
             {
@@ -273,11 +273,11 @@ public partial class MainWindow : ChromeWindow
                 Width = 32,
                 Height = 32,
                 Margin = new Thickness(4, 0, 0, 0),
-                ToolTip = "Remove the PV module",
+                ToolTip = L.T("Remove the PV module"),
                 Content = new PackIcon { Kind = PackIconKind.DeleteOutline, Width = 18, Height = 18 },
                 Visibility = Visibility.Collapsed,
             };
-            AutomationProperties.SetName(btnRemove, $"Remove PV module from MPPT {cfg.MpptIndex}");
+            AutomationProperties.SetName(btnRemove, L.F($"Remove PV module from MPPT {cfg.MpptIndex}"));
             btnRemove.Click += (_, _) => OnRemoveModuleForMppt(cfg);
             var btnDatasheet = new Button
             {
@@ -285,11 +285,11 @@ public partial class MainWindow : ChromeWindow
                 Width = 32,
                 Height = 32,
                 Margin = new Thickness(4, 0, 0, 0),
-                ToolTip = "Show the datasheet of the module",
+                ToolTip = L.T("Show the datasheet of the module"),
                 Content = new PackIcon { Kind = PackIconKind.FilePdfBox, Width = 18, Height = 18 },
                 Visibility = Visibility.Collapsed,
             };
-            AutomationProperties.SetName(btnDatasheet, $"Datasheet of the PV module of MPPT {cfg.MpptIndex}");
+            AutomationProperties.SetName(btnDatasheet, L.F($"Datasheet of the PV module of MPPT {cfg.MpptIndex}"));
             btnDatasheet.Click += (_, _) =>
             {
                 if (cfg.SelectedModule is { } selected)
@@ -311,23 +311,23 @@ public partial class MainWindow : ChromeWindow
             body.Children.Add(moduleBox);
 
             // Modules per string
-            (DockPanel nRow, TextBlock nValue) = SliderHeader("Modules per string");
+            (DockPanel nRow, TextBlock nValue) = SliderHeader(L.T("Modules per string"));
             nRow.Margin = new Thickness(0, 14, 0, 0);
             var nSlider = new Slider { Minimum = 1, Maximum = Math.Max(30, cfg.ModulesPerString), TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ModulesPerString };
-            AutomationProperties.SetName(nSlider, $"Modules per string, MPPT {cfg.MpptIndex}");
+            AutomationProperties.SetName(nSlider, L.F($"Modules per string, MPPT {cfg.MpptIndex}"));
             var nAllowed = Muted(string.Empty, 12);
             body.Children.Add(nRow);
             body.Children.Add(nSlider);
             body.Children.Add(nAllowed);
 
             // Parallel strings
-            (DockPanel sRow, TextBlock sValue) = SliderHeader("Parallel strings");
+            (DockPanel sRow, TextBlock sValue) = SliderHeader(L.T("Parallel strings"));
             sRow.Margin = new Thickness(0, 12, 0, 0);
             var sSlider = new Slider { Minimum = 1, Maximum = Math.Max(specMaxStrings, cfg.ParallelStrings), TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ParallelStrings };
-            AutomationProperties.SetName(sSlider, $"Parallel strings, MPPT {cfg.MpptIndex}");
+            AutomationProperties.SetName(sSlider, L.F($"Parallel strings, MPPT {cfg.MpptIndex}"));
             var sAllowed = Muted(_selectedInverter.MaxStringsPerMppt > 0
-                ? $"The inverter allows up to {_selectedInverter.MaxStringsPerMppt} strings per MPPT."
-                : "The datasheet states no maximum number of strings per MPPT.", 12);
+                ? L.F($"The inverter allows up to {_selectedInverter.MaxStringsPerMppt} strings per MPPT.")
+                : L.T("The datasheet states no maximum number of strings per MPPT."), 12);
             body.Children.Add(sRow);
             body.Children.Add(sSlider);
             body.Children.Add(sAllowed);
@@ -398,11 +398,11 @@ public partial class MainWindow : ChromeWindow
         _suppressToggleEvents = false;
 
         PVModule? module = cfg.SelectedModule;
-        refs.ModuleName.Text = module is null ? "No PV module selected" : $"{module.Manufacturer} {module.Model}";
+        refs.ModuleName.Text = module is null ? L.T("No PV module selected") : $"{module.Manufacturer} {module.Model}";
         refs.ModuleSpecs.Text = module is null
-            ? "Select a module from the master data."
-            : string.Create(CultureInfo.CurrentCulture, $"{module.PmaxW} W · Voc {module.VocV:F2} V · Vmpp {module.VmppV:F2} V · Impp {module.ImppA:F2} A");
-        refs.SelectText.Text = module is null ? "Select module" : "Change";
+            ? L.T("Select a module from the master data.")
+            : L.F($"{module.PmaxW} W · Voc {module.VocV:F2} V · Vmpp {module.VmppV:F2} V · Impp {module.ImppA:F2} A");
+        refs.SelectText.Text = module is null ? L.T("Select module") : L.T("Change");
         refs.RemoveButton.Visibility = module is null ? Visibility.Collapsed : Visibility.Visible;
         refs.DatasheetButton.Visibility = _datasheets.HasDatasheet(module) ? Visibility.Visible : Visibility.Collapsed;
 
@@ -412,7 +412,7 @@ public partial class MainWindow : ChromeWindow
         refs.Body.Opacity = enabled ? 1.0 : 0.45;
         if (module is null)
         {
-            refs.NAllowed.Text = "The allowed range is shown once a module is selected.";
+            refs.NAllowed.Text = L.T("The allowed range is shown once a module is selected.");
         }
     }
 
@@ -470,26 +470,26 @@ public partial class MainWindow : ChromeWindow
         InverterDatasheetButton.Visibility = _datasheets.HasDatasheet(_selectedInverter) ? Visibility.Visible : Visibility.Collapsed;
         if (_selectedInverter is not { } inv)
         {
-            InverterNameText.Text = "No inverter selected";
-            SelectInverterText.Text = "Select";
-            InverterSpecs.Children.Add(Muted("Select an inverter from the master data to start.", 13));
+            InverterNameText.Text = L.T("No inverter selected");
+            SelectInverterText.Text = L.T("Select");
+            InverterSpecs.Children.Add(Muted(L.T("Select an inverter from the master data to start."), 13));
             InverterSpecs.Columns = 1;
             return;
         }
 
         InverterNameText.Text = $"{inv.Manufacturer} {inv.Model}";
-        SelectInverterText.Text = "Change";
+        SelectInverterText.Text = L.T("Change");
         InverterSpecs.Columns = 3;
         CultureInfo c = CultureInfo.CurrentCulture;
-        InverterSpecs.Children.Add(ValueTile("Max. DC voltage", string.Create(c, $"{inv.MaxDcInputVoltageV} V"), false));
-        InverterSpecs.Children.Add(ValueTile("MPPT range", $"{inv.MpptVoltageRangeV} V", false));
-        InverterSpecs.Children.Add(ValueTile("Start voltage", string.Create(c, $"{inv.StartVoltageV} V"), false));
-        InverterSpecs.Children.Add(ValueTile("Max. input current", string.Create(c, $"{inv.MaxInputCurrentA} A"), false));
-        InverterSpecs.Children.Add(ValueTile("Max. Isc", string.Create(c, $"{inv.MaxShortCircuitCurrentA} A"), false));
-        InverterSpecs.Children.Add(ValueTile("AC power", inv.RatedAcPowerW > 0
-            ? string.Create(c, $"{inv.RatedAcPowerW / 1000:0.#} kW") + (inv.AcPhases > 0 ? $" · {inv.AcPhases}-phase" : string.Empty)
-            : "not stated", false));
-        InverterSpecs.Children.Add(ValueTile("MPPTs / strings", string.Create(c, $"{inv.MpptCount} / {(inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(c) : "n/a")}"), false));
+        InverterSpecs.Children.Add(ValueTile(L.T("Max. DC voltage"), string.Create(c, $"{inv.MaxDcInputVoltageV} V"), false));
+        InverterSpecs.Children.Add(ValueTile(L.T("MPPT range"), $"{inv.MpptVoltageRangeV} V", false));
+        InverterSpecs.Children.Add(ValueTile(L.T("Start voltage"), string.Create(c, $"{inv.StartVoltageV} V"), false));
+        InverterSpecs.Children.Add(ValueTile(L.T("Max. input current"), string.Create(c, $"{inv.MaxInputCurrentA} A"), false));
+        InverterSpecs.Children.Add(ValueTile(L.T("Max. Isc"), string.Create(c, $"{inv.MaxShortCircuitCurrentA} A"), false));
+        InverterSpecs.Children.Add(ValueTile(L.T("AC power"), inv.RatedAcPowerW > 0
+            ? string.Create(c, $"{inv.RatedAcPowerW / 1000:0.#} kW") + (inv.AcPhases > 0 ? L.F($" · {inv.AcPhases}-phase") : string.Empty)
+            : L.T("not stated"), false));
+        InverterSpecs.Children.Add(ValueTile(L.T("MPPTs / strings"), string.Create(c, $"{inv.MpptCount} / {(inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(c) : L.T("n/a"))}"), false));
     }
 
     #endregion
@@ -497,6 +497,46 @@ public partial class MainWindow : ChromeWindow
     #region Top bar
 
     // Switches System → Light → Dark → System and saves the choice.
+    // Save dialogs of exports start in the export folder of the preferences.
+    private void ApplyExportFolder(SaveFileDialog dialog)
+    {
+        if (_settings.LoadPreferences().ExportFolder is { } folder && Directory.Exists(folder))
+        {
+            dialog.InitialDirectory = folder;
+        }
+    }
+
+    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    {
+        string defaultProjects = Path.Combine(_userData.DirectoryPath, ProjectService.FolderName);
+        var window = new SettingsWindow(_settings.LoadPreferences(), _settings.LoadTheme(), _dataStore.CableTables, defaultProjects) { Owner = this };
+        if (window.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (!_settings.SavePreferences(window.Preferences) || !_settings.SaveTheme(window.Theme))
+        {
+            MessageDialog.Show(this, L.T("The settings could not be saved. See the log for details."), L.T("Settings"), StatusKind.Error);
+            return;
+        }
+
+        _theme.Apply(ThemeMapping.ToPreference(window.Theme));
+        UpdateThemeButton();
+        if (window.RestartNeeded && MessageDialog.Confirm(this, L.T("The language and the projects folder apply after a restart. Restart AnWa-Solar now?"),
+            L.T("Settings"), L.T("Restart"), L.T("Later")))
+        {
+            FlushPendingPersist();
+            WriteProject();
+            if (Environment.ProcessPath is { } exe)
+            {
+                System.Diagnostics.Process.Start(exe);
+            }
+
+            Application.Current.Shutdown();
+        }
+    }
+
     private void OnThemeClick(object sender, RoutedEventArgs e)
     {
         ThemePreference next = ThemeService.Next(_theme.Preference);
@@ -520,9 +560,9 @@ public partial class MainWindow : ChromeWindow
         ThemeIcon.Kind = ThemeService.IconFor(_theme.Preference);
         ThemeButton.ToolTip = _theme.Preference switch
         {
-            ThemePreference.Light => "Theme: light (click for dark)",
-            ThemePreference.Dark => "Theme: dark (click for system)",
-            _ => $"Theme: system, currently {(_theme.IsDark ? "dark" : "light")} (click for light)",
+            ThemePreference.Light => L.T("Theme: light (click for dark)"),
+            ThemePreference.Dark => L.T("Theme: dark (click for system)"),
+            _ => L.F($"Theme: system, currently {(_theme.IsDark ? L.T("dark") : L.T("light"))} (click for light)"),
         };
     }
 
@@ -574,7 +614,7 @@ public partial class MainWindow : ChromeWindow
 
         const int MaxShown = 10;
         var text = new StringBuilder();
-        text.AppendLine("Some master data could not be loaded:");
+        text.AppendLine(L.T("Some master data could not be loaded:"));
         text.AppendLine();
         foreach (DataLoadIssue issue in issues.Take(MaxShown))
         {
@@ -583,10 +623,10 @@ public partial class MainWindow : ChromeWindow
 
         if (issues.Count > MaxShown)
         {
-            text.AppendLine($"• … and {issues.Count - MaxShown} more (see log).");
+            text.AppendLine(L.F($"• … and {issues.Count - MaxShown} more (see log)."));
         }
 
-        MessageDialog.Show(this, text.ToString().TrimEnd(), "Master data", StatusKind.Warning);
+        MessageDialog.Show(this, text.ToString().TrimEnd(), L.T("Master data"), StatusKind.Warning);
     }
 
     private void OnSelectInverterClick(object sender, RoutedEventArgs e)
@@ -614,7 +654,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the inverter selection.");
-            MessageDialog.Show(this, "Error in the inverter selection. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error in the inverter selection. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -642,7 +682,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the module selection.");
-            MessageDialog.Show(this, "Error in the module selection. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error in the module selection. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -676,7 +716,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing the module.");
-            MessageDialog.Show(this, "Error removing the module. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error removing the module. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -698,7 +738,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the parameter dialog.");
-            MessageDialog.Show(this, "Error in the parameter dialog. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error in the parameter dialog. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -710,13 +750,13 @@ public partial class MainWindow : ChromeWindow
             if (await _datasheets.ImportAsync(this, preferredKind: null) is { } entry)
             {
                 ReloadMasterData();
-                Snackbar.MessageQueue?.Enqueue($"{entry.Manufacturer} {entry.Model} was saved and can be selected now.");
+                Snackbar.MessageQueue?.Enqueue(L.F($"{entry.Manufacturer} {entry.Model} was saved and can be selected now."));
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             _logger.LogError(ex, "Error importing a datasheet.");
-            MessageDialog.Show(this, "The datasheet could not be imported. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("The datasheet could not be imported. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -728,7 +768,7 @@ public partial class MainWindow : ChromeWindow
         if (window.Changed)
         {
             ReloadMasterData();
-            Snackbar.MessageQueue?.Enqueue("The master data was updated.");
+            Snackbar.MessageQueue?.Enqueue(L.T("The master data was updated."));
         }
     }
 
@@ -752,7 +792,7 @@ public partial class MainWindow : ChromeWindow
     {
         if (_dataStore.CableTables is not { } tables)
         {
-            MessageDialog.Show(this, "The cable tables (Data/CableTables.json) could not be loaded; cables and fuses cannot be sized.", "Cables", StatusKind.Warning);
+            MessageDialog.Show(this, L.T("The cable tables (Data/CableTables.json) could not be loaded; cables and fuses cannot be sized."), L.T("Cables"), StatusKind.Warning);
             return;
         }
 
@@ -770,16 +810,16 @@ public partial class MainWindow : ChromeWindow
         CultureInfo c = CultureInfo.CurrentCulture;
         int mppts = _selectedInverter?.MpptCount ?? 0;
         string dc = mppts == 0
-            ? "DC: select an inverter"
+            ? L.T("DC: select an inverter")
             : "DC " + string.Join(", ", Enumerable.Range(1, mppts).Select(i => _cableSettings.DcLength(i) > 0
-                ? string.Create(c, $"MPPT {i} {_cableSettings.DcLength(i):0.#} m")
-                : $"MPPT {i} –"));
-        string ac = _cableSettings.AcLengthM > 0 ? string.Create(c, $"AC {_cableSettings.AcLengthM:0.#} m, method {_cableSettings.AcMethod}") : "AC –";
+                ? L.F($"MPPT {i} {_cableSettings.DcLength(i):0.#} m")
+                : L.F($"MPPT {i} –")));
+        string ac = _cableSettings.AcLengthM > 0 ? L.F($"AC {_cableSettings.AcLengthM:0.#} m, method {_cableSettings.AcMethod}") : L.T("AC –");
         string battery = !_batterySettings.Enabled ? string.Empty
-            : _cableSettings.BatteryCableLengthM <= 0 ? " · battery –"
+            : _cableSettings.BatteryCableLengthM <= 0 ? L.T(" · battery –")
             : _cableSettings.BatteryBusbar
-                ? string.Create(c, $" · battery {_cableSettings.BatteryCableLengthM:0.#} m + busbar {_cableSettings.BatteryMainLengthM:0.#} m")
-                : string.Create(c, $" · battery {_cableSettings.BatteryCableLengthM:0.#} m");
+                ? L.F($" · battery {_cableSettings.BatteryCableLengthM:0.#} m + busbar {_cableSettings.BatteryMainLengthM:0.#} m")
+                : L.F($" · battery {_cableSettings.BatteryCableLengthM:0.#} m");
         CableSummaryText.Text = $"{dc} · {ac}{battery}";
     }
 
@@ -804,7 +844,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in the battery dialog.");
-            MessageDialog.Show(this, "Error in the battery dialog. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error in the battery dialog. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -852,10 +892,10 @@ public partial class MainWindow : ChromeWindow
         bool hybrid = _selectedInverter?.HasBatteryInput == true;
         BatteryCard.Visibility = _selectedInverter is not null && (hybrid || _batterySettings.Enabled) ? Visibility.Visible : Visibility.Collapsed;
         BatterySummaryText.Text = !_batterySettings.Enabled
-            ? (hybrid ? "No battery planned" : "The inverter has no battery input")
+            ? (hybrid ? L.T("No battery planned") : L.T("The inverter has no battery input"))
             : _batterySettings.Battery is { } b
                 ? string.Create(CultureInfo.CurrentCulture, $"{b.Manufacturer} {b.Model} · {_batterySettings.InSeries} × {_batterySettings.InParallel}")
-                : "No battery selected";
+                : L.T("No battery selected");
     }
 
     // Copies the results as plain text.
@@ -865,12 +905,12 @@ public partial class MainWindow : ChromeWindow
         {
             string text = _lastResult is null ? ResultPresenter.Present(null).Details : CalculationTextFormatter.Format(_lastResult, _lastCables, _lastBattery);
             Clipboard.SetText(text);
-            Snackbar.MessageQueue?.Enqueue("Results copied to the clipboard.");
+            Snackbar.MessageQueue?.Enqueue(L.T("Results copied to the clipboard."));
         }
         catch (Exception ex) when (ex is COMException or ExternalException)
         {
             _logger.LogError(ex, "Error copying the results.");
-            MessageDialog.Show(this, "The results could not be copied. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("The results could not be copied. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -882,9 +922,9 @@ public partial class MainWindow : ChromeWindow
     {
         ParameterTiles.Children.Clear();
         CultureInfo c = CultureInfo.CurrentCulture;
-        ParameterTiles.Children.Add(ValueTile("Min. cell temp.", string.Create(c, $"{_parameters.MinTempC} °C"), true));
-        ParameterTiles.Children.Add(ValueTile("Max. cell temp.", string.Create(c, $"{_parameters.MaxTempC} °C"), true));
-        ParameterTiles.Children.Add(ValueTile("Safety margin", string.Create(c, $"{_parameters.SafetyMarginPct} %"), true));
+        ParameterTiles.Children.Add(ValueTile(L.T("Min. cell temp."), string.Create(c, $"{_parameters.MinTempC} °C"), true));
+        ParameterTiles.Children.Add(ValueTile(L.T("Max. cell temp."), string.Create(c, $"{_parameters.MaxTempC} °C"), true));
+        ParameterTiles.Children.Add(ValueTile(L.T("Margin"), string.Create(c, $"{_parameters.SafetyMarginPct} %"), true));
     }
 
     // Shows the design of the project: master data entries by their key, the copies in the project when missing.
@@ -893,12 +933,12 @@ public partial class MainWindow : ChromeWindow
         try
         {
             _fromProjectCopy.Clear();
-            if (Resolve(_dataStore.Batteries, _project.BatteryData, "Battery") is { } battery && _batterySettings.Battery is null)
+            if (Resolve(_dataStore.Batteries, _project.BatteryData, L.T("Battery")) is { } battery && _batterySettings.Battery is null)
             {
                 _batterySettings.Battery = new SelectedRef { Manufacturer = battery.Manufacturer, Model = battery.Model };
             }
 
-            if (Resolve(_dataStore.Inverters, _project.Inverter, "Inverter") is not { } wr) return;
+            if (Resolve(_dataStore.Inverters, _project.Inverter, L.T("Inverter")) is not { } wr) return;
 
             _selectedInverter = wr;
             ShowInverter();
@@ -917,7 +957,7 @@ public partial class MainWindow : ChromeWindow
                 cfg.ParallelStrings = Math.Max(1, sel.ParallelStrings);
 
                 // Module: the master data entry, or the copy in the project
-                cfg.SelectedModule = Resolve(_dataStore.Modules, sel.Module, "PV module");
+                cfg.SelectedModule = Resolve(_dataStore.Modules, sel.Module, L.T("PV module"));
 
                 UpdateMpptUiState(cfg, RefsOf(cfg));
             }
@@ -977,7 +1017,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogError(ex, "Error saving the project {Path}.", _projectPath);
-            Snackbar.MessageQueue?.Enqueue("The project could not be saved. See the log for details.");
+            Snackbar.MessageQueue?.Enqueue(L.T("The project could not be saved. See the log for details."));
         }
     }
 
@@ -1056,8 +1096,8 @@ public partial class MainWindow : ChromeWindow
                 if (calculated)
                 {
                     refs.NAllowed.Text = mppt.HasValidModuleRange
-                        ? $"Allowed: {mppt.MinModulesPerString} … {mppt.MaxModulesPerString} modules per string"
-                        : "No module count per string meets all voltage limits.";
+                        ? L.F($"Allowed: {mppt.MinModulesPerString} … {mppt.MaxModulesPerString} modules per string")
+                        : L.T("No module count per string meets all voltage limits.");
                 }
 
                 // The value is not clamped to the allowed range.
@@ -1143,7 +1183,7 @@ public partial class MainWindow : ChromeWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating the report preview.");
-            MessageDialog.Show(this, "Error updating the report preview. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error updating the report preview. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -1168,8 +1208,8 @@ public partial class MainWindow : ChromeWindow
             WebViewSupport.ResetEnvironment();
             _logger.LogError(ex, "The report preview (WebView2) could not be started.");
             ReportViewSelector.SelectedIndex = 1;
-            MessageDialog.Show(this, "The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details.",
-                "Report preview", StatusKind.Warning);
+            MessageDialog.Show(this, L.T("The report preview needs the Microsoft Edge WebView2 Runtime, which could not be started. The Markdown source is shown instead. See the log for details."),
+                L.T("Report preview"), StatusKind.Warning);
             return false;
         }
     }
@@ -1239,12 +1279,13 @@ public partial class MainWindow : ChromeWindow
     {
         var dlg = new SaveFileDialog
         {
-            Title = "Export report as HTML",
+            Title = L.T("Export report as HTML"),
             Filter = "HTML file (*.html)|*.html",
             FileName = "AnWa-Solar-Report.html",
             AddExtension = true,
             OverwritePrompt = true,
         };
+        ApplyExportFolder(dlg);
         if (dlg.ShowDialog(this) != true)
         {
             return;
@@ -1266,12 +1307,12 @@ public partial class MainWindow : ChromeWindow
 
             File.WriteAllText(dlg.FileName, HtmlDocument.CreateStandalone(html, s_katexDirectory), new UTF8Encoding(false));
             _logger.LogInformation("Report exported as HTML: {Path}.", dlg.FileName);
-            Snackbar.MessageQueue?.Enqueue($"Report exported: {Path.GetFileName(dlg.FileName)}");
+            Snackbar.MessageQueue?.Enqueue(L.F($"Report exported: {Path.GetFileName(dlg.FileName)}"));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException or System.Text.Json.JsonException or InvalidOperationException)
         {
             _logger.LogError(ex, "Error exporting the report as HTML.");
-            MessageDialog.Show(this, "The report could not be exported. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("The report could not be exported. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -1280,12 +1321,13 @@ public partial class MainWindow : ChromeWindow
     {
         var dlg = new SaveFileDialog
         {
-            Title = "Export report as PDF",
+            Title = L.T("Export report as PDF"),
             Filter = "PDF file (*.pdf)|*.pdf",
             FileName = "AnWa-Solar-Report.pdf",
             AddExtension = true,
             OverwritePrompt = true,
         };
+        ApplyExportFolder(dlg);
         if (dlg.ShowDialog(this) != true)
         {
             return;
@@ -1296,22 +1338,22 @@ public partial class MainWindow : ChromeWindow
             switch (await PrintReportPdfAsync(dlg.FileName))
             {
                 case null:
-                    MessageDialog.Show(this, "The PDF export needs the report preview (Microsoft Edge WebView2 Runtime), which is not available.", "Export PDF", StatusKind.Warning);
+                    MessageDialog.Show(this, L.T("The PDF export needs the report preview (Microsoft Edge WebView2 Runtime), which is not available."), L.T("Export PDF"), StatusKind.Warning);
                     return;
                 case false:
-                    MessageDialog.Show(this, "The PDF file could not be written.", "Export PDF", StatusKind.Error);
+                    MessageDialog.Show(this, L.T("The PDF file could not be written."), L.T("Export PDF"), StatusKind.Error);
                     return;
                 default:
                     break;
             }
 
             _logger.LogInformation("Report exported as PDF: {Path}.", dlg.FileName);
-            Snackbar.MessageQueue?.Enqueue($"Report exported: {Path.GetFileName(dlg.FileName)}");
+            Snackbar.MessageQueue?.Enqueue(L.F($"Report exported: {Path.GetFileName(dlg.FileName)}"));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException or InvalidOperationException)
         {
             _logger.LogError(ex, "Error exporting the report as PDF.");
-            MessageDialog.Show(this, "The report could not be exported. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("The report could not be exported. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -1409,12 +1451,13 @@ public partial class MainWindow : ChromeWindow
         string folder = ProjectService.FileNameOf(_project.Name);
         var dlg = new SaveFileDialog
         {
-            Title = "Export project",
+            Title = L.T("Export project"),
             Filter = "ZIP file (*.zip)|*.zip",
             FileName = folder + ".zip",
             AddExtension = true,
             OverwritePrompt = true,
         };
+        ApplyExportFolder(dlg);
         if (dlg.ShowDialog(this) != true)
         {
             return;
@@ -1449,13 +1492,13 @@ public partial class MainWindow : ChromeWindow
             IReadOnlyList<string> files = ProjectExporter.WriteZip(dlg.FileName, _project, printed == true ? tempPdf : null, _reportMarkdown, datasheets);
             _logger.LogInformation("Project exported to {Path}: {Files}.", dlg.FileName, string.Join(", ", files));
             Snackbar.MessageQueue?.Enqueue(printed == true
-                ? $"Project exported: {Path.GetFileName(dlg.FileName)}"
-                : $"Project exported without PDF report (no report preview): {Path.GetFileName(dlg.FileName)}");
+                ? L.F($"Project exported: {Path.GetFileName(dlg.FileName)}")
+                : L.F($"Project exported without PDF report (no report preview): {Path.GetFileName(dlg.FileName)}"));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException or InvalidOperationException)
         {
             _logger.LogError(ex, "Error exporting the project.");
-            MessageDialog.Show(this, "The project could not be exported. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("The project could not be exported. See the log for details."), L.T("Error"), StatusKind.Error);
         }
         finally
         {
@@ -1479,7 +1522,7 @@ public partial class MainWindow : ChromeWindow
         }
         else if (HtmlDocument.TryResolveAsset(s_katexDirectory, path, out string file, out string contentType))
         {
-            e.Response = environment.CreateWebResourceResponse(File.OpenRead(file), 200, "OK", $"Content-Type: {contentType}");
+            e.Response = environment.CreateWebResourceResponse(File.OpenRead(file), 200, "OK", ($"Content-Type: {contentType}"));
         }
         else
         {
@@ -1513,12 +1556,12 @@ public partial class MainWindow : ChromeWindow
         {
             Clipboard.SetText(_reportMarkdown ?? string.Empty);
             _logger.LogInformation("Markdown report copied to the clipboard. Length={Length}.", (_reportMarkdown ?? string.Empty).Length);
-            Snackbar.MessageQueue?.Enqueue("Markdown report copied to the clipboard.");
+            Snackbar.MessageQueue?.Enqueue(L.T("Markdown report copied to the clipboard."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error copying the Markdown report.");
-            MessageDialog.Show(this, "Error copying the report. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error copying the report. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 
@@ -1529,23 +1572,24 @@ public partial class MainWindow : ChromeWindow
         {
             var dlg = new SaveFileDialog
             {
-                Title = "Save Markdown report",
+                Title = L.T("Save Markdown report"),
                 Filter = "Markdown file (*.md)|*.md|Text file (*.txt)|*.txt",
                 FileName = "AnWa-Solar-Report.md",
                 AddExtension = true,
                 OverwritePrompt = true
             };
+            ApplyExportFolder(dlg);
             if (dlg.ShowDialog(this) == true)
             {
                 File.WriteAllText(dlg.FileName, _reportMarkdown ?? string.Empty, new UTF8Encoding(false));
                 _logger.LogInformation("Markdown report saved: {Path}.", dlg.FileName);
-                Snackbar.MessageQueue?.Enqueue($"Report saved: {Path.GetFileName(dlg.FileName)}");
+                Snackbar.MessageQueue?.Enqueue(L.F($"Report saved: {Path.GetFileName(dlg.FileName)}"));
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving the Markdown report.");
-            MessageDialog.Show(this, "Error saving the report. See the log for details.", "Error", StatusKind.Error);
+            MessageDialog.Show(this, L.T("Error saving the report. See the log for details."), L.T("Error"), StatusKind.Error);
         }
     }
 

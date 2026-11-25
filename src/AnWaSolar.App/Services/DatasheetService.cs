@@ -33,7 +33,7 @@ public sealed class DatasheetService(IDataStore store, IUserDataLocation userDat
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Import datasheet",
+            Title = L.T("Import datasheet"),
             Filter = "PDF datasheet (*.pdf)|*.pdf",
             CheckFileExists = true,
         };
@@ -53,7 +53,7 @@ public sealed class DatasheetService(IDataStore store, IUserDataLocation userDat
         catch (IOException ex)
         {
             _logger.LogError(ex, "Datasheet {Path} could not be read.", path);
-            MessageDialog.Show(owner, $"The datasheet could not be read.\n\n{ex.Message}", "Import datasheet", StatusKind.Error);
+            MessageDialog.Show(owner, L.F($"The datasheet could not be read.\n\n{ex.Message}"), L.T("Import datasheet"), StatusKind.Error);
             return null;
         }
         finally
@@ -65,8 +65,8 @@ public sealed class DatasheetService(IDataStore store, IUserDataLocation userDat
         if (words.Count == 0)
         {
             MessageDialog.Show(owner,
-                "The PDF contains no text, for example because it is a scan. You can enter the values by hand; the datasheet is stored with them.",
-                "Import datasheet", StatusKind.Warning);
+                L.T("The PDF contains no text, for example because it is a scan. You can enter the values by hand; the datasheet is stored with them."),
+                L.T("Import datasheet"), StatusKind.Warning);
         }
 
         DatasheetKind kind = preferredKind ?? DatasheetParser.DetectKind(words);

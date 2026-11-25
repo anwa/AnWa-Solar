@@ -45,32 +45,32 @@ public static class DatasheetEntryBuilder
         {
             if (candidate.VocTempCoeffPctPerC >= 0)
             {
-                errors.Add("The temperature coefficient of Voc must be negative (for example -0.24 %/°C).");
+                errors.Add(L.T("The temperature coefficient of Voc must be negative (for example -0.24 %/°C)."));
             }
 
             if (candidate.PmaxTempCoeffPctPerC >= 0)
             {
-                errors.Add("The temperature coefficient of Pmax must be negative (for example -0.30 %/°C).");
+                errors.Add(L.T("The temperature coefficient of Pmax must be negative (for example -0.30 %/°C)."));
             }
 
             if (candidate.VmppTempCoeffPctPerC >= 0)
             {
-                errors.Add("The temperature coefficient of Vmpp must be negative when it is given.");
+                errors.Add(L.T("The temperature coefficient of Vmpp must be negative when it is given."));
             }
 
             if (candidate.MaxSeriesFuseA is <= 0)
             {
-                errors.Add("The max. series fuse rating must be greater than 0 when it is given.");
+                errors.Add(L.T("The max. series fuse rating must be greater than 0 when it is given."));
             }
 
             if (candidate.CableCrossSectionMm2 is <= 0 || candidate.CableLengthPlusMm is <= 0 || candidate.CableLengthMinusMm is <= 0)
             {
-                errors.Add("The cable cross-section and lengths must be greater than 0 when they are given.");
+                errors.Add(L.T("The cable cross-section and lengths must be greater than 0 when they are given."));
             }
 
             if (candidate.OperatingTempMinC >= candidate.OperatingTempMaxC)
             {
-                errors.Add("The minimum operating temperature must be lower than the maximum.");
+                errors.Add(L.T("The minimum operating temperature must be lower than the maximum."));
             }
 
             if (JsonDataStore.ValidateModule(candidate) is { } error)
@@ -118,16 +118,16 @@ public static class DatasheetEntryBuilder
             if (StringCalculator.TryParseVoltageRange(candidate.MpptVoltageRangeV, out double low, out double high)
                 && (high > candidate.MaxDcInputVoltageV || low <= 0))
             {
-                errors.Add("The MPPT voltage range must lie below the max. DC input voltage.");
+                errors.Add(L.T("The MPPT voltage range must lie below the max. DC input voltage."));
             }
 
             if (candidate.HasBatteryInput && (candidate.MaxBatteryChargeCurrentA <= 0 || candidate.MaxBatteryDischargeCurrentA <= 0))
             {
-                errors.Add("With a battery voltage range, the max. battery charge and discharge current are needed.");
+                errors.Add(L.T("With a battery voltage range, the max. battery charge and discharge current are needed."));
             }
             else if (!candidate.HasBatteryInput && (candidate.MaxBatteryChargeCurrentA > 0 || candidate.MaxBatteryDischargeCurrentA > 0))
             {
-                errors.Add("Battery currents need the battery voltage range.");
+                errors.Add(L.T("Battery currents need the battery voltage range."));
             }
 
             if (JsonDataStore.ValidateInverter(candidate) is { } error)
@@ -268,7 +268,7 @@ public static class DatasheetEntryBuilder
             string text = Raw(key);
             if (text.Length == 0)
             {
-                errors.Add($"{Label(key)} is missing.");
+                errors.Add(L.F($"{Label(key)} is missing."));
             }
 
             return text;
@@ -289,11 +289,11 @@ public static class DatasheetEntryBuilder
             string text = Raw(key).Replace(" ", string.Empty, StringComparison.Ordinal).Replace('–', '-').Replace('~', '-').Replace(',', '.');
             if (text.Length == 0)
             {
-                errors.Add($"{Label(key)} is missing.");
+                errors.Add(L.F($"{Label(key)} is missing."));
             }
             else if (!StringCalculator.TryParseVoltageRange(text, out _, out _))
             {
-                errors.Add($"{Label(key)} \"{Raw(key)}\" is not a range like 160-650.");
+                errors.Add(L.F($"{Label(key)} \"{Raw(key)}\" is not a range like 160-650."));
             }
 
             return text;
@@ -306,7 +306,7 @@ public static class DatasheetEntryBuilder
             {
                 if (required)
                 {
-                    errors.Add($"{Label(key)} is missing.");
+                    errors.Add(L.F($"{Label(key)} is missing."));
                 }
 
                 return null;
@@ -314,7 +314,7 @@ public static class DatasheetEntryBuilder
 
             if (!TryParseNumber(text, out double value))
             {
-                errors.Add($"{Label(key)} \"{text}\" is not a number.");
+                errors.Add(L.F($"{Label(key)} \"{text}\" is not a number."));
                 return null;
             }
 
@@ -331,7 +331,7 @@ public static class DatasheetEntryBuilder
 
             if (value != Math.Floor(value.Value) || value < 0)
             {
-                errors.Add($"{Label(key)} must be a whole number.");
+                errors.Add(L.F($"{Label(key)} must be a whole number."));
                 return null;
             }
 

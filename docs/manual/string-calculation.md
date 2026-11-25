@@ -109,4 +109,4 @@ The meaning of every check is described in [How the Calculation Works](calculati
 | Feed-in limit (%) | Highest feed-in in percent of the PV peak power; 100 % (default) means no limit. |
 | DC/AC ratio from / up to | Recommended range of the DC/AC ratio; default 0.9 to 1.3. |
 
-The grid limits depend on your grid operator and the current rules; check the defaults before you rely on them. Tmin must be lower than Tmax. **Save** stores the values; they apply immediately and at the next start.
+The grid limits depend on your grid operator and the current rules; check the defaults before you rely on them. Tmin must be lower than Tmax. **Save** stores the values in the open project; they apply immediately. New projects start with the defaults from the [settings](settings.md#settings-page).

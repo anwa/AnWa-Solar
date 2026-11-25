@@ -42,6 +42,12 @@
                 <materialDesign:PackIcon Kind="BookOpenVariant" Width="22" Height="22" />
             </Button>
             <Button Style="{StaticResource AnWaSoft.TitleBarButton}"
+                    Click="OnSettingsClick"
+                    ToolTip="Settings: language, folders, defaults of new projects"
+                    AutomationProperties.Name="Settings">
+                <materialDesign:PackIcon Kind="CogOutline" Width="22" Height="22" />
+            </Button>
+            <Button Style="{StaticResource AnWaSoft.TitleBarButton}"
                     Click="OnAboutClick"
                     ToolTip="About AnWa-Solar"
                     AutomationProperties.Name="About">

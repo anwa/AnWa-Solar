@@ -238,12 +238,12 @@ public static partial class DatasheetParser
 
             string text = string.Concat(words.Select(w => Normalize(w.Text))).ToLowerInvariant();
             string? phases = s_threePhase.IsMatch(text) ? "3" : s_singlePhase.IsMatch(text) ? "1" : null;
-            values[DatasheetFields.AcPhases] = Shared(columns, phases is null ? null : new DatasheetValue(phases, phases == "3" ? "Three-phase grid connection in the datasheet" : "Single-phase grid connection in the datasheet"));
+            values[DatasheetFields.AcPhases] = Shared(columns, phases is null ? null : new DatasheetValue(phases, phases == "3" ? L.T("Three-phase grid connection in the datasheet") : L.T("Single-phase grid connection in the datasheet")));
         }
 
         string? manufacturer = FindManufacturer(words, manufacturers);
-        values[DatasheetFields.Manufacturer] = Shared(columns, manufacturer is null ? null : new DatasheetValue(manufacturer, "Manufacturer name in the datasheet"));
-        values[DatasheetFields.Model] = [.. columns.Names.Select(n => string.IsNullOrWhiteSpace(n) ? null : new DatasheetValue(n, "Column heading in the datasheet"))];
+        values[DatasheetFields.Manufacturer] = Shared(columns, manufacturer is null ? null : new DatasheetValue(manufacturer, L.T("Manufacturer name in the datasheet")));
+        values[DatasheetFields.Model] = [.. columns.Names.Select(n => string.IsNullOrWhiteSpace(n) ? null : new DatasheetValue(n, L.T("Column heading in the datasheet")))];
         return new DatasheetParseResult(kind, manufacturer, columns.Names, values);
     }
 

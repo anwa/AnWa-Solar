@@ -8,7 +8,7 @@ Install `AnWaSolar-Setup-X.Y.Z.msi`. AnWa-Solar is installed for all users into 
 
 At the start, the **Open project** dialog asks for the project: press **Enter** to continue with the last one, or create a new project, see [Projects](projects.md).
 
-The blue title bar shows the version and the name of the open project. On its right are five buttons, followed by the window buttons (minimize, maximize, close):
+The blue title bar shows the version and the name of the open project. On its right are six buttons, followed by the window buttons (minimize, maximize, close):
 
 | Button | Function |
 |---|---|
@@ -16,6 +16,7 @@ The blue title bar shows the version and the name of the open project. On its ri
 | Component database | Shows and edits the module, inverter and battery series, see [Component Database](component-database.md). |
 | Theme | Switches between the system theme, light and dark mode, see [Settings, Theme and Files](settings.md#theme). |
 | Manual | Opens this manual (F1). |
+| Settings | Language, theme, folders and the defaults of new projects, see [Settings, Theme and Files](settings.md#settings-page). |
 | About | Shows version, installation folder, data folders, contact and license. |
 
 The main window has two tabs:

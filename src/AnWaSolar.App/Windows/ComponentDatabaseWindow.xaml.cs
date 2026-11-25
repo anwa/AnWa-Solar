@@ -27,9 +27,9 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     private static readonly (DatasheetKind Kind, string Label)[] s_kinds =
     [
-        (DatasheetKind.Module, "PV modules"),
-        (DatasheetKind.Inverter, "Inverters"),
-        (DatasheetKind.Battery, "Batteries"),
+        (DatasheetKind.Module, L.T("PV modules")),
+        (DatasheetKind.Inverter, L.T("Inverters")),
+        (DatasheetKind.Battery, L.T("Batteries")),
     ];
 
     private readonly DatasheetService _datasheets;
@@ -81,7 +81,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
     {
         DatasheetKind.Inverter => "inverters",
         DatasheetKind.Battery => "batteries",
-        _ => "PV modules",
+        _ => L.T("PV modules"),
     };
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
@@ -105,7 +105,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
                 {
                     var key = new SeriesKey(kind, manufacturer.Key, series.Key);
                     int count = series.Count();
-                    string own = series.Any(e => e.IsUserEntry) ? " · own" : string.Empty;
+                    string own = series.Any(e => e.IsUserEntry) ? L.T(" · own") : string.Empty;
                     var seriesItem = new TreeViewItem { Header = $"{series.Key} ({count}){own}", Tag = key };
                     AutomationProperties.SetName(seriesItem, $"{manufacturer.Key} {series.Key}");
                     manufacturerItem.Items.Add(seriesItem);
@@ -182,7 +182,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         _isOwn = false;
         _pendingDatasheet = null;
         Fill(string.Empty, string.Empty, []);
-        SourceText.Text = $"Select a series on the left, or create a new series of {Noun(kind)}.";
+        SourceText.Text = L.F($"Select a series on the left, or create a new series of {Noun(kind)}.");
         UpdateButtons();
     }
 
@@ -195,8 +195,8 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         _pendingDatasheet = null;
         Fill(key.Manufacturer, key.Series, [.. variants.Select(ValuesOf)]);
         SourceText.Text = _isOwn
-            ? "Own series in your master data." + (DatasheetPath() is null ? " No datasheet attached." : string.Empty)
-            : "Shipped series. Saving creates an own copy that replaces it; the shipped data stays unchanged.";
+            ? L.T("Own series in your master data.") + (DatasheetPath() is null ? L.T(" No datasheet attached.") : string.Empty)
+            : L.T("Shipped series. Saving creates an own copy that replaces it; the shipped data stays unchanged.");
         UpdateButtons();
     }
 
@@ -225,10 +225,10 @@ public partial class ComponentDatabaseWindow : ChromeWindow
                 Style = (Style)FindResource("MaterialDesignIconButton"),
                 Width = 26,
                 Height = 26,
-                ToolTip = "Copy the value of the first power class to all power classes",
+                ToolTip = L.T("Copy the value of the first power class to all power classes"),
                 Content = new PackIcon { Kind = PackIconKind.ArrowExpandRight, Width = 16, Height = 16 },
             };
-            AutomationProperties.SetName(fill, $"Copy {field.Label} to all power classes");
+            AutomationProperties.SetName(fill, L.F($"Copy {field.Label} to all power classes"));
             fill.Click += (_, _) => FillRow(field.Key);
             DockPanel.SetDock(fill, Dock.Right);
             label.Children.Add(fill);
@@ -267,8 +267,8 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         var header = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
         var copy = new Button { Style = (Style)FindResource("MaterialDesignIconButton"), Width = 30, Height = 30, ToolTip = "Copy this power class", Content = new PackIcon { Kind = PackIconKind.ContentCopy, Width = 16, Height = 16 } };
         var remove = new Button { Style = (Style)FindResource("MaterialDesignIconButton"), Width = 30, Height = 30, ToolTip = "Remove this power class", Content = new PackIcon { Kind = PackIconKind.DeleteOutline, Width = 16, Height = 16 } };
-        AutomationProperties.SetName(copy, $"Copy power class {column}");
-        AutomationProperties.SetName(remove, $"Remove power class {column}");
+        AutomationProperties.SetName(copy, L.F($"Copy power class {column}"));
+        AutomationProperties.SetName(remove, L.F($"Remove power class {column}"));
         copy.Click += (_, _) =>
         {
             Dictionary<string, string?> copied = boxes.ToDictionary(b => b.Key, b => (string?)b.Value.Text);
@@ -293,7 +293,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
                 VerticalAlignment = VerticalAlignment.Center,
                 FontWeight = field.Key == DatasheetFields.Model ? FontWeights.SemiBold : FontWeights.Normal,
             };
-            AutomationProperties.SetName(box, $"{field.Label}, power class {column}");
+            AutomationProperties.SetName(box, L.F($"{field.Label}, power class {column}"));
             box.TextChanged += OnEdited;
             Grid.SetRow(box, r + 1);
             Grid.SetColumn(box, column);
@@ -360,7 +360,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     // Asks before changes are lost; true when there are none or they may be discarded.
     private bool ConfirmDiscard() => !_dirty
-        || MessageDialog.Confirm(this, "The series has unsaved changes. Discard them?", Title, "Discard", "Keep editing", StatusKind.Warning);
+        || MessageDialog.Confirm(this, L.T("The series has unsaved changes. Discard them?"), Title, L.T("Discard"), L.T("Keep editing"), StatusKind.Warning);
 
     private void OnDiscardClick(object sender, RoutedEventArgs e)
     {
@@ -384,11 +384,11 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     private void OnAttachDatasheetClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Attach datasheet", Filter = "PDF datasheet (*.pdf)|*.pdf", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = L.T("Attach datasheet"), Filter = "PDF datasheet (*.pdf)|*.pdf", CheckFileExists = true };
         if (dialog.ShowDialog(this) == true)
         {
             _pendingDatasheet = dialog.FileName;
-            SourceText.Text = $"Datasheet {Path.GetFileName(dialog.FileName)} is attached when you save.";
+            SourceText.Text = L.F($"Datasheet {Path.GetFileName(dialog.FileName)} is attached when you save.");
             MarkDirty();
         }
     }
@@ -447,7 +447,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         _pendingDatasheet = null;
         string manufacturer = SeriesTree.SelectedItem is TreeViewItem { Tag: SeriesKey selected } ? selected.Manufacturer : string.Empty;
         Fill(manufacturer, string.Empty, [new Dictionary<string, string?>()]);
-        SourceText.Text = $"New series of {Noun(_kind)}. Enter the values from the datasheet.";
+        SourceText.Text = L.F($"New series of {Noun(_kind)}. Enter the values from the datasheet.");
         MarkDirty();
         SeriesInput.Focus();
     }
@@ -459,17 +459,17 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         string series = SeriesInput.Text.Trim();
         if (manufacturer.Length == 0)
         {
-            errors.Add("Manufacturer is missing.");
+            errors.Add(L.T("Manufacturer is missing."));
         }
 
         if (series.Length == 0)
         {
-            errors.Add("Series is missing.");
+            errors.Add(L.T("Series is missing."));
         }
 
         if (_columns.Count == 0)
         {
-            errors.Add("Add at least one power class.");
+            errors.Add(L.T("Add at least one power class."));
         }
 
         if (errors.Count > 0)
@@ -497,7 +497,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            MessageDialog.Show(this, $"The series could not be saved.\n\n{ex.Message}", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.F($"The series could not be saved.\n\n{ex.Message}"), Title, StatusKind.Error);
             return;
         }
 
@@ -516,7 +516,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         {
             Dictionary<string, string?> values = _columns[i].ToDictionary(b => b.Key, b => (string?)b.Value.Text);
             values[DatasheetFields.Manufacturer] = manufacturer;
-            string name = string.IsNullOrWhiteSpace(values[DatasheetFields.Model]) ? $"Power class {i + 1}" : values[DatasheetFields.Model]!.Trim();
+            string name = string.IsNullOrWhiteSpace(values[DatasheetFields.Model]) ? L.F($"Power class {i + 1}") : values[DatasheetFields.Model]!.Trim();
             IReadOnlyList<string> problems = build(values, out T? entry);
             if (problems.Count > 0 || entry is null)
             {
@@ -544,8 +544,8 @@ public partial class ComponentDatabaseWindow : ChromeWindow
             return;
         }
 
-        if (!MessageDialog.Confirm(this, $"Delete the own series {key.Manufacturer} {key.Series} with its {VariantsOf(key).Count} power classes and its datasheet? A shipped series of the same name comes back. This cannot be undone.",
-            Title, "Delete", "Cancel", StatusKind.Warning))
+        if (!MessageDialog.Confirm(this, L.F($"Delete the own series {key.Manufacturer} {key.Series} with its {VariantsOf(key).Count} power classes and its datasheet? A shipped series of the same name comes back. This cannot be undone."),
+            Title, L.T("Delete"), L.T("Cancel"), StatusKind.Warning))
         {
             return;
         }
@@ -562,7 +562,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageDialog.Show(this, $"The series could not be deleted.\n\n{ex.Message}", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.F($"The series could not be deleted.\n\n{ex.Message}"), Title, StatusKind.Error);
             return;
         }
 
@@ -572,7 +572,7 @@ public partial class ComponentDatabaseWindow : ChromeWindow
 
     private void ShowErrors(IEnumerable<string> errors)
     {
-        ErrorText.Text = "Please correct:\n• " + string.Join("\n• ", errors);
+        ErrorText.Text = L.T("Please correct:\n• ") + string.Join("\n• ", errors);
         ErrorText.Visibility = Visibility.Visible;
     }
 

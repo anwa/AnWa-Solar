@@ -143,7 +143,7 @@ public class JsonDataStore : IDataStore
         where T : class, IMasterDataEntry =>
         (typeof(T) == typeof(PVModule) ? s_modules as Kind<T>
             : typeof(T) == typeof(Inverter) ? s_inverters as Kind<T>
-            : s_batteries as Kind<T>) ?? throw new NotSupportedException($"No master data kind for {typeof(T).Name}.");
+            : s_batteries as Kind<T>) ?? throw new NotSupportedException(L.F($"No master data kind for {typeof(T).Name}."));
 
     public void Load()
     {
@@ -154,7 +154,7 @@ public class JsonDataStore : IDataStore
         CableTables = CableTables.Load(_paths.GetFilePath(CableTables.FileName), out string? tableError);
         if (tableError is not null)
         {
-            issues.Add(new DataLoadIssue(CableTables.FileName, null, $"Cable tables cannot be used ({tableError}); cables and fuses are not sized."));
+            issues.Add(new DataLoadIssue(CableTables.FileName, null, L.F($"Cable tables cannot be used ({tableError}); cables and fuses are not sized.")));
         }
 
         _issues = issues;
@@ -210,7 +210,7 @@ public class JsonDataStore : IDataStore
 
         if (series.Variants.GroupBy(v => v.Model.Trim(), StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1) is { } duplicate)
         {
-            errors.Add($"The model {duplicate.Key} appears twice.");
+            errors.Add(L.F($"The model {duplicate.Key} appears twice."));
         }
 
         if (errors.Count > 0)
@@ -232,7 +232,7 @@ public class JsonDataStore : IDataStore
             }
             catch (JsonException ex)
             {
-                throw new IOException($"The own series file {path} cannot be read ({ex.Message}). Correct or remove it first.", ex);
+                throw new IOException(L.F($"The own series file {path} cannot be read ({ex.Message}). Correct or remove it first."), ex);
             }
         }
 
@@ -346,7 +346,7 @@ public class JsonDataStore : IDataStore
         var shipped = new List<T>();
         if (!Directory.Exists(shippedFolder) && !File.Exists(shippedLegacy))
         {
-            issues.Add(new DataLoadIssue(kind.LegacyFile, null, "File not found."));
+            issues.Add(new DataLoadIssue(kind.LegacyFile, null, L.T("File not found.")));
         }
 
         var seen = new HashSet<(string, string)>();
@@ -424,7 +424,7 @@ public class JsonDataStore : IDataStore
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogError(ex, "Own master data {File} could not be converted into series files.", kind.LegacyFile);
-            issues.Add(new DataLoadIssue(kind.LegacyFile + OwnSuffix, null, $"Could not be converted into series files ({ex.Message}); the entries are used as they are."));
+            issues.Add(new DataLoadIssue(kind.LegacyFile + OwnSuffix, null, L.F($"Could not be converted into series files ({ex.Message}); the entries are used as they are.")));
             return [.. entries.Where(e => seen.Add(Key(e)))];
         }
     }
@@ -564,7 +564,7 @@ public class JsonDataStore : IDataStore
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
             {
                 _logger.LogError(ex, "Error reading {Path}.", file);
-                issues.Add(new DataLoadIssue(name, null, $"File cannot be read ({ex.Message})."));
+                issues.Add(new DataLoadIssue(name, null, L.F($"File cannot be read ({ex.Message}).")));
                 continue;
             }
 
@@ -576,7 +576,7 @@ public class JsonDataStore : IDataStore
                 if (string.IsNullOrWhiteSpace(manufacturer) || string.IsNullOrWhiteSpace(seriesName)
                     || !root.TryGetProperty("Variants", out JsonElement variants) || variants.ValueKind != JsonValueKind.Array)
                 {
-                    issues.Add(new DataLoadIssue(name, null, "Manufacturer, series or the list \"Variants\" is missing."));
+                    issues.Add(new DataLoadIssue(name, null, L.T("Manufacturer, series or the list \"Variants\" is missing.")));
                     continue;
                 }
 
@@ -598,13 +598,13 @@ public class JsonDataStore : IDataStore
                     }
                     catch (JsonException ex)
                     {
-                        issues.Add(new DataLoadIssue(name, entry, $"Entry skipped: invalid value ({ex.Path?.TrimStart('$', '.')})."));
+                        issues.Add(new DataLoadIssue(name, entry, L.F($"Entry skipped: invalid value ({ex.Path?.TrimStart('$', '.')}).")));
                         continue;
                     }
 
                     if (item is null)
                     {
-                        issues.Add(new DataLoadIssue(name, entry, "Entry skipped: not an object."));
+                        issues.Add(new DataLoadIssue(name, entry, L.T("Entry skipped: not an object.")));
                         continue;
                     }
 
@@ -614,13 +614,13 @@ public class JsonDataStore : IDataStore
                     item.IsUserEntry = own;
                     if (kind.Validate(item) is { } error)
                     {
-                        issues.Add(new DataLoadIssue(name, entry, $"Entry skipped: {error}"));
+                        issues.Add(new DataLoadIssue(name, entry, L.F($"Entry skipped: {error}")));
                         continue;
                     }
 
                     if (!seen.Add(Key(item)))
                     {
-                        issues.Add(new DataLoadIssue(name, entry, "Entry skipped: duplicate manufacturer and model."));
+                        issues.Add(new DataLoadIssue(name, entry, L.T("Entry skipped: duplicate manufacturer and model.")));
                         continue;
                     }
 
@@ -650,7 +650,7 @@ public class JsonDataStore : IDataStore
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             _logger.LogError(ex, "Error reading {Path}.", path);
-            issues.Add(new DataLoadIssue(fileName, null, $"File cannot be read ({ex.Message})."));
+            issues.Add(new DataLoadIssue(fileName, null, L.F($"File cannot be read ({ex.Message}).")));
             return result;
         }
 
@@ -660,7 +660,7 @@ public class JsonDataStore : IDataStore
                 || !document.RootElement.TryGetProperty(kind.ArrayProperty, out JsonElement array)
                 || array.ValueKind != JsonValueKind.Array)
             {
-                issues.Add(new DataLoadIssue(fileName, null, $"List \"{kind.ArrayProperty}\" is missing."));
+                issues.Add(new DataLoadIssue(fileName, null, L.F($"List \"{kind.ArrayProperty}\" is missing.")));
                 return result;
             }
 
@@ -676,25 +676,25 @@ public class JsonDataStore : IDataStore
                 }
                 catch (JsonException ex)
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, $"Entry skipped: invalid value ({ex.Path?.TrimStart('$', '.')})."));
+                    issues.Add(new DataLoadIssue(fileName, entry, L.F($"Entry skipped: invalid value ({ex.Path?.TrimStart('$', '.')}).")));
                     continue;
                 }
 
                 if (item is null)
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, "Entry skipped: not an object."));
+                    issues.Add(new DataLoadIssue(fileName, entry, L.T("Entry skipped: not an object.")));
                     continue;
                 }
 
                 if (kind.Validate(item) is { } error)
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, $"Entry skipped: {error}"));
+                    issues.Add(new DataLoadIssue(fileName, entry, L.F($"Entry skipped: {error}")));
                     continue;
                 }
 
                 if (!seen.Add(Key(item)))
                 {
-                    issues.Add(new DataLoadIssue(fileName, entry, "Entry skipped: duplicate manufacturer and model."));
+                    issues.Add(new DataLoadIssue(fileName, entry, L.T("Entry skipped: duplicate manufacturer and model.")));
                     continue;
                 }
 
@@ -719,10 +719,10 @@ public class JsonDataStore : IDataStore
             && element.TryGetProperty("Model", out JsonElement model) && model.ValueKind == JsonValueKind.String)
         {
             string? maker = manufacturer ?? (element.TryGetProperty("Manufacturer", out JsonElement m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null);
-            return maker is null ? $"Entry {index} ({model.GetString()})" : $"Entry {index} ({maker} {model.GetString()})";
+            return maker is null ? L.F($"Entry {index} ({model.GetString()})") : L.F($"Entry {index} ({maker} {model.GetString()})");
         }
 
-        return $"Entry {index}";
+        return L.F($"Entry {index}");
     }
 
     // Returns the reason why a module cannot be used, or null when it is valid.
@@ -730,23 +730,23 @@ public class JsonDataStore : IDataStore
     {
         if (string.IsNullOrWhiteSpace(m.Manufacturer) || string.IsNullOrWhiteSpace(m.Model))
         {
-            return "manufacturer or model is missing.";
+            return L.T("manufacturer or model is missing.");
         }
 
         if (m.PmaxW <= 0 || m.VmppV <= 0 || m.ImppA <= 0
             || m.VocV <= 0 || m.IscA <= 0)
         {
-            return "Pmax, Vmpp, Impp, Voc and Isc must be greater than 0.";
+            return L.T("Pmax, Vmpp, Impp, Voc and Isc must be greater than 0.");
         }
 
         if (m.VocV <= m.VmppV || m.IscA < m.ImppA)
         {
-            return "Voc must exceed Vmpp, and Isc must be at least Impp.";
+            return L.T("Voc must exceed Vmpp, and Isc must be at least Impp.");
         }
 
         if (m.CableCrossSectionMm2 is <= 0 || m.CableLengthPlusMm is <= 0 || m.CableLengthMinusMm is <= 0)
         {
-            return "the cable cross-section and lengths must be greater than 0 when they are given.";
+            return L.T("the cable cross-section and lengths must be greater than 0 when they are given.");
         }
 
         return null;
@@ -757,43 +757,43 @@ public class JsonDataStore : IDataStore
     {
         if (string.IsNullOrWhiteSpace(w.Manufacturer) || string.IsNullOrWhiteSpace(w.Model))
         {
-            return "manufacturer or model is missing.";
+            return L.T("manufacturer or model is missing.");
         }
 
         if (!StringCalculator.TryParseVoltageRange(w.MpptVoltageRangeV, out _, out _))
         {
-            return $"MPPT voltage range \"{w.MpptVoltageRangeV}\" is invalid (expected format: \"160-650\").";
+            return L.F($"MPPT voltage range \"{w.MpptVoltageRangeV}\" is invalid (expected format: \"160-650\").");
         }
 
         if (w.MaxDcInputPowerW <= 0 || w.MaxDcInputVoltageV <= 0 || w.MaxInputCurrentA <= 0
             || w.MaxShortCircuitCurrentA <= 0 || w.MpptCount <= 0)
         {
-            return "power, voltage, currents and MPPT count must be greater than 0.";
+            return L.T("power, voltage, currents and MPPT count must be greater than 0.");
         }
 
         if (w.RatedAcPowerW < 0 || w.MaxAcApparentPowerVA < 0 || w.RatedAcCurrentA < 0 || w.MaxAcCurrentA < 0)
         {
-            return "AC power and currents must not be negative.";
+            return L.T("AC power and currents must not be negative.");
         }
 
         if (w.AcPhases is not (0 or 1 or 3))
         {
-            return "AC phases must be 1 or 3.";
+            return L.T("AC phases must be 1 or 3.");
         }
 
         if (w.RatedAcCurrentA > 0 && w.MaxAcCurrentA > 0 && w.MaxAcCurrentA < w.RatedAcCurrentA)
         {
-            return "the max. AC current must be at least the rated AC current.";
+            return L.T("the max. AC current must be at least the rated AC current.");
         }
 
         if (w.MaxBatteryChargeCurrentA < 0 || w.MaxBatteryDischargeCurrentA < 0 || w.BatteryInputs < 0)
         {
-            return "battery currents and inputs must not be negative.";
+            return L.T("battery currents and inputs must not be negative.");
         }
 
         if (w.HasBatteryInput && !StringCalculator.TryParseVoltageRange(w.BatteryVoltageRangeV!, out _, out _))
         {
-            return $"battery voltage range \"{w.BatteryVoltageRangeV}\" is invalid (expected format: \"40-60\").";
+            return L.F($"battery voltage range \"{w.BatteryVoltageRangeV}\" is invalid (expected format: \"40-60\").");
         }
 
         return null;
@@ -804,42 +804,42 @@ public class JsonDataStore : IDataStore
     {
         if (string.IsNullOrWhiteSpace(b.Manufacturer) || string.IsNullOrWhiteSpace(b.Model))
         {
-            return "manufacturer or model is missing.";
+            return L.T("manufacturer or model is missing.");
         }
 
         if (!StringCalculator.TryParseVoltageRange(b.VoltageRangeV, out double min, out double max))
         {
-            return $"operating voltage range \"{b.VoltageRangeV}\" is invalid (expected format: \"44.8-57.6\").";
+            return L.F($"operating voltage range \"{b.VoltageRangeV}\" is invalid (expected format: \"44.8-57.6\").");
         }
 
         if (b.NominalVoltageV <= 0 || b.NominalEnergyKWh <= 0 || b.MaxChargeCurrentA <= 0 || b.MaxDischargeCurrentA <= 0)
         {
-            return "nominal voltage, nominal energy and the max. charge and discharge current must be greater than 0.";
+            return L.T("nominal voltage, nominal energy and the max. charge and discharge current must be greater than 0.");
         }
 
         if (b.NominalCapacityAh is <= 0)
         {
-            return "the nominal capacity must be greater than 0 when it is given.";
+            return L.T("the nominal capacity must be greater than 0 when it is given.");
         }
 
         if (b.DepthOfDischargePct is { } dod && (dod <= 0 || dod > 100))
         {
-            return "the depth of discharge must be above 0 and at most 100 %.";
+            return L.T("the depth of discharge must be above 0 and at most 100 %.");
         }
 
         if (b.NominalVoltageV < min || b.NominalVoltageV > max)
         {
-            return "the nominal voltage must lie within the operating voltage range.";
+            return L.T("the nominal voltage must lie within the operating voltage range.");
         }
 
         if (b.UsableEnergyKWh is { } usable && (usable <= 0 || usable > b.NominalEnergyKWh))
         {
-            return "the usable energy must be greater than 0 and at most the nominal energy.";
+            return L.T("the usable energy must be greater than 0 and at most the nominal energy.");
         }
 
         if (b.MaxModulesInSeries < 0 || b.MaxModulesInParallel < 0)
         {
-            return "the max. module counts must not be negative.";
+            return L.T("the max. module counts must not be negative.");
         }
 
         return null;

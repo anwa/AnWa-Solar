@@ -24,11 +24,13 @@ public sealed record ChosenProject(string Path, Project Project);
 public partial class StartProjectWindow : ChromeWindow
 {
     private readonly IProjectService _projects;
+    private readonly ISettingsService _settings;
     private readonly ILogger _logger;
 
     private StartProjectWindow(IProjectService projects, ISettingsService settings, ILogger logger)
     {
         _projects = projects;
+        _settings = settings;
         _logger = logger;
         InitializeComponent();
 
@@ -65,7 +67,7 @@ public partial class StartProjectWindow : ChromeWindow
         }
         else
         {
-            window.CancelButton.Content = "Exit";
+            window.CancelButton.Content = L.T("Exit");
         }
 
         return window.ShowDialog() == true ? window.Result : null;
@@ -77,9 +79,9 @@ public partial class StartProjectWindow : ChromeWindow
 
         public string Details => string.Join(" · ", new[]
         {
-            Last ? "Last project" : null,
+            Last ? L.T("Last project") : null,
             Info.Customer,
-            "changed " + Info.ModifiedAt.ToString("g", CultureInfo.CurrentCulture),
+            L.F($"changed {Info.ModifiedAt:g}"),
         }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
 
@@ -111,7 +113,7 @@ public partial class StartProjectWindow : ChromeWindow
         Directory.CreateDirectory(_projects.DirectoryPath);
         var dialog = new OpenFileDialog
         {
-            Title = "Open project",
+            Title = L.T("Open project"),
             Filter = "AnWa-Solar project (*.json)|*.json",
             InitialDirectory = _projects.DirectoryPath,
             CheckFileExists = true,
@@ -124,7 +126,7 @@ public partial class StartProjectWindow : ChromeWindow
 
     private void OnNewClick(object sender, RoutedEventArgs e)
     {
-        var info = new ProjectInfoWindow("New project", null, null, null, isNew: true) { Owner = this };
+        var info = new ProjectInfoWindow(L.T("New project"), null, null, null, isNew: true) { Owner = this };
         if (info.ShowDialog() != true)
         {
             return;
@@ -142,13 +144,16 @@ public partial class StartProjectWindow : ChromeWindow
                 CreatedAt = now,
                 ModifiedAt = now,
             };
+            AppPreferences defaults = _settings.LoadPreferences();
+            project.Parameters = defaults.DefaultParameters.Clone();
+            project.Cables = defaults.DefaultCables.Clone();
             Result = new ChosenProject(_projects.Create(project), project);
             DialogResult = true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogError(ex, "Error creating a project.");
-            MessageDialog.Show(this, $"The project could not be created.\n\n{ex.Message}", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.F($"The project could not be created.\n\n{ex.Message}"), Title, StatusKind.Error);
         }
     }
 

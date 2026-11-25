@@ -64,7 +64,7 @@ public partial class SelectInverterWindow : ChromeWindow
     {
         if (Selected is null)
         {
-            MessageDialog.Show(this, "Please select a manufacturer and a model.", Title);
+            MessageDialog.Show(this, L.T("Please select a manufacturer and a model."), Title);
             return;
         }
         DialogResult = true;
@@ -79,8 +79,8 @@ public partial class SelectInverterWindow : ChromeWindow
     {
         DatasheetButton.IsEnabled = _datasheets.HasDatasheet(wr);
         DetailSource.Text = wr is null ? "-" : wr.IsUserEntry
-            ? DatasheetButton.IsEnabled ? "Own master data, with datasheet" : "Own master data"
-            : "Shipped master data";
+            ? DatasheetButton.IsEnabled ? L.T("Own master data, with datasheet") : L.T("Own master data")
+            : L.T("Shipped master data");
         if (wr is null)
         {
             DetailManufacturer.Text = "-";

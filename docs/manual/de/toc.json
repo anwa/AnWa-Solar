@@ -1,0 +1,18 @@
+{
+  "title": "AnWa-Solar Handbuch",
+  "start": "README.md",
+  "pages": [
+    { "path": "README.md", "title": "Start" },
+    { "path": "getting-started.md", "title": "Erste Schritte" },
+    { "path": "projects.md", "title": "Projekte" },
+    { "path": "string-calculation.md", "title": "Stringberechnung" },
+    { "path": "calculation.md", "title": "So wird gerechnet" },
+    { "path": "battery.md", "title": "Batteriespeicher" },
+    { "path": "report.md", "title": "Bericht" },
+    { "path": "master-data.md", "title": "Stammdaten" },
+    { "path": "component-database.md", "title": "Komponentendatenbank" },
+    { "path": "datasheet-import.md", "title": "Datenblatt-Import" },
+    { "path": "settings.md", "title": "Einstellungen, Design und Dateien" },
+    { "path": "troubleshooting.md", "title": "Fehlerbehebung" }
+  ]
+}

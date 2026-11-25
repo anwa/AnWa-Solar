@@ -46,11 +46,11 @@ public partial class AboutWindow : ChromeWindow
     {
         try
         {
-            return CoreWebView2Environment.GetAvailableBrowserVersionString() ?? "not installed";
+            return CoreWebView2Environment.GetAvailableBrowserVersionString() ?? L.T("not installed");
         }
         catch (WebView2RuntimeNotFoundException)
         {
-            return "not installed";
+            return L.T("not installed");
         }
     }
 
@@ -59,11 +59,11 @@ public partial class AboutWindow : ChromeWindow
         try
         {
             Clipboard.SetText(AboutContent.ToText(_facts));
-            CopiedText.Text = "Copied to the clipboard.";
+            CopiedText.Text = L.T("Copied to the clipboard.");
         }
         catch (COMException)
         {
-            CopiedText.Text = "The clipboard is in use; try again.";
+            CopiedText.Text = L.T("The clipboard is in use; try again.");
         }
     }
 

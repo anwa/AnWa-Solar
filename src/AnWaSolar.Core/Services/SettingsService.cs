@@ -112,9 +112,40 @@ public sealed class UserSettings
     /// <summary>Paths of the most recently opened projects, the last one first; at most five.</summary>
     public List<string> RecentProjects { get; set; } = [];
 
+    /// <summary>Preferences of the settings page.</summary>
+    public AppPreferences Preferences { get; set; } = new();
+
     /// <summary>Colour theme; optional, files without it use <see cref="AppTheme.System"/>.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<AppTheme>))]
     public AppTheme Theme { get; set; } = AppTheme.System;
+}
+
+/// <summary>Preferences of the settings page: language, folders and the defaults of new projects.</summary>
+public sealed class AppPreferences
+{
+    /// <summary>"de" or "en"; null follows the Windows display language.</summary>
+    public string? Language { get; set; }
+
+    /// <summary>Folder of the projects; null is <c>%LOCALAPPDATA%\AnWa-Solar\Projects</c>.</summary>
+    public string? ProjectsFolder { get; set; }
+
+    /// <summary>Folder the export dialogs start in; null is the last folder Windows remembers.</summary>
+    public string? ExportFolder { get; set; }
+
+    /// <summary>Calculation parameters of new projects.</summary>
+    public CalculationParameters DefaultParameters { get; set; } = new();
+
+    /// <summary>Cable settings of new projects.</summary>
+    public CableSettings DefaultCables { get; set; } = new();
+
+    public AppPreferences Clone() => new()
+    {
+        Language = Language,
+        ProjectsFolder = ProjectsFolder,
+        ExportFolder = ExportFolder,
+        DefaultParameters = DefaultParameters.Clone(),
+        DefaultCables = DefaultCables.Clone(),
+    };
 }
 
 /// <summary>Colour theme of the application.</summary>
@@ -131,6 +162,10 @@ public enum AppTheme
 public interface ISettingsService
 {
     AppTheme LoadTheme();
+
+    AppPreferences LoadPreferences();
+
+    bool SavePreferences(AppPreferences preferences);
 
     CableSettings LoadCables();
 
@@ -341,6 +376,30 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public AppPreferences LoadPreferences()
+    {
+        lock (_lock)
+        {
+            return EnsureLoaded().Preferences.Clone();
+        }
+    }
+
+    public bool SavePreferences(AppPreferences preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        lock (_lock)
+        {
+            EnsureLoaded().Preferences = preferences.Clone();
+            bool ok = TryWrite();
+            if (ok)
+            {
+                _logger.LogInformation("Preferences saved to {Path}: language {Language}.", SettingsFilePath, preferences.Language ?? "(Windows)");
+            }
+
+            return ok;
+        }
+    }
+
     public AppTheme LoadTheme()
     {
         lock (_lock)
@@ -424,6 +483,25 @@ public sealed class SettingsService : ISettingsService
                 {
                     // Invalid cable settings do not discard the other settings.
                     _logger.LogWarning(ex, "Cable settings in {Path} cannot be read; the defaults are used.", SettingsFilePath);
+                }
+            }
+
+            // Without preferences (versions before 0.22.0) the last parameters and cables become the defaults.
+            settings.Preferences.DefaultParameters = settings.Parameters.Clone();
+            settings.Preferences.DefaultCables = settings.Cables.Clone();
+            if (root["Preferences"] is JsonObject preferences)
+            {
+                try
+                {
+                    settings.Preferences = preferences.Deserialize<AppPreferences>() ?? new AppPreferences();
+                    if (!settings.Preferences.DefaultParameters.IsValid())
+                    {
+                        settings.Preferences.DefaultParameters = new CalculationParameters();
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Preferences in {Path} cannot be read; the defaults are used.", SettingsFilePath);
                 }
             }
 

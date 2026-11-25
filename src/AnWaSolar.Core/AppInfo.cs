@@ -11,7 +11,7 @@ public static class AppInfo
     public const string Email = "andreas@anwa-soft.de";
     public const string License = "GNU General Public License v3.0";
     public const string SourceCode = "https://github.com/anwa/AnWa-Solar";
-    public const string ThirdParty = "KaTeX 0.19.1 (MIT License) for formulas in the report and the manual";
+    public static string ThirdParty => L.T("KaTeX 0.19.1 (MIT License) for formulas in the report and the manual");
 
     /// <summary>Copyright line from the assembly (the year of the build).</summary>
     public static string Copyright(Assembly assembly)
@@ -61,24 +61,24 @@ public static class AboutContent
         ArgumentNullException.ThrowIfNull(facts);
         return
         [
-            new("Version", [
+            new(L.T("Version"), [
                 Title(facts),
-                $"Build: {facts.BuildDate ?? "unknown"}" + (facts.Commit is null ? string.Empty : $" · commit {facts.Commit}"),
+                L.F($"Build: {facts.BuildDate ?? "unknown"}") + (facts.Commit is null ? string.Empty : L.F($" · commit {facts.Commit}")),
             ]),
-            new("Runtime", [
+            new(L.T("Runtime"), [
                 facts.Framework,
-                $"MaterialDesignThemes {facts.MaterialDesignVersion}",
-                $"WebView2 Runtime {facts.WebView2Version}",
+                L.F($"MaterialDesignThemes {facts.MaterialDesignVersion}"),
+                L.F($"WebView2 Runtime {facts.WebView2Version}"),
                 facts.OperatingSystem,
             ]),
-            new("Installation", [facts.InstallationFolder]),
-            new("Data", [
-                $"Settings: {facts.SettingsFile}",
-                $"Logs: {facts.LogFolder}",
-                $"WebView2: {facts.WebView2DataFolder}",
+            new(L.T("Installation"), [facts.InstallationFolder]),
+            new(L.T("Data"), [
+                L.F($"Settings: {facts.SettingsFile}"),
+                L.F($"Logs: {facts.LogFolder}"),
+                L.F($"WebView2: {facts.WebView2DataFolder}"),
             ]),
-            new("Contact", [$"Author: {AppInfo.Author}", $"Email: {AppInfo.Email}", $"Source code: {AppInfo.SourceCode}"]),
-            new("License", [AppInfo.License, AppInfo.ThirdParty]),
+            new(L.T("Contact"), [$"Author: {AppInfo.Author}", L.F($"Email: {AppInfo.Email}"), $"Source code: {AppInfo.SourceCode}"]),
+            new(L.T("License"), [AppInfo.License, AppInfo.ThirdParty]),
         ];
     }
 

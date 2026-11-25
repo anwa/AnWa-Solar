@@ -87,17 +87,17 @@ public static class AcCalculator
         var missing = new List<string>();
         if (ratedAc is null)
         {
-            missing.Add("rated AC power");
+            missing.Add(L.T("rated AC power"));
         }
 
         if (phases is null)
         {
-            missing.Add("AC phases");
+            missing.Add(L.T("AC phases"));
         }
 
         if (inverter.MaxAcCurrentA <= 0)
         {
-            missing.Add("max. AC current");
+            missing.Add(L.T("max. AC current"));
         }
 
         var checks = new List<AcCheck>();

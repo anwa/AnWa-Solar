@@ -73,10 +73,14 @@ public sealed partial class ManualTests
         Assert.Empty(index.Search("x"));
     }
 
-    [Fact]
-    public void Shipped_manual_is_embedded_and_its_links_and_anchors_resolve()
+    [Theory]
+    [InlineData("en")]
+    [InlineData("de")]
+    public void Shipped_manual_is_embedded_and_its_links_and_anchors_resolve(string language)
     {
-        ManualIndex index = new(ManualResources.Load(typeof(ManualTests).Assembly));
+        ManualIndex index = new(ManualResources.Load(typeof(ManualTests).Assembly, language));
+        ManualIndex english = new(ManualResources.Load(typeof(ManualTests).Assembly, "en"));
+        Assert.Equal(english.Pages.Order(StringComparer.Ordinal), index.Pages.Order(StringComparer.Ordinal));
 
         Assert.False(index.IsEmpty);
         Assert.Equal("README.md", index.StartPage);

@@ -70,13 +70,15 @@ public static partial class SeriesNames
     public static string InverterType(Inverter inverter)
     {
         ArgumentNullException.ThrowIfNull(inverter);
-        string phases = inverter.AcPhases switch
+        return (inverter.AcPhases, inverter.HasBatteryInput) switch
         {
-            1 => "Single-phase",
-            3 => "Three-phase",
-            _ => "Phases not stated,",
+            (1, true) => L.T("Single-phase hybrid inverter"),
+            (1, false) => L.T("Single-phase string inverter"),
+            (3, true) => L.T("Three-phase hybrid inverter"),
+            (3, false) => L.T("Three-phase string inverter"),
+            (_, true) => L.T("Phases not stated, hybrid inverter"),
+            _ => L.T("Phases not stated, string inverter"),
         };
-        return $"{phases} {(inverter.HasBatteryInput ? "hybrid" : "string")} inverter";
     }
 
     [GeneratedRegex(@"[-\s/]+", RegexOptions.CultureInvariant)]

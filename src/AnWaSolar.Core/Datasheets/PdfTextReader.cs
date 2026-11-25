@@ -44,7 +44,7 @@ public static class PdfTextReader
         }
         catch (Exception ex) when (ex is not IOException and not OutOfMemoryException)
         {
-            throw new IOException($"The PDF file cannot be read: {ex.Message}", ex);
+            throw new IOException(L.F($"The PDF file cannot be read: {ex.Message}"), ex);
         }
     }
 }

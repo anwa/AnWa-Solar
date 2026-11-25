@@ -13,7 +13,7 @@ The **Battery** card in the configuration appears when the selected inverter has
 | Modules in series | 1 for low-voltage batteries. For high-voltage batteries, the modules of one tower. |
 | Modules in parallel | Modules, or towers, connected in parallel. |
 
-The lower part of the dialog shows the datasheet values of one module. **Save** applies the configuration; it is kept in your [settings](settings.md#saved-settings).
+The lower part of the dialog shows the datasheet values of one module. **Save** applies the configuration; it is saved in the open [project](projects.md).
 
 ## Results
 
