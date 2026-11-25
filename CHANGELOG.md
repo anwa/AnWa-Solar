@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.21.0)
+## v0.21.0 (2026-11-25)
 
 - New: Component database. A window, opened from the title bar, lists the module, inverter and battery series in a tree (kind, manufacturer, series) and edits a series in a table with one column per power class: copy a value to all power classes, copy or remove a power class, add one, attach and show the datasheet, import a datasheet. Saving checks every power class like the import; a shipped series is saved as an own copy that replaces it; renaming moves the own series with its datasheet; deleting an own series brings back the shipped one. Unsaved changes are confirmed before switching or closing.
 
