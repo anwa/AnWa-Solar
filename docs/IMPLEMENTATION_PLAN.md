@@ -109,7 +109,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Compatibility check of the battery bank against the hybrid inverter and usable capacity
 - [x] Configuration card, result card, report section and manual page
 
-## M17 – Module leads and battery cables (`feature/cables-extended`)
+## M17 – Module leads and battery cables (`feature/cables-extended`, v0.18.0)
 
 - [x] Module lead values (cross-section, plus and minus length) in the master data and the datasheet import; the user's default when the datasheet states none
 - [x] String cable cross-section chosen by the user or automatic; voltage drop including the module leads

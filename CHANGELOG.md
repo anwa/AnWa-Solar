@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.18.0)
+## v0.18.0 (2026-11-25)
 
 - New: Module leads. The string voltage drop includes the plus and minus leads of every module of the string; the lengths and cross-section come from the module datasheet (new optional master data values, read by the datasheet import, for example "4,0 mm², Hochformat 1100/1100 mm"), otherwise from a default in the cable settings (0.5 m per lead, 4 mm²). The result card shows them per MPPT.
 - New: The cross-section of the string cables can be chosen (for example 4 or 6 mm²) or sized automatically; a chosen cross-section is checked: too low a current-carrying capacity is an error, a voltage drop above the limit a warning.
