@@ -27,7 +27,7 @@ Settings of older versions are taken over automatically on the first start; the 
 
 | Path | Content |
 |---|---|
-| `C:\Program Files\AnWa-Solar` | Program, `Data\Modules.json`, `Data\Inverters.json`, `Data\Batteries.json`, `Data\CableTables.json` (standard tables for cables and fuses), `appsettings.json` |
+| `C:\Program Files\AnWa-Solar` | Program, the master data series in `Data\Modules`, `Data\Inverters` and `Data\Batteries`, `Data\CableTables.json` (standard tables for cables and fuses), `appsettings.json` |
 | `%LOCALAPPDATA%\AnWa-Solar\settings.json` | Your settings |
 | `%LOCALAPPDATA%\AnWa-Solar\Projects` | Your projects, one JSON file each, see [Projects](projects.md) |
 | `%LOCALAPPDATA%\AnWa-Solar\Data` | Your own master data and imported datasheets, see [Datasheet Import](datasheet-import.md#your-own-master-data) |

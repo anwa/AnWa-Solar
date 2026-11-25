@@ -122,3 +122,16 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Start dialog: last project preselected (Enter), five most recent projects, new project, other project file; migration of the previous design
 - [x] Project card (edit, switch, export) and project data in the report
 - [x] ZIP export with the report as PDF, the datasheets and the project file
+
+## M19 – Component series (`feature/component-series`)
+
+- [x] Master data organised in series (manufacturer, series, datasheet, power classes): one JSON file per series in a folder per kind and manufacturer, shipped and own
+- [x] Own single-list files of earlier versions converted into series files
+- [x] Datasheet import saves a whole series with the chosen power classes
+- [x] Selection by manufacturer, inverter type (derived from phases and battery input), series and power class
+
+## M20 – Component database (`feature/component-database`)
+
+- [ ] Window with a tree of kinds, manufacturers and series and an editor with one column per power class
+- [ ] Create, change, copy and delete own series and power classes; shipped series are saved as own copies
+- [ ] Attach and show datasheets; import from the window

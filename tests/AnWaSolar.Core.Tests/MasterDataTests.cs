@@ -79,6 +79,17 @@ public sealed class MasterDataTests
         Assert.Equal(3, store.Inverters.Count(i => i.HasBatteryInput));
     }
 
+    [Fact]
+    public void Shipped_data_is_organised_in_series()
+    {
+        JsonDataStore store = LoadShippedData();
+
+        Assert.Equal(["SUN-15K-SG05LP3-EU-SM2", "SUN-18K-SG05LP3-EU-SM2", "SUN-20K-SG05LP3-EU-SM2"],
+            store.Inverters.Where(i => i.Series == "SUN-SG05LP3-EU-SM2").Select(i => i.Model));
+        Assert.Equal(4, store.Batteries.Count(b => b.Series == "SE-F"));
+        Assert.All(store.Modules.Concat<Models.IMasterDataEntry>(store.Inverters).Concat(store.Batteries), e => Assert.False(string.IsNullOrWhiteSpace(e.Series)));
+    }
+
     // Only the shipped files: a user data folder that does not exist.
     private sealed class NoUserData : IUserDataLocation
     {

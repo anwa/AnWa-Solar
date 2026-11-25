@@ -66,17 +66,25 @@
                         <ColumnDefinition Width="16" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <ComboBox x:Name="ManufacturerCombo"
                               Style="{StaticResource MaterialDesignOutlinedComboBox}"
                               materialDesign:HintAssist.Hint="Manufacturer"
-                              AutomationProperties.Name="Manufacturer"
-                              SelectionChanged="OnManufacturerSelectionChanged" />
-                    <ComboBox x:Name="ModelCombo"
+                              AutomationProperties.Name="Manufacturer" />
+                    <ComboBox x:Name="SeriesCombo"
                               Grid.Column="2"
                               Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                              materialDesign:HintAssist.Hint="Model"
-                              AutomationProperties.Name="Model"
-                              SelectionChanged="OnModelSelectionChanged" />
+                              materialDesign:HintAssist.Hint="Series"
+                              AutomationProperties.Name="Series" />
+                    <ComboBox x:Name="ModelCombo"
+                              Grid.Row="2"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="Power class"
+                              AutomationProperties.Name="Power class" />
                 </Grid>
 
                 <Grid Margin="0,20,0,0">

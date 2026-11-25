@@ -14,7 +14,7 @@ namespace AnWaSolar.Windows;
 public partial class SelectModuleWindow : ChromeWindow
 {
     private readonly DatasheetService _datasheets;
-    private PVModule[] _all = [];
+    private readonly SeriesPicker<PVModule> _picker;
 
     public PVModule? Selected { get; private set; }
 
@@ -27,51 +27,21 @@ public partial class SelectModuleWindow : ChromeWindow
     {
         _datasheets = datasheets;
         InitializeComponent();
+        _picker = new SeriesPicker<PVModule>(ManufacturerCombo, null, SeriesCombo, ModelCombo,
+            null, entry =>
+            {
+                Selected = entry;
+                UpdateDetails(entry);
+            });
         LoadList(null);
     }
 
-    // Fills the manufacturer list and selects the given entry, or the first manufacturer.
-    private void LoadList(PVModule? select)
-    {
-        _all = [.. _datasheets.Store.Modules];
-        var manufacturers = _all.Select(x => x.Manufacturer).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToArray();
-        ManufacturerCombo.ItemsSource = manufacturers;
-        string? manufacturer = select is null ? manufacturers.FirstOrDefault() : manufacturers.FirstOrDefault(m => string.Equals(m, select.Manufacturer, StringComparison.OrdinalIgnoreCase));
-        ManufacturerCombo.SelectedItem = null;
-        ManufacturerCombo.SelectedItem = manufacturer;
-        if (select is not null)
-        {
-            ModelCombo.SelectedItem = (ModelCombo.ItemsSource as IEnumerable<string>)?.FirstOrDefault(m => string.Equals(m, select.Model, StringComparison.OrdinalIgnoreCase));
-        }
-    }
+    // Fills the lists and selects the given entry, or the first manufacturer.
+    private void LoadList(PVModule? select) => _picker.Load(_datasheets.Store.Modules, select?.Manufacturer, select?.Model);
 
     #endregion
 
     #region Events
-
-    private void OnManufacturerSelectionChanged(object sender, RoutedEventArgs e)
-    {
-        var h = ManufacturerCombo.SelectedItem as string;
-        var models = _all.Where(x => string.Equals(x.Manufacturer, h, StringComparison.OrdinalIgnoreCase))
-                         .Select(x => x.Model)
-                         .Distinct()
-                         .OrderBy(x => x)
-                         .ToArray();
-        ModelCombo.ItemsSource = models;
-        if (models.Length > 0) ModelCombo.SelectedItem = models[0];
-    }
-
-    private void OnModelSelectionChanged(object sender, RoutedEventArgs e)
-    {
-        var h = ManufacturerCombo.SelectedItem as string;
-        var m = ModelCombo.SelectedItem as string;
-        var mod = _all.FirstOrDefault(x =>
-            string.Equals(x.Manufacturer, h, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(x.Model, m, StringComparison.OrdinalIgnoreCase));
-
-        Selected = mod;
-        UpdateDetails(mod);
-    }
 
     private async void OnImportClick(object sender, RoutedEventArgs e)
     {

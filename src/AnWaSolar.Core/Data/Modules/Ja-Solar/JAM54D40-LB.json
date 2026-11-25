@@ -1,0 +1,20 @@
+{
+  "Manufacturer": "Ja-Solar",
+  "Series": "JAM54D40-LB",
+  "Variants": [
+    {
+      "Model": "JAM54D40-460/LB",
+      "Pmax (W)": 460,
+      "Vmpp (V)": 33.17,
+      "Impp (A)": 13.87,
+      "Voc (V)": 39.7,
+      "Isc (A)": 14.64,
+      "Module efficiency (%)": 23,
+      "Temperature coefficient of Pmax (%/°C)": -0.29,
+      "Temperature coefficient of Voc (%/°C)": -0.25,
+      "Temperature coefficient of Isc (%/°C)": 0.045,
+      "Operating temperature min (°C)": -40,
+      "Operating temperature max (°C)": 85
+    }
+  ]
+}

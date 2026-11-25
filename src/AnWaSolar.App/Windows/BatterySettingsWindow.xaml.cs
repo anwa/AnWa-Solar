@@ -17,12 +17,17 @@ namespace AnWaSolar.Windows;
 public partial class BatterySettingsWindow : ChromeWindow
 {
     private readonly DatasheetService _datasheets;
-    private Battery[] _all = [];
+    private readonly SeriesPicker<Battery> _picker;
 
     public BatterySettingsWindow(BatterySettings current, Inverter? inverter, DatasheetService datasheets)
     {
         _datasheets = datasheets;
         InitializeComponent();
+        _picker = new SeriesPicker<Battery>(ManufacturerCombo, null, SeriesCombo, ModelCombo, null, entry =>
+        {
+            Selected = entry;
+            UpdateDetails();
+        });
         Settings = current.Clone();
 
         InverterNote.Text = inverter switch
@@ -47,42 +52,11 @@ public partial class BatterySettingsWindow : ChromeWindow
 
     private Battery? Selected { get; set; }
 
-    private void LoadList(SelectedRef? select)
-    {
-        _all = [.. _datasheets.Store.Batteries];
-        string[] manufacturers = [.. _all.Select(b => b.Manufacturer).Distinct(StringComparer.OrdinalIgnoreCase).Order()];
-        ManufacturerCombo.ItemsSource = manufacturers;
-        ManufacturerCombo.SelectedItem = null;
-        ManufacturerCombo.SelectedItem = select is null
-            ? manufacturers.FirstOrDefault()
-            : manufacturers.FirstOrDefault(m => string.Equals(m, select.Manufacturer, StringComparison.OrdinalIgnoreCase)) ?? manufacturers.FirstOrDefault();
-        if (select is not null)
-        {
-            ModelCombo.SelectedItem = (ModelCombo.ItemsSource as IEnumerable<string>)?.FirstOrDefault(m => string.Equals(m, select.Model, StringComparison.OrdinalIgnoreCase))
-                ?? ModelCombo.SelectedItem;
-        }
-    }
+    private void LoadList(SelectedRef? select) => _picker.Load(_datasheets.Store.Batteries, select?.Manufacturer, select?.Model);
 
     private void OnEnabledChanged(object sender, RoutedEventArgs e) => UpdateEnabled();
 
     private void UpdateEnabled() => BatteryPanel.IsEnabled = EnabledCheck.IsChecked == true;
-
-    private void OnManufacturerSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        string? manufacturer = ManufacturerCombo.SelectedItem as string;
-        string[] models = [.. _all.Where(b => string.Equals(b.Manufacturer, manufacturer, StringComparison.OrdinalIgnoreCase)).Select(b => b.Model).Order()];
-        ModelCombo.ItemsSource = models;
-        ModelCombo.SelectedItem = models.FirstOrDefault();
-    }
-
-    private void OnModelSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        string? manufacturer = ManufacturerCombo.SelectedItem as string;
-        string? model = ModelCombo.SelectedItem as string;
-        Selected = _all.FirstOrDefault(b => string.Equals(b.Manufacturer, manufacturer, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(b.Model, model, StringComparison.OrdinalIgnoreCase));
-        UpdateDetails();
-    }
 
     private async void OnImportClick(object sender, RoutedEventArgs e)
     {

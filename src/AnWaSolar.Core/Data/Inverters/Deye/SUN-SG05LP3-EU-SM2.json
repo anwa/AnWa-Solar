@@ -1,20 +1,8 @@
 {
-  "Inverters": [
+  "Manufacturer": "Deye",
+  "Series": "SUN-SG05LP3-EU-SM2",
+  "Variants": [
     {
-      "Manufacturer": "Deye",
-      "Model": "SUN-10K-G06P3-EU-AM2",
-      "Max. DC input power (W)": 13000,
-      "Max. DC input voltage (V)": 1100,
-      "Start voltage (V)": 140,
-      "MPPT voltage range (V)": "120-1000",
-      "Nominal DC input voltage (V)": 600,
-      "Max. input current per MPPT (A)": 13,
-      "Max. short-circuit current per MPPT (A)": 19,
-      "MPPT count": 2,
-      "Max. strings per MPPT": 1
-    },
-    {
-      "Manufacturer": "Deye",
       "Model": "SUN-15K-SG05LP3-EU-SM2",
       "Max. DC input power (W)": 24000,
       "Max. DC input voltage (V)": 800,
@@ -36,7 +24,6 @@
       "Battery inputs": 2
     },
     {
-      "Manufacturer": "Deye",
       "Model": "SUN-18K-SG05LP3-EU-SM2",
       "Max. DC input power (W)": 28800,
       "Max. DC input voltage (V)": 800,
@@ -58,7 +45,6 @@
       "Battery inputs": 2
     },
     {
-      "Manufacturer": "Deye",
       "Model": "SUN-20K-SG05LP3-EU-SM2",
       "Max. DC input power (W)": 32000,
       "Max. DC input voltage (V)": 800,

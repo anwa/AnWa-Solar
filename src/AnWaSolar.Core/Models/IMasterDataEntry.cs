@@ -1,11 +1,14 @@
 namespace AnWaSolar.Core.Models;
 
-/// <summary>Common part of PV modules and inverters in the master data.</summary>
+/// <summary>Common part of PV modules, inverters and batteries in the master data.</summary>
 public interface IMasterDataEntry
 {
     string Manufacturer { get; set; }
 
     string Model { get; set; }
+
+    /// <summary>Series the entry belongs to (from its series file); the model itself for entries without series.</summary>
+    string Series { get; set; }
 
     /// <summary>Imported datasheet, relative to the user data folder; null when there is none.</summary>
     string? DatasheetFile { get; set; }

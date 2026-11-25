@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <!-- Master data is shipped next to the executable of every project that references Core. -->
-    <None Update="Data\*.json">
+    <None Update="Data\**\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

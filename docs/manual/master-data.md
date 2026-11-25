@@ -1,12 +1,32 @@
 # Master Data
 
-AnWa-Solar reads the PV modules, inverters and batteries from JSON files in the `Data` folder of the installation (`C:\Program Files\AnWa-Solar\Data`):
+AnWa-Solar organises the PV modules, inverters and batteries in **series**, the way a datasheet describes them: one series of a manufacturer with its power classes. Each series is one JSON file in the `Data` folder of the installation (`C:\Program Files\AnWa-Solar\Data`):
 
-- `Modules.json` with the list `Modules`,
-- `Inverters.json` with the list `Inverters`,
-- `Batteries.json` with the list `Batteries`.
+```text
+Data\Modules\<Manufacturer>\<Series>.json
+Data\Inverters\<Manufacturer>\<Series>.json
+Data\Batteries\<Manufacturer>\<Series>.json
+```
 
-Your own entries, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in files of the same format. An own entry replaces a shipped entry with the same manufacturer and model.
+A series file names the manufacturer and the series and lists the power classes under `Variants`; each power class holds its complete values, as in the examples below (without the manufacturer):
+
+```json
+{
+  "Manufacturer": "Deye",
+  "Series": "SUN-SG05LP3-EU-SM2",
+  "Datasheet file": "SUN-SG05LP3-EU-SM2.pdf",
+  "Variants": [
+    { "Model": "SUN-15K-SG05LP3-EU-SM2", "Max. DC input power (W)": 24000, "...": "..." },
+    { "Model": "SUN-18K-SG05LP3-EU-SM2", "Max. DC input power (W)": 28800, "...": "..." }
+  ]
+}
+```
+
+Your own series, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in the same structure, with the datasheet next to the series file. An own series replaces the shipped series with the same manufacturer and name, and an own power class the shipped one with the same manufacturer and model. A model belongs to one series: saving a series moves its models out of your other series.
+
+The selection dialogs follow this structure: manufacturer, for inverters the type (for example "Three-phase hybrid inverter", from the AC phases and the battery input), series and power class.
+
+Versions before 0.20.0 kept your own entries in `Modules.json`, `Inverters.json` and `Batteries.json` with the datasheets in `Datasheets`; they are converted into series files on the first start (one series per entry), and the old files are kept as `*.migrated`.
 
 Enter only values from the manufacturer datasheets. Numbers use a dot as decimal separator and may be decimal numbers, for example `12.5`.
 
@@ -96,6 +116,8 @@ Every entry is checked on its own. An entry is skipped when
 - Voc is not higher than Vmpp, or Isc is lower than Impp,
 - the MPPT voltage range is not in the form `"160-650"`,
 - manufacturer and model appear twice.
+
+A series file is skipped as a whole only when it cannot be read or misses manufacturer, series or `Variants`; otherwise each power class is checked on its own.
 
 Skipped entries and unreadable files are listed in the **Master data** message after the start and in the log; problems in your own files are marked "(own data)". The other entries are loaded normally.
 
