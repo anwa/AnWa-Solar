@@ -123,7 +123,7 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Project card (edit, switch, export) and project data in the report
 - [x] ZIP export with the report as PDF, the datasheets and the project file
 
-## M19 – Component series (`feature/component-series`)
+## M19 – Component series (`feature/component-series`, v0.20.0)
 
 - [x] Master data organised in series (manufacturer, series, datasheet, power classes): one JSON file per series in a folder per kind and manufacturer, shipped and own
 - [x] Own single-list files of earlier versions converted into series files

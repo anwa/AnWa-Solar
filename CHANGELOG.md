@@ -2,7 +2,7 @@
 
 All user-visible changes of AnWa-Solar.
 
-## Unreleased (v0.20.0)
+## v0.20.0 (2026-11-25)
 
 - New: Master data in series. Modules, inverters and batteries are organised the way datasheets describe them: one JSON file per series (manufacturer, series, datasheet, power classes) in `Data\<Kind>\<Manufacturer>\`. The shipped data is converted (for example Deye SUN-SG05LP3-EU-SM2 with SUN-15K/18K/20K, Deye SE-F with four batteries).
 - New: The datasheet import saves a whole series: a series name is suggested from the model names, each power class keeps its own values, and a checkbox decides which power classes are saved.
