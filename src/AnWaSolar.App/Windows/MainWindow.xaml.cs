@@ -47,6 +47,10 @@ public partial class MainWindow : ChromeWindow
     private Inverter? _selectedInverter;
     private readonly List<StringConfiguration> _stringConfigs = new();
     private readonly List<MpptUiRefs> _mpptRefs = new();
+
+    // String configurations by MPPT number that the current inverter does not have; they come back when an inverter
+    // with more MPPTs is selected again.
+    private readonly Dictionary<int, StringConfiguration> _parkedConfigs = new();
     private StringCalculationResult? _lastResult;
     private CableCalculationResult? _lastCables;
     private CableSettings _cableSettings = new();
@@ -141,9 +145,16 @@ public partial class MainWindow : ChromeWindow
 
     #region String sections
 
-    // Creates one configuration card per MPPT of _selectedInverter
+    // Creates one configuration card per MPPT of _selectedInverter. The module, the counts and the enabled state of
+    // every MPPT number are kept: changing the inverter does not change the strings; values the new inverter does not
+    // allow are shown as violations.
     private void BuildStringsUi()
     {
+        foreach (StringConfiguration previous in _stringConfigs)
+        {
+            _parkedConfigs[previous.MpptIndex] = previous;
+        }
+
         StringsPanel.Children.Clear();
         _stringConfigs.Clear();
         _mpptRefs.Clear();
@@ -160,6 +171,14 @@ public partial class MainWindow : ChromeWindow
         for (int i = 0; i < mpptCount; i++)
         {
             var cfg = new StringConfiguration { MpptIndex = i + 1, ModulesPerString = 10, ParallelStrings = 1, IsEnabled = true };
+            if (_parkedConfigs.Remove(cfg.MpptIndex, out StringConfiguration? kept))
+            {
+                cfg.ModulesPerString = kept.ModulesPerString;
+                cfg.ParallelStrings = kept.ParallelStrings;
+                cfg.IsEnabled = kept.IsEnabled;
+                cfg.SelectedModule = FindModule(kept.SelectedModule);
+            }
+
             _stringConfigs.Add(cfg);
 
             var root = new StackPanel();
@@ -247,7 +266,7 @@ public partial class MainWindow : ChromeWindow
             // Modules per string
             (DockPanel nRow, TextBlock nValue) = SliderHeader("Modules per string");
             nRow.Margin = new Thickness(0, 14, 0, 0);
-            var nSlider = new Slider { Minimum = 1, Maximum = 30, TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ModulesPerString };
+            var nSlider = new Slider { Minimum = 1, Maximum = Math.Max(30, cfg.ModulesPerString), TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ModulesPerString };
             AutomationProperties.SetName(nSlider, $"Modules per string, MPPT {cfg.MpptIndex}");
             var nAllowed = Muted(string.Empty, 12);
             body.Children.Add(nRow);
@@ -257,7 +276,7 @@ public partial class MainWindow : ChromeWindow
             // Parallel strings
             (DockPanel sRow, TextBlock sValue) = SliderHeader("Parallel strings");
             sRow.Margin = new Thickness(0, 12, 0, 0);
-            var sSlider = new Slider { Minimum = 1, Maximum = Math.Max(1, specMaxStrings), TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ParallelStrings };
+            var sSlider = new Slider { Minimum = 1, Maximum = Math.Max(specMaxStrings, cfg.ParallelStrings), TickFrequency = 1, IsSnapToTickEnabled = true, Value = cfg.ParallelStrings };
             AutomationProperties.SetName(sSlider, $"Parallel strings, MPPT {cfg.MpptIndex}");
             var sAllowed = Muted(_selectedInverter.MaxStringsPerMppt > 0
                 ? $"The inverter allows up to {_selectedInverter.MaxStringsPerMppt} strings per MPPT."
@@ -283,10 +302,7 @@ public partial class MainWindow : ChromeWindow
             {
                 sValue.Text = ((int)Math.Round(sSlider.Value)).ToString(CultureInfo.CurrentCulture);
                 if (_suppressSliderEvents) return;
-                int val = Math.Max(1, (int)Math.Round(sSlider.Value));
-                int maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? int.MaxValue;
-                if (maxBySpec > 0 && val > maxBySpec) val = maxBySpec;
-                cfg.ParallelStrings = val;
+                cfg.ParallelStrings = Math.Max(1, (int)Math.Round(sSlider.Value));
                 PersistLastSelection();
                 Recalculate();
             };
@@ -596,14 +612,14 @@ public partial class MainWindow : ChromeWindow
                 // Reset the sliders (modules 1..30, no allowed range); the string slider keeps the inverter specification
                 _suppressSliderEvents = true;
                 refs.NSlider.Minimum = 1;
-                refs.NSlider.Maximum = 30;
+                refs.NSlider.Maximum = Math.Max(30, cfg.ModulesPerString);
                 refs.NSlider.IsSelectionRangeEnabled = false;
                 refs.NSlider.Value = Math.Max(1, cfg.ModulesPerString);
 
-                int maxBySpec = _selectedInverter?.MaxStringsPerMppt ?? 10;
+                int maxBySpec = _selectedInverter?.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
                 refs.SSlider.Minimum = 1;
-                refs.SSlider.Maximum = Math.Max(1, maxBySpec);
-                refs.SSlider.Value = Math.Max(1, Math.Min(cfg.ParallelStrings, (int)refs.SSlider.Maximum));
+                refs.SSlider.Maximum = Math.Max(maxBySpec, cfg.ParallelStrings);
+                refs.SSlider.Value = Math.Max(1, cfg.ParallelStrings);
                 _suppressSliderEvents = false;
             }
 
@@ -745,6 +761,11 @@ public partial class MainWindow : ChromeWindow
         }
     }
 
+    // The current master data entry of a module (after an import the entry object is new).
+    private PVModule? FindModule(PVModule? module) => module is null ? null : _dataStore.Modules.FirstOrDefault(m =>
+        string.Equals(m.Manufacturer, module.Manufacturer, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(m.Model, module.Model, StringComparison.OrdinalIgnoreCase));
+
     private Battery? FindBattery(SelectedRef? reference) => reference is null ? null : _dataStore.Batteries.FirstOrDefault(b =>
         string.Equals(b.Manufacturer, reference.Manufacturer, StringComparison.OrdinalIgnoreCase)
         && string.Equals(b.Model, reference.Model, StringComparison.OrdinalIgnoreCase));
@@ -814,10 +835,9 @@ public partial class MainWindow : ChromeWindow
                 // Enabled state
                 cfg.IsEnabled = sel.IsEnabled;
 
-                // Counts, limited to the inverter specification
+                // Counts as saved; values the inverter does not allow are shown as violations
                 cfg.ModulesPerString = Math.Max(1, sel.ModulesPerString);
-                var maxBySpec = _selectedInverter.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : int.MaxValue;
-                cfg.ParallelStrings = Math.Max(1, Math.Min(sel.ParallelStrings, maxBySpec));
+                cfg.ParallelStrings = Math.Max(1, sel.ParallelStrings);
 
                 // Module reference
                 if (sel.Module is not null)
@@ -950,9 +970,10 @@ public partial class MainWindow : ChromeWindow
                     continue;
                 }
 
-                // Module slider: 1 .. (highest allowed count + 5), allowed range marked; without module 1 .. 30.
+                // Module slider: 1 .. (highest allowed count + 5), allowed range marked; without module 1 .. 30. The
+                // range always contains the current value, so that a value outside the allowed range stays visible.
                 bool calculated = mppt.Status == MpptStatus.Calculated;
-                int moduleMax = calculated && mppt.MaxModulesPerString >= 1 ? mppt.MaxModulesPerString + 5 : 30;
+                int moduleMax = Math.Max(calculated && mppt.MaxModulesPerString >= 1 ? mppt.MaxModulesPerString + 5 : 30, cfg.ModulesPerString);
                 refs.NSlider.Minimum = 1;
                 refs.NSlider.Maximum = Math.Max(1, moduleMax);
                 if (calculated && mppt.HasValidModuleRange && mppt.MaxModulesPerString >= 1)
@@ -973,16 +994,14 @@ public partial class MainWindow : ChromeWindow
                         : "No module count per string meets all voltage limits.";
                 }
 
-                // The value is only kept inside the slider range, not clamped to the allowed range.
-                cfg.ModulesPerString = Math.Clamp(cfg.ModulesPerString, 1, (int)refs.NSlider.Maximum);
+                // The value is not clamped to the allowed range.
                 refs.NSlider.Value = cfg.ModulesPerString;
                 refs.NValue.Text = cfg.ModulesPerString.ToString(CultureInfo.CurrentCulture);
 
                 // String slider: 1 .. inverter specification.
                 int specMax = _selectedInverter?.MaxStringsPerMppt > 0 ? _selectedInverter.MaxStringsPerMppt : 10;
                 refs.SSlider.Minimum = 1;
-                refs.SSlider.Maximum = Math.Max(1, specMax);
-                cfg.ParallelStrings = Math.Clamp(cfg.ParallelStrings, 1, (int)refs.SSlider.Maximum);
+                refs.SSlider.Maximum = Math.Max(specMax, cfg.ParallelStrings);
                 refs.SSlider.Value = cfg.ParallelStrings;
                 refs.SValue.Text = cfg.ParallelStrings.ToString(CultureInfo.CurrentCulture);
             }
