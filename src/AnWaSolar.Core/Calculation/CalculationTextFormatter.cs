@@ -101,10 +101,28 @@ public static class CalculationTextFormatter
         return sb.ToString();
     }
 
-    /// <summary>Text of the results including the cable and fuse sizing.</summary>
-    public static string Format(StringCalculationResult result, CableCalculationResult? cables)
+    /// <summary>Text of the results including the cable and fuse sizing and, when planned, the battery check.</summary>
+    public static string Format(StringCalculationResult result, CableCalculationResult? cables, BatteryCalculationResult? battery = null)
     {
         string text = Format(result);
+        if (battery is not null)
+        {
+            var bat = new StringBuilder(text);
+            bat.AppendLine(string.Empty);
+            bat.AppendLine("Battery storage:");
+            foreach (string line in BatteryTexts.Values(battery, result.Inverter))
+            {
+                bat.AppendLine($"- {line}");
+            }
+
+            foreach (BatteryCheck check in battery.Checks)
+            {
+                bat.AppendLine($"- {BatteryTexts.Format(check, battery)}");
+            }
+
+            text = bat.ToString();
+        }
+
         if (cables is null)
         {
             return text;

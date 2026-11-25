@@ -19,7 +19,8 @@ public static class ReportBuilder
         Build(result, parameters, createdAt, cables: null, tables: null);
 
     /// <summary>Report including the cable and fuse sizing.</summary>
-    public static string Build(StringCalculationResult? result, CalculationParameters parameters, DateTime createdAt, CableCalculationResult? cables, CableTables? tables)
+    public static string Build(StringCalculationResult? result, CalculationParameters parameters, DateTime createdAt, CableCalculationResult? cables, CableTables? tables,
+        BatteryCalculationResult? battery = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
@@ -176,6 +177,31 @@ public static class ReportBuilder
             md.AppendLine();
             md.AppendLine($"Sources: {tables.SolarCable.Source}; {tables.AcCable.Source}; {tables.Grouping.Source}; {tables.Protection.Source}; κ = {tables.CopperConductivity} m/(Ω·mm²).");
             md.AppendLine();
+        }
+
+        if (battery is not null)
+        {
+            md.AppendLine("## Battery storage");
+            foreach (string line in BatteryTexts.Values(battery, inv))
+            {
+                md.AppendLine($"- {line}");
+            }
+
+            md.AppendLine();
+            md.AppendLine("$$U_{\\mathrm{bank}} = N_s \\cdot U_{\\mathrm{module}}, \\quad I_{\\mathrm{charge}} = \\min(N_p \\cdot I_{\\mathrm{module,max}},\\ I_{\\mathrm{inverter,max}}), \\quad P = I \\cdot U_{\\mathrm{bank,nominal}}, \\quad E = N_s \\cdot N_p \\cdot E_{\\mathrm{module}}$$");
+            md.AppendLine();
+            md.AppendLine("The bank voltage range must lie within the battery voltage range of the inverter; the values come from the datasheets of the battery and the inverter. The safety margin of the PV calculation does not apply to the battery.");
+            md.AppendLine();
+            if (battery.Checks.Count > 0)
+            {
+                md.AppendLine("### Notes");
+                foreach (BatteryCheck check in battery.Checks)
+                {
+                    md.AppendLine($"- {BatteryTexts.Format(check, battery)}");
+                }
+
+                md.AppendLine();
+            }
         }
 
         return md.ToString();

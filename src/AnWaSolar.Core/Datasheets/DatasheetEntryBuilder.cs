@@ -99,6 +99,10 @@ public static class DatasheetEntryBuilder
             RatedAcCurrentA = reader.OptionalNumber(DatasheetFields.RatedAcCurrentA) ?? 0,
             MaxAcCurrentA = reader.OptionalNumber(DatasheetFields.MaxAcCurrentA) ?? 0,
             AcPhases = reader.OptionalInteger(DatasheetFields.AcPhases) ?? 0,
+            BatteryVoltageRangeV = reader.OptionalRange(DatasheetFields.BatteryRangeV),
+            MaxBatteryChargeCurrentA = reader.OptionalNumber(DatasheetFields.MaxBatteryChargeA) ?? 0,
+            MaxBatteryDischargeCurrentA = reader.OptionalNumber(DatasheetFields.MaxBatteryDischargeA) ?? 0,
+            BatteryInputs = reader.OptionalInteger(DatasheetFields.BatteryInputs) ?? 0,
         };
 
         if (errors.Count == 0)
@@ -109,6 +113,15 @@ public static class DatasheetEntryBuilder
                 errors.Add("The MPPT voltage range must lie below the max. DC input voltage.");
             }
 
+            if (candidate.HasBatteryInput && (candidate.MaxBatteryChargeCurrentA <= 0 || candidate.MaxBatteryDischargeCurrentA <= 0))
+            {
+                errors.Add("With a battery voltage range, the max. battery charge and discharge current are needed.");
+            }
+            else if (!candidate.HasBatteryInput && (candidate.MaxBatteryChargeCurrentA > 0 || candidate.MaxBatteryDischargeCurrentA > 0))
+            {
+                errors.Add("Battery currents need the battery voltage range.");
+            }
+
             if (JsonDataStore.ValidateInverter(candidate) is { } error)
             {
                 errors.Add(Capitalize(error));
@@ -116,6 +129,37 @@ public static class DatasheetEntryBuilder
         }
 
         inverter = errors.Count == 0 ? candidate : null;
+        return errors;
+    }
+
+    /// <summary>Builds a battery module; returns the problems, empty when <paramref name="battery"/> is valid.</summary>
+    public static IReadOnlyList<string> TryBuildBattery(IReadOnlyDictionary<string, string?> values, out Battery? battery)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var errors = new List<string>();
+        var reader = new Reader(values, DatasheetFields.Battery, errors);
+        var candidate = new Battery
+        {
+            Manufacturer = reader.Text(DatasheetFields.Manufacturer),
+            Model = reader.Text(DatasheetFields.Model),
+            NominalVoltageV = reader.Number(DatasheetFields.NominalVoltageV),
+            VoltageRangeV = reader.Range(DatasheetFields.OperatingRangeV),
+            NominalCapacityAh = reader.OptionalNumber(DatasheetFields.NominalCapacityAh),
+            NominalEnergyKWh = reader.Number(DatasheetFields.NominalEnergyKWh),
+            UsableEnergyKWh = reader.OptionalNumber(DatasheetFields.UsableEnergyKWh),
+            DepthOfDischargePct = reader.OptionalNumber(DatasheetFields.DepthOfDischargePct),
+            MaxChargeCurrentA = reader.Number(DatasheetFields.MaxChargeA),
+            MaxDischargeCurrentA = reader.Number(DatasheetFields.MaxDischargeA),
+            MaxModulesInSeries = reader.OptionalInteger(DatasheetFields.MaxInSeries) ?? 0,
+            MaxModulesInParallel = reader.OptionalInteger(DatasheetFields.MaxInParallel) ?? 0,
+        };
+
+        if (errors.Count == 0 && JsonDataStore.ValidateBattery(candidate) is { } error)
+        {
+            errors.Add(Capitalize(error));
+        }
+
+        battery = errors.Count == 0 ? candidate : null;
         return errors;
     }
 
@@ -148,6 +192,8 @@ public static class DatasheetEntryBuilder
         public int Integer(string key) => OptionalInteger(key, required: true) ?? 0;
 
         public int? OptionalInteger(string key) => OptionalInteger(key, required: false);
+
+        public string? OptionalRange(string key) => Raw(key).Length == 0 ? null : Range(key);
 
         public string Range(string key)
         {

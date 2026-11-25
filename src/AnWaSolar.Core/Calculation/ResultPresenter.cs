@@ -73,6 +73,9 @@ public sealed record AcView(string Subtitle, ResultState State, string StatusTex
 /// <summary>Presentation of the cable and fuse sizing.</summary>
 public sealed record CableView(string Subtitle, ResultState State, string StatusText, IReadOnlyList<AcRow> Rows, IReadOnlyList<ResultNote> Notes);
 
+/// <summary>Presentation of the battery compatibility check.</summary>
+public sealed record BatteryView(string Subtitle, ResultState State, string StatusText, IReadOnlyList<AcRow> Rows, IReadOnlyList<ResultNote> Notes);
+
 /// <summary>An inverter limit from the datasheet and after applying the safety margin.</summary>
 public sealed record LimitRow(string Name, string Datasheet, string Effective);
 
@@ -85,7 +88,8 @@ public sealed record ResultOverview(
     IReadOnlyList<LimitRow> Limits,
     string LimitsCaption,
     AcView? Ac = null,
-    CableView? Cables = null);
+    CableView? Cables = null,
+    BatteryView? Battery = null);
 
 /// <summary>
 /// Turns a <see cref="StringCalculationResult"/> into texts and states for the results area. It only formats values
@@ -97,8 +101,9 @@ public static class ResultPresenter
 
     public static ResultOverview Present(StringCalculationResult? result) => Present(result, cables: null, settings: null);
 
-    /// <summary>Presentation including the cable and fuse sizing.</summary>
-    public static ResultOverview Present(StringCalculationResult? result, CableCalculationResult? cables, CableSettings? settings)
+    /// <summary>Presentation including the cable and fuse sizing and, when planned, the battery check.</summary>
+    public static ResultOverview Present(StringCalculationResult? result, CableCalculationResult? cables, CableSettings? settings,
+        BatteryCalculationResult? battery = null)
     {
         if (result is null)
         {
@@ -116,8 +121,10 @@ public static class ResultPresenter
         List<MpptView> mppts = result.Mppts.Select(m => PresentMppt(m, inv, limits)).ToList();
         AcView? ac = result.Ac is { } acResult ? PresentAc(acResult, inv, result.Parameters) : null;
         CableView? cableView = cables is not null && settings is not null ? PresentCables(cables, settings) : null;
+        BatteryView? batteryView = battery is null ? null : PresentBattery(battery, inv);
         int violations = result.Mppts.Sum(m => m.Violations.Count) + (result.Ac?.Checks.Count(c => c.State == ResultState.Error) ?? 0)
-            + (cables is null ? 0 : cables.Dc.Count(d => d.State == ResultState.Error) + (cables.Ac?.State == ResultState.Error ? 1 : 0));
+            + (cables is null ? 0 : cables.Dc.Count(d => d.State == ResultState.Error) + (cables.Ac?.State == ResultState.Error ? 1 : 0))
+            + (battery?.Checks.Count(c => c.State == ResultState.Error) ?? 0);
         int[] withoutModule = result.Mppts.Where(m => m.Status == MpptStatus.NoModule).Select(m => m.MpptIndex).ToArray();
         int calculated = result.Mppts.Count(m => m.Status == MpptStatus.Calculated);
 
@@ -129,13 +136,14 @@ public static class ResultPresenter
                 : $"MPPTs {string.Join(", ", withoutModule)} have no PV module"),
             (_, _, 0) => (ResultState.Neutral, "All MPPTs are disabled"),
             _ when ac?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the AC side"),
+            _ when batteryView?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the battery"),
             _ => (ResultState.Ok, "All limits are met"),
         };
 
         CalculationParameters p = result.Parameters;
         string details = $"{inv.Manufacturer} {inv.Model} · cell temperature {Number(p.MinTempC, "0.#")} … {Number(p.MaxTempC, "0.#")} °C · safety margin {Number(p.SafetyMarginPct, "0.#")} %";
 
-        return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits), Ac: ac, Cables: cableView, LimitsCaption:
+        return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits), Ac: ac, Cables: cableView, Battery: batteryView, LimitsCaption:
             $"Datasheet values and the limits used by the calculation (safety margin {Number(p.SafetyMarginPct, "0.#")} %).");
     }
 
@@ -285,6 +293,42 @@ public static class ResultPresenter
         int issues = notes.Count(n => n.State is ResultState.Error or ResultState.Warning);
         string subtitle = $"DC: {CableTexts.Installation(settings.DcInstallation)}, {Number(settings.DcAmbientC, "0.#")} °C · AC: method {settings.AcMethod}, {Number(settings.AcAmbientC, "0.#")} °C";
         return new CableView(subtitle, state, issues == 0 ? (state == ResultState.Neutral ? "Lengths missing" : "OK") : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
+    }
+
+    private static BatteryView PresentBattery(BatteryCalculationResult b, Inverter inv)
+    {
+        ResultState StateOf(params BatteryCheckKind[] kinds) =>
+            b.Checks.Where(c => kinds.Contains(c.Kind)).Select(c => c.State).DefaultIfEmpty(ResultState.Ok).Max();
+        string Range((double Min, double Max)? range) => range is { } r ? $"{Number(r.Min, "0.#")} … {Number(r.Max, "0.#")} V" : "not stated";
+
+        var rows = new List<AcRow>();
+        if (b.Battery is { } battery)
+        {
+            ResultState voltage = b.InverterRangeV is null ? ResultState.Neutral
+                : StateOf(BatteryCheckKind.NominalVoltageOutside, BatteryCheckKind.MaxVoltageAbove, BatteryCheckKind.MinVoltageBelow);
+            rows.Add(new("Bank voltage", Range(b.BankRangeV) + (b.BankNominalV is { } n ? $" ({Number(n, "0.#")} V nominal)" : string.Empty),
+                Range(b.InverterRangeV), voltage));
+            rows.Add(new("Modules in series", b.InSeries.ToString(CultureInfo.CurrentCulture),
+                battery.MaxModulesInSeries > 0 ? $"≤ {battery.MaxModulesInSeries.ToString(CultureInfo.CurrentCulture)}" : "not stated",
+                StateOf(BatteryCheckKind.SeriesExceeded, BatteryCheckKind.SeriesNotStated)));
+            rows.Add(new("Modules in parallel", b.InParallel.ToString(CultureInfo.CurrentCulture),
+                battery.MaxModulesInParallel > 0 ? $"≤ {battery.MaxModulesInParallel.ToString(CultureInfo.CurrentCulture)}" : "not stated",
+                StateOf(BatteryCheckKind.ParallelExceeded, BatteryCheckKind.ParallelNotStated)));
+            rows.Add(new("Charge current", b.ChargeCurrentA is { } c ? $"{Number(c, "0.#")} A · {Number(b.ChargePowerW!.Value / 1000, "F1")} kW" : None,
+                $"bank {Number(b.BankChargeCurrentA!.Value, "0.#")} A · inverter {Number(inv.MaxBatteryChargeCurrentA, "0.#")} A", ResultState.Neutral));
+            rows.Add(new("Discharge current", b.DischargeCurrentA is { } d ? $"{Number(d, "0.#")} A · {Number(b.DischargePowerW!.Value / 1000, "F1")} kW" : None,
+                $"bank {Number(b.BankDischargeCurrentA!.Value, "0.#")} A · inverter {Number(inv.MaxBatteryDischargeCurrentA, "0.#")} A", ResultState.Neutral));
+            rows.Add(new("Energy", $"{Number(b.NominalEnergyKWh!.Value, "0.##")} kWh nominal"
+                + (b.UsableEnergyKWh is { } u ? $" · {Number(u, "0.##")} kWh usable" : string.Empty), None, ResultState.Neutral));
+        }
+
+        var notes = b.Checks.Select(c => new ResultNote(BatteryTexts.Format(c, b), c.State)).ToList();
+        ResultState state = b.State;
+        int issues = b.Checks.Count(c => c.State is ResultState.Error or ResultState.Warning);
+        string subtitle = b.Battery is { } selected
+            ? $"{selected.Manufacturer} {selected.Model} · {b.InSeries} × {b.InParallel} ({(b.ModuleCount == 1 ? "1 module" : $"{b.ModuleCount} modules")})"
+            : "No battery selected";
+        return new BatteryView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
     }
 
     private static MpptView Empty(MpptResult mppt, string title, ResultState state, string status, string note) =>

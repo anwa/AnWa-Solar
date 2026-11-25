@@ -1,9 +1,10 @@
 # Master Data
 
-AnWa-Solar reads the PV modules and inverters from two JSON files in the `Data` folder of the installation (`C:\Program Files\AnWa-Solar\Data`):
+AnWa-Solar reads the PV modules, inverters and batteries from JSON files in the `Data` folder of the installation (`C:\Program Files\AnWa-Solar\Data`):
 
 - `Modules.json` with the list `Modules`,
-- `Inverters.json` with the list `Inverters`.
+- `Inverters.json` with the list `Inverters`,
+- `Batteries.json` with the list `Batteries`.
 
 Your own entries, for example from a [datasheet import](datasheet-import.md), are in `%LOCALAPPDATA%\AnWa-Solar\Data` in files of the same format. An own entry replaces a shipped entry with the same manufacturer and model.
 
@@ -50,13 +51,40 @@ Enter only values from the manufacturer datasheets. Numbers use a dot as decimal
   "Max. AC apparent power (VA)": 19800,
   "Rated AC output current (A)": 26.1,
   "Max. AC output current (A)": 28.7,
-  "AC phases": 3
+  "AC phases": 3,
+  "Battery voltage range (V)": "40-60",
+  "Max. battery charge current (A)": 330,
+  "Max. battery discharge current (A)": 330,
+  "Battery inputs": 2
 }
 ```
 
 The AC values are optional; without them the AC side shows "not stated". AC currents are per phase at 230/400 V.
 
+The battery values belong to hybrid inverters only. With a battery voltage range, the max. charge and discharge current are needed; without one, the inverter has no battery input.
+
 The MPPT voltage range is text in the form `"min-max"`. Currents are per MPPT input.
+
+## Battery
+
+One battery module, for example the Deye SE-F16:
+
+```json
+{
+  "Manufacturer": "Deye",
+  "Model": "SE-F16",
+  "Nominal voltage (V)": 51.2,
+  "Operating voltage range (V)": "44.8-57.6",
+  "Nominal capacity (Ah)": 314,
+  "Nominal energy (kWh)": 16,
+  "Depth of discharge (%)": 90,
+  "Max. charge current (A)": 160,
+  "Max. discharge current (A)": 230,
+  "Max. modules in parallel": 32
+}
+```
+
+`"Nominal capacity (Ah)"`, `"Usable energy (kWh)"`, `"Depth of discharge (%)"`, `"Max. modules in series"` and `"Max. modules in parallel"` are optional. The currents are the continuous values, not the peak values. The nominal voltage must lie within the operating voltage range. See [Battery Storage](battery.md).
 
 ## Checks when loading
 

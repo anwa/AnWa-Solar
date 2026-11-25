@@ -38,13 +38,13 @@ public partial class ImportDatasheetWindow : ChromeWindow
 
         int pages = words.Count == 0 ? 0 : words.Max(w => w.Page);
         FileText.Text = $"{Path.GetFileName(path)} · {words.Count} words on {pages} page(s)";
-        KindSelector.SelectedIndex = kind == DatasheetKind.Inverter ? 1 : 0;
+        KindSelector.SelectedIndex = (int)kind;
     }
 
     /// <summary>The saved entry after Apply.</summary>
     public IMasterDataEntry? Saved { get; private set; }
 
-    private DatasheetKind Kind => KindSelector.SelectedIndex == 1 ? DatasheetKind.Inverter : DatasheetKind.Module;
+    private DatasheetKind Kind => (DatasheetKind)Math.Max(0, KindSelector.SelectedIndex);
 
     private sealed record FieldRow(DatasheetField Field, TextBox Box, PackIcon Icon)
     {
@@ -58,12 +58,15 @@ public partial class ImportDatasheetWindow : ChromeWindow
             return;
         }
 
-        IEnumerable<string> manufacturers = _store.Modules.Select(m => m.Manufacturer).Concat(_store.Inverters.Select(i => i.Manufacturer)).Distinct();
+        IEnumerable<string> manufacturers = _store.Modules.Select(m => m.Manufacturer).Concat(_store.Inverters.Select(i => i.Manufacturer))
+            .Concat(_store.Batteries.Select(b => b.Manufacturer)).Distinct();
         _result = DatasheetParser.Parse(_words, Kind, manufacturers);
         BuildFields();
 
         _loading = true;
-        VariantCombo.ItemsSource = _result.Variants.Select((v, i) => string.IsNullOrWhiteSpace(v) ? $"Column {i + 1}" : v).ToList();
+        // A column without heading (model names as graphics) is told apart by its energy.
+        VariantCombo.ItemsSource = _result.Variants.Select((v, i) => !string.IsNullOrWhiteSpace(v) ? v
+            : _result.Get(DatasheetFields.NominalEnergyKWh, i) is { } energy ? $"Column {i + 1} · {energy.Text} kWh" : $"Column {i + 1}").ToList();
         VariantCombo.Visibility = _result.Variants.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         VariantCombo.SelectedIndex = 0;
         _loading = false;
@@ -168,7 +171,12 @@ public partial class ImportDatasheetWindow : ChromeWindow
     {
         string manufacturer = Value(DatasheetFields.Manufacturer) ?? string.Empty;
         string model = Value(DatasheetFields.Model) ?? string.Empty;
-        IEnumerable<IMasterDataEntry> entries = Kind == DatasheetKind.Module ? _store.Modules : _store.Inverters;
+        IEnumerable<IMasterDataEntry> entries = Kind switch
+        {
+            DatasheetKind.Inverter => _store.Inverters,
+            DatasheetKind.Battery => _store.Batteries,
+            _ => _store.Modules,
+        };
         IMasterDataEntry? existing = entries.FirstOrDefault(e =>
             string.Equals(e.Manufacturer, manufacturer.Trim(), StringComparison.OrdinalIgnoreCase)
             && string.Equals(e.Model, model.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -196,6 +204,11 @@ public partial class ImportDatasheetWindow : ChromeWindow
             errors = DatasheetEntryBuilder.TryBuildModule(values, out PVModule? module);
             entry = module;
         }
+        else if (Kind == DatasheetKind.Battery)
+        {
+            errors = DatasheetEntryBuilder.TryBuildBattery(values, out Battery? battery);
+            entry = battery;
+        }
         else
         {
             errors = DatasheetEntryBuilder.TryBuildInverter(values, out Inverter? inverter);
@@ -215,6 +228,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
             {
                 PVModule module => _store.SaveModule(module, _path),
                 Inverter inverter => _store.SaveInverter(inverter, _path),
+                Battery battery => _store.SaveBattery(battery, _path),
                 _ => null,
             };
         }

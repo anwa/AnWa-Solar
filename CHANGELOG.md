@@ -2,6 +2,12 @@
 
 All user-visible changes of AnWa-Solar.
 
+## Unreleased (v0.17.0)
+
+- New: Battery storage compatibility. A configuration card for hybrid inverters with a battery dialog (battery module, modules in series and in parallel), a result card and a report section check the bank voltage against the battery voltage range of the inverter (outside the range is an error; a lower bank voltage that the inverter cannot use is a warning), the module counts against the battery datasheet, and show the charge and discharge current (the lower of bank and inverter) with the power and the nominal and usable energy. A manual page describes it.
+- New: Battery master data `Data/Batteries.json` with the Deye SE-F12, SE-F12 Max, SE-F16, SE-F16 Max and the Felicity FLA48314-EU from their datasheets; own batteries through the datasheet import, which now reads battery datasheets (also with model names as graphics and ranges like "44,8 V ~ 57,6 V").
+- New: Inverter battery values (battery voltage range, max. charge and discharge current, battery inputs) in the master data and the datasheet import; the shipped Deye SUN-15K/18K/20K-SG05LP3-EU-SM2 have them from the datasheet.
+
 ## v0.16.0 (2026-11-25)
 
 - New: Cables and fuses. A configuration card with a settings dialog takes the cable lengths and installation conditions; a result card and a report section size the string cables per MPPT (design current 1.25 × Isc, voltage drop at the MPP), decide on string fuses after IEC 62548 (needed when (Np − 1) × 1.25 × Isc exceeds the module's max. series fuse rating, rated 1.5–2.4 × Isc), and size the AC circuit breaker and line from the max. AC current.

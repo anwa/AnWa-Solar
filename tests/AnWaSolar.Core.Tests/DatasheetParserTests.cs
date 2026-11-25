@@ -9,7 +9,8 @@ namespace AnWaSolar.Core.Tests;
 
 /// <summary>
 /// Datasheet recognition with the layout and values of real datasheets: Trina Vertex S+ TSM-NEG9R.28 (power classes
-/// 425–450 W, German) and Deye SUN-14/15/16/18/20K-SG05LP3-EU-SM2 (German).
+/// 425–450 W, German), Deye SUN-14/15/16/18/20K-SG05LP3-EU-SM2 (German) and the Deye SE-F12/SE-F16 battery (German,
+/// model names as graphics).
 /// </summary>
 public sealed class DatasheetParserTests
 {
@@ -24,6 +25,9 @@ public sealed class DatasheetParserTests
         }));
 
     private static (double, string)[] Columns(params string[] values) => [.. values.Select((v, i) => (200.0 + i * 40, v))];
+
+    // Short values centred below the long model headings, as in the datasheet.
+    private static (double, string)[] Centered(params string[] values) => [.. values.Select((v, i) => (220.0 + i * 40, v))];
 
     internal static List<(double X, double Y, string Text)> TrinaLayout()
     {
@@ -84,6 +88,31 @@ public sealed class DatasheetParserTests
         .. Row(544, (40, "AC-Eingangs-/Ausgangsnennstrom (A)"), (200, "21 .3/20,3"), (240, "22.8/21.8"), (280, "24 .3/23.2"), (320, "27 .3/26.1"), (360, "30 .4/29")),
         .. Row(542, (40, "Form des Netzanschlusses 3L+N+PE")),
         .. Row(540, (40, "Dreiphasen-Hybrid-Wechselrichter, Wechselrichter-Topologie, AC-Ausgang, Netz, www.deyeinverter.com")),
+        .. Row(530, (40, "Batteriespannungsbereich (V)"), (280, "40-60")),
+        .. Row(520, [(40, "Max. Ladestrom (A)"), .. Centered("260", "280", "300", "330", "350")]),
+        .. Row(510, [(40, "Max. Entladestrom (A)"), .. Centered("260", "280", "300", "330", "350")]),
+        .. Row(500, (40, "Anzahl der Batterieeingänge"), (280, "2")),
+    ];
+
+    // The layout of the Deye SE-F12/F16 datasheet: four model columns as graphics, merged cells for F12 and F16.
+    private static List<DatasheetWord> DeyeBatteryWords() =>
+    [
+        .. Row(700, (40, "Hauptparameter")),
+        .. Row(690, (40, "Akkuschemie"), (420, "LiFePO4")),
+        .. Row(680, (40, "Kapazität"), (300, "235 Ah"), (500, "314 Ah")),
+        .. Row(670, (40, "Skalierbarkeit [1]"), (380, "Max. 32 Einheiten im Parallelbetrieb")),
+        .. Row(660, (40, "Nennspannung"), (420, "51,2 V")),
+        .. Row(650, (40, "Betriebsspannung"), (400, "44,8 V ~ 57,6 V")),
+        .. Row(640, (40, "Nennenergie"), (300, "12,03 kWh"), (500, "16 kWh")),
+        .. Row(632, (160, "Max. Dauerbetrieb"), (300, "230 A"), (500, "160 A")),
+        .. Row(624, (40, "Ladestrom [2]")),
+        .. Row(616, (160, "Spitzenwert"), (400, "280 A (10 Sek.)")),
+        .. Row(606, (160, "Max. Dauerbetrieb"), (420, "230 A")),
+        .. Row(598, (40, "Entladestrom [2]")),
+        .. Row(590, (160, "Spitzenwert"), (400, "280 A (10 Sek.)")),
+        .. Row(580, (40, "Empfohlene Entladetiefe"), (420, "90% DoD")),
+        .. Row(570, (40, "Zyklenlebensdauer"), (400, "≥6000 (25°C, 70%EOL)")),
+        .. Row(560, (40, "Energiedurchsatz [3] 37 MWh 37 MWh 50 MWh 50 MWh Deye")),
     ];
 
     [Fact]
@@ -157,6 +186,45 @@ public sealed class DatasheetParserTests
     }
 
     [Fact]
+    public void Inverter_battery_values_are_read_per_model()
+    {
+        DatasheetParseResult result = DatasheetParser.Parse(DeyeWords(), DatasheetKind.Inverter, ["Deye"]);
+        int sun18k = 3;
+
+        Assert.Equal("40-60", result.Get(DatasheetFields.BatteryRangeV, sun18k)!.Text);
+        Assert.Equal("330", result.Get(DatasheetFields.MaxBatteryChargeA, sun18k)!.Text);
+        Assert.Equal("330", result.Get(DatasheetFields.MaxBatteryDischargeA, sun18k)!.Text);
+        Assert.Equal("260", result.Get(DatasheetFields.MaxBatteryChargeA, 0)!.Text);
+        Assert.Equal("2", result.Get(DatasheetFields.BatteryInputs, sun18k)!.Text);
+    }
+
+    [Fact]
+    public void Battery_values_are_read_per_column_without_model_names()
+    {
+        List<DatasheetWord> words = DeyeBatteryWords();
+
+        Assert.Equal(DatasheetKind.Battery, DatasheetParser.DetectKind(words));
+        DatasheetParseResult result = DatasheetParser.Parse(words, DatasheetKind.Battery, ["Deye"]);
+
+        Assert.Equal(2, result.Variants.Count);
+        Assert.Null(result.Get(DatasheetFields.Model, 0)); // the model names are graphics
+        Assert.Equal("Deye", result.Get(DatasheetFields.Manufacturer, 0)!.Text);
+        int f16 = 1;
+        Assert.Equal("51.2", result.Get(DatasheetFields.NominalVoltageV, f16)!.Text);
+        Assert.Equal("44.8-57.6", result.Get(DatasheetFields.OperatingRangeV, f16)!.Text);
+        Assert.Equal("314", result.Get(DatasheetFields.NominalCapacityAh, f16)!.Text);
+        Assert.Equal("16", result.Get(DatasheetFields.NominalEnergyKWh, f16)!.Text);
+        Assert.Equal("12.03", result.Get(DatasheetFields.NominalEnergyKWh, 0)!.Text);
+        Assert.Equal("160", result.Get(DatasheetFields.MaxChargeA, f16)!.Text); // continuous, not the 280 A peak
+        Assert.Equal("230", result.Get(DatasheetFields.MaxChargeA, 0)!.Text);
+        Assert.Equal("230", result.Get(DatasheetFields.MaxDischargeA, f16)!.Text);
+        Assert.Equal("90", result.Get(DatasheetFields.DepthOfDischargePct, f16)!.Text);
+        Assert.Equal("32", result.Get(DatasheetFields.MaxInParallel, f16)!.Text);
+        Assert.Null(result.Get(DatasheetFields.MaxInSeries, f16));
+        Assert.Null(result.Get(DatasheetFields.UsableEnergyKWh, f16));
+    }
+
+    [Fact]
     public void Missing_values_stay_empty()
     {
         DatasheetParseResult result = DatasheetParser.Parse([.. Row(500, (40, "Some unrelated text 42"))], DatasheetKind.Inverter);
@@ -171,6 +239,9 @@ public sealed class DatasheetParserTests
     [InlineData("7.5kW", 7500)]
     [InlineData("–0,30", -0.30)]
     [InlineData("22,5%", 22.5)]
+    [InlineData("12,03kWh", 12.03)]
+    [InlineData("314Ah", 314)]
+    [InlineData("5120Wh", 5.12)]
     public void Numbers_with_units_and_decimal_commas_are_read(string token, double expected)
     {
         Assert.True(DatasheetParser.TryNumber(token, out double value));

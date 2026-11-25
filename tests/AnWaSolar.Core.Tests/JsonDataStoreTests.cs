@@ -48,6 +48,7 @@ public sealed class JsonDataStoreTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Data", Calculation.CableTables.FileName), Path.Combine(_directory, Calculation.CableTables.FileName));
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Data", JsonDataStore.BatteryFileName), Path.Combine(_directory, JsonDataStore.BatteryFileName));
     }
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
