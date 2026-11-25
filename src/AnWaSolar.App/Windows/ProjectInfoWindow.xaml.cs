@@ -11,8 +11,8 @@ public partial class ProjectInfoWindow : ChromeWindow
     public ProjectInfoWindow(string name, string? customer, string? address, string? notes, bool isNew)
     {
         InitializeComponent();
-        Title = isNew ? "New project" : "Project";
-        SaveButton.Content = isNew ? "Create" : "Save";
+        Title = isNew ? L.T("New project") : L.T("Project");
+        SaveButton.Content = isNew ? L.T("Create") : L.T("Save");
         NameInput.Text = name;
         CustomerInput.Text = customer ?? string.Empty;
         AddressInput.Text = address ?? string.Empty;
@@ -36,7 +36,7 @@ public partial class ProjectInfoWindow : ChromeWindow
     {
         if (string.IsNullOrWhiteSpace(NameInput.Text))
         {
-            MessageDialog.Show(this, "Enter a project name.", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.T("Enter a project name."), Title, StatusKind.Error);
             return;
         }
 

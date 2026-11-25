@@ -44,7 +44,7 @@ public partial class ManualWindow : ChromeWindow
         _logger = logger;
         InitializeComponent();
 
-        _index = new ManualIndex(ManualResources.Load(typeof(ManualWindow).Assembly));
+        _index = new ManualIndex(ManualResources.Load(typeof(ManualWindow).Assembly, L.Language));
         Title = _index.Title;
         PageTree.ItemsSource = _index.Tree;
 
@@ -63,7 +63,7 @@ public partial class ManualWindow : ChromeWindow
     {
         if (_index.IsEmpty || _index.StartPage is null)
         {
-            ShowUnavailable("The manual is not included in this build.");
+            ShowUnavailable(L.T("The manual is not included in this build."));
             return;
         }
 
@@ -76,7 +76,7 @@ public partial class ManualWindow : ChromeWindow
         {
             WebViewSupport.ResetEnvironment();
             _logger.LogError(ex, "The manual (WebView2) could not be started.");
-            ShowUnavailable("The manual needs the Microsoft Edge WebView2 Runtime, which could not be started. See the log for details.");
+            ShowUnavailable(L.T("The manual needs the Microsoft Edge WebView2 Runtime, which could not be started. See the log for details."));
             return;
         }
 
@@ -105,14 +105,14 @@ public partial class ManualWindow : ChromeWindow
         string path = Uri.UnescapeDataString(new Uri(e.Request.Uri).AbsolutePath);
         if (HtmlDocument.TryResolveAsset(s_katexDirectory, path, out string file, out string contentType))
         {
-            e.Response = environment.CreateWebResourceResponse(File.OpenRead(file), 200, "OK", $"Content-Type: {contentType}");
+            e.Response = environment.CreateWebResourceResponse(File.OpenRead(file), 200, "OK", ($"Content-Type: {contentType}"));
             return;
         }
 
         string page = ManualIndex.Normalize(path);
         string body = _index.Text(page) is { } markdown
             ? _markdown.ToHtml(markdown)
-            : $"<h1>Page not found</h1><p>{System.Net.WebUtility.HtmlEncode(page)}</p>";
+            : L.F($"<h1>Page not found</h1><p>{System.Net.WebUtility.HtmlEncode(page)}</p>");
         string html = HtmlDocument.Create(body, _index.TitleOf(page));
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(html));
         e.Response = environment.CreateWebResourceResponse(stream, 200, "OK", "Content-Type: text/html; charset=utf-8");
@@ -152,7 +152,7 @@ public partial class ManualWindow : ChromeWindow
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
             _logger.LogWarning(ex, "Link {Uri} could not be opened.", uri);
-            MessageDialog.Show(this, $"The link could not be opened: {ex.Message}", "Manual", StatusKind.Warning);
+            MessageDialog.Show(this, L.F($"The link could not be opened: {ex.Message}"), L.T("Manual"), StatusKind.Warning);
         }
     }
 

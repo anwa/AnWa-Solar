@@ -14,8 +14,9 @@ It also checks the AC side and the grid connection, sizes cables and fuses, and 
 - Master data of PV modules, inverters and batteries in series files (one JSON file per manufacturer series with its power classes); invalid entries are skipped and reported.
 - Component database window: a tree of kinds, manufacturers and series and an editor with one column per power class; create, change, rename and delete own series, attach datasheets; shipped series are saved as own copies.
 - Datasheet import: reads a PDF datasheet of a PV module, inverter or battery series (PdfPig, offline), shows the recognised values per power class or model for checking and completing, and saves them with a copy of the datasheet in the own master data in `%LOCALAPPDATA%\AnWa-Solar\Data`. Stored datasheets open in a viewer from the selection dialogs and the main window.
+- German and English: the settings page (gear button) sets the language, the theme, the projects and export folders and the defaults of new projects; the language applies after a restart to windows, results, report, project export and manual, with numbers and dates in its format.
 - Light and dark mode: the theme button in the title bar switches System → Light → Dark; System follows the Windows app theme. The choice is saved.
-- User manual (F1 or the book button) with page tree, search and formulas; the pages are in [docs/manual](docs/manual) and embedded into the application.
+- User manual (F1 or the book button) with page tree, search and formulas; the pages are in [docs/manual](docs/manual) (German in [docs/manual/de](docs/manual/de)) and embedded into the application.
 - About window with version, build, runtime, installation and data folders, contact (Andreas Wansner, andreas@anwa-soft.de) and license.
 - Own title bar and dialogs in the application style, in light and dark mode.
 - Structured JSONL logging.

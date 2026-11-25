@@ -256,30 +256,30 @@ public static class BatteryTexts
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(inverter);
         System.Globalization.CultureInfo c = System.Globalization.CultureInfo.InvariantCulture;
-        string Range((double Min, double Max)? r) => r is { } v ? string.Create(c, $"{v.Min:0.#}–{v.Max:0.#} V") : "not stated";
+        static string Range((double Min, double Max)? r) => r is { } v ? L.F($"{v.Min:0.#}–{v.Max:0.#} V") : L.T("not stated");
         var lines = new List<string>();
         if (result.Battery is not { } b)
         {
-            lines.Add("No battery selected.");
+            lines.Add(L.T("No battery selected."));
             return lines;
         }
 
-        lines.Add(string.Create(c, $"Battery: {b.Manufacturer} {b.Model}, {result.InSeries} in series × {result.InParallel} in parallel = {result.ModuleCount} modules"));
-        lines.Add(string.Create(c, $"Bank voltage: {Range(result.BankRangeV)}, nominal {result.BankNominalV:0.#} V; battery voltage range of the inverter: {Range(result.InverterRangeV)}"));
+        lines.Add(L.F($"Battery: {b.Manufacturer} {b.Model}, {result.InSeries} in series × {result.InParallel} in parallel = {result.ModuleCount} modules"));
+        lines.Add(L.F($"Bank voltage: {Range(result.BankRangeV)}, nominal {result.BankNominalV:0.#} V; battery voltage range of the inverter: {Range(result.InverterRangeV)}"));
         if (result.ChargeCurrentA is { } charge)
         {
-            lines.Add(string.Create(c, $"Charge current: {charge:0.#} A = {result.ChargePowerW / 1000:0.0} kW (bank {result.BankChargeCurrentA:0.#} A, inverter {inverter.MaxBatteryChargeCurrentA:0.#} A)"));
+            lines.Add(L.F($"Charge current: {charge:0.#} A = {result.ChargePowerW / 1000:0.0} kW (bank {result.BankChargeCurrentA:0.#} A, inverter {inverter.MaxBatteryChargeCurrentA:0.#} A)"));
         }
 
         if (result.DischargeCurrentA is { } discharge)
         {
-            lines.Add(string.Create(c, $"Discharge current: {discharge:0.#} A = {result.DischargePowerW / 1000:0.0} kW (bank {result.BankDischargeCurrentA:0.#} A, inverter {inverter.MaxBatteryDischargeCurrentA:0.#} A)"));
+            lines.Add(L.F($"Discharge current: {discharge:0.#} A = {result.DischargePowerW / 1000:0.0} kW (bank {result.BankDischargeCurrentA:0.#} A, inverter {inverter.MaxBatteryDischargeCurrentA:0.#} A)"));
         }
 
         string usable = result.UsableEnergyKWh is { } u
-            ? string.Create(c, $", usable {u:0.##} kWh") + (b.UsableEnergyKWh is null ? string.Create(c, $" (depth of discharge {b.DepthOfDischargePct:0.#} %)") : string.Empty)
+            ? L.F($", usable {u:0.##} kWh") + (b.UsableEnergyKWh is null ? L.F($" (depth of discharge {b.DepthOfDischargePct:0.#} %)") : string.Empty)
             : string.Empty;
-        lines.Add(string.Create(c, $"Energy: nominal {result.NominalEnergyKWh:0.##} kWh{usable}"));
+        lines.Add(L.F($"Energy: nominal {result.NominalEnergyKWh:0.##} kWh{usable}"));
         return lines;
     }
 
@@ -292,19 +292,19 @@ public static class BatteryTexts
         string A(double v) => v.ToString("0.#", c) + " A";
         return check.Kind switch
         {
-            BatteryCheckKind.BatteryMissing => "Select a battery to check it against the inverter.",
-            BatteryCheckKind.NoBatteryInput => "The inverter has no battery input in the master data (battery voltage range, max. charge and discharge current). A battery can only be connected to a hybrid inverter.",
-            BatteryCheckKind.InvalidRange => "A battery voltage range cannot be read (expected format: \"40-60\").",
-            BatteryCheckKind.NominalVoltageOutside => $"The nominal bank voltage {V(check.Actual)} lies outside the battery voltage range of the inverter.",
-            BatteryCheckKind.MaxVoltageAbove => $"The highest bank voltage {V(check.Actual)} exceeds the max. battery voltage of the inverter ({V(check.Limit)}).",
-            BatteryCheckKind.MinVoltageBelow => $"The lowest bank voltage {V(check.Actual)} lies below the min. battery voltage of the inverter ({V(check.Limit)}); the inverter stops discharging earlier, so part of the capacity is not used.",
-            BatteryCheckKind.SeriesExceeded => $"{check.Actual:0} modules in series exceed the max. of {check.Limit:0} from the battery datasheet.",
-            BatteryCheckKind.ParallelExceeded => $"{check.Actual:0} modules in parallel exceed the max. of {check.Limit:0} from the battery datasheet.",
-            BatteryCheckKind.SeriesNotStated => "The battery datasheet states no max. number of modules in series; check that the modules may be connected in series.",
-            BatteryCheckKind.ParallelNotStated => "The battery datasheet states no max. number of modules in parallel; check that the modules may be connected in parallel.",
-            BatteryCheckKind.ChargeLimitedByBattery => $"The bank allows {A(check.Actual)} charge current; the inverter could charge with {A(check.Limit)}.",
-            BatteryCheckKind.DischargeLimitedByBattery => $"The bank allows {A(check.Actual)} discharge current; the inverter could discharge with {A(check.Limit)}.",
-            BatteryCheckKind.UsableEnergyMissing => "The battery datasheet states neither a usable energy nor a depth of discharge; only the nominal energy is shown.",
+            BatteryCheckKind.BatteryMissing => L.T("Select a battery to check it against the inverter."),
+            BatteryCheckKind.NoBatteryInput => L.T("The inverter has no battery input in the master data (battery voltage range, max. charge and discharge current). A battery can only be connected to a hybrid inverter."),
+            BatteryCheckKind.InvalidRange => L.T("A battery voltage range cannot be read (expected format: \"40-60\")."),
+            BatteryCheckKind.NominalVoltageOutside => L.F($"The nominal bank voltage {V(check.Actual)} lies outside the battery voltage range of the inverter."),
+            BatteryCheckKind.MaxVoltageAbove => L.F($"The highest bank voltage {V(check.Actual)} exceeds the max. battery voltage of the inverter ({V(check.Limit)})."),
+            BatteryCheckKind.MinVoltageBelow => L.F($"The lowest bank voltage {V(check.Actual)} lies below the min. battery voltage of the inverter ({V(check.Limit)}); the inverter stops discharging earlier, so part of the capacity is not used."),
+            BatteryCheckKind.SeriesExceeded => L.F($"{check.Actual:0} modules in series exceed the max. of {check.Limit:0} from the battery datasheet."),
+            BatteryCheckKind.ParallelExceeded => L.F($"{check.Actual:0} modules in parallel exceed the max. of {check.Limit:0} from the battery datasheet."),
+            BatteryCheckKind.SeriesNotStated => L.T("The battery datasheet states no max. number of modules in series; check that the modules may be connected in series."),
+            BatteryCheckKind.ParallelNotStated => L.T("The battery datasheet states no max. number of modules in parallel; check that the modules may be connected in parallel."),
+            BatteryCheckKind.ChargeLimitedByBattery => L.F($"The bank allows {A(check.Actual)} charge current; the inverter could charge with {A(check.Limit)}."),
+            BatteryCheckKind.DischargeLimitedByBattery => L.F($"The bank allows {A(check.Actual)} discharge current; the inverter could discharge with {A(check.Limit)}."),
+            BatteryCheckKind.UsableEnergyMissing => L.T("The battery datasheet states neither a usable energy nor a depth of discharge; only the nominal energy is shown."),
             _ => check.Kind.ToString(),
         };
     }

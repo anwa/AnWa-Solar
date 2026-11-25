@@ -36,30 +36,30 @@ public partial class ParametersWindow : ChromeWindow
             !TryParseDouble(MaxTempInput.Text, out var tMax) ||
             tMin >= tMax)
         {
-            MessageDialog.Show(this, "Invalid temperature range. Tmin must be lower than Tmax.", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.T("Invalid temperature range. Tmin must be lower than Tmax."), Title, StatusKind.Error);
             return;
         }
         if (!TryParseDouble(SafetyMarginInput.Text, out var marginPct) || marginPct < 0 || marginPct > 50)
         {
-            MessageDialog.Show(this, "Invalid safety margin. Allowed range: 0–50 %.", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.T("Invalid safety margin. Allowed range: 0–50 %."), Title, StatusKind.Error);
             return;
         }
 
         if (!TryParseDouble(UnbalancedInput.Text, out var unbalancedKva) || unbalancedKva <= 0
             || !TryParseDouble(RegistrationInput.Text, out var registrationKva) || registrationKva <= 0)
         {
-            MessageDialog.Show(this, "The unbalanced load limit and the registration limit must be greater than 0 kVA.", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.T("The unbalanced load limit and the registration limit must be greater than 0 kVA."), Title, StatusKind.Error);
             return;
         }
         if (!TryParseDouble(FeedInInput.Text, out var feedInPct) || feedInPct <= 0 || feedInPct > 100)
         {
-            MessageDialog.Show(this, "Invalid feed-in limit. Allowed range: above 0 up to 100 % (100 means no limit).", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.T("Invalid feed-in limit. Allowed range: above 0 up to 100 % (100 means no limit)."), Title, StatusKind.Error);
             return;
         }
         if (!TryParseDouble(RatioMinInput.Text, out var ratioMin) || !TryParseDouble(RatioMaxInput.Text, out var ratioMax)
             || ratioMin <= 0 || ratioMin >= ratioMax)
         {
-            MessageDialog.Show(this, "Invalid DC/AC ratio range. The lower value must be greater than 0 and lower than the upper value.", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.T("Invalid DC/AC ratio range. The lower value must be greater than 0 and lower than the upper value."), Title, StatusKind.Error);
             return;
         }
 

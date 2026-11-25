@@ -50,10 +50,10 @@ public partial class CableSettingsWindow : ChromeWindow
                 Margin = new Thickness(0, 0, 0, 26),
                 Text = Settings.DcLength(i).ToString(c),
             };
-            HintAssist.SetHint(box, $"Cable length MPPT {i}");
-            HintAssist.SetHelperText(box, "One way; 0 = not entered");
+            HintAssist.SetHint(box, L.F($"Cable length MPPT {i}"));
+            HintAssist.SetHelperText(box, L.T("One way; 0 = not entered"));
             TextFieldAssist.SetSuffixText(box, "m");
-            AutomationProperties.SetName(box, $"Cable length MPPT {i}");
+            AutomationProperties.SetName(box, L.F($"Cable length MPPT {i}"));
             DcLengthsPanel.Children.Add(box);
             _dcLengths.Add(box);
         }
@@ -80,7 +80,7 @@ public partial class CableSettingsWindow : ChromeWindow
         var items = new List<KeyValuePair<double?, string>>();
         if (automatic)
         {
-            items.Add(new(null, "Automatic"));
+            items.Add(new(null, L.T("Automatic")));
         }
 
         items.AddRange(areas.Select(a => new KeyValuePair<double?, string>(a, a.ToString("0.#", CultureInfo.CurrentCulture) + " mm²")));
@@ -98,8 +98,8 @@ public partial class CableSettingsWindow : ChromeWindow
         bool busbar = BusbarCheck.IsChecked == true;
         MainCablePanel.IsEnabled = busbar;
         BusbarText.Text = busbar
-            ? "Each battery has a cable to the busbar, and a main cable runs from the busbar to the inverter. Each cable gets a fuse."
-            : "Each battery has its own cable to the inverter (one battery: one cable). Each cable gets a fuse.";
+            ? L.T("Each battery has a cable to the busbar, and a main cable runs from the busbar to the inverter. Each cable gets a fuse.")
+            : L.T("Each battery has its own cable to the inverter (one battery: one cable). Each cable gets a fuse.");
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -109,7 +109,7 @@ public partial class CableSettingsWindow : ChromeWindow
         {
             if (!TryParse(box.Text, out double length) || length < 0)
             {
-                Fail("Cable lengths must be 0 or more metres.");
+                Fail(L.T("Cable lengths must be 0 or more metres."));
                 return;
             }
 
@@ -118,14 +118,14 @@ public partial class CableSettingsWindow : ChromeWindow
 
         if (!TryParse(AcLengthInput.Text, out double acLength) || acLength < 0)
         {
-            Fail("The AC line length must be 0 or more metres.");
+            Fail(L.T("The AC line length must be 0 or more metres."));
             return;
         }
 
         if (!TryParse(DcAmbientInput.Text, out double dcAmbient) || CableTables.Factor(_tables.SolarCable.AmbientFactors, dcAmbient) is null
             || !TryParse(AcAmbientInput.Text, out double acAmbient) || CableTables.Factor(_tables.AcCable.AmbientFactors, acAmbient) is null)
         {
-            Fail("An ambient temperature lies above the tables.");
+            Fail(L.T("An ambient temperature lies above the tables."));
             return;
         }
 
@@ -133,7 +133,7 @@ public partial class CableSettingsWindow : ChromeWindow
             || !int.TryParse(AcGroupingInput.Text, NumberStyles.Integer, CultureInfo.CurrentCulture, out int acGroup) || acGroup < 1
             || CableTables.Factor(_tables.Grouping.Factors, dcGroup) is null || CableTables.Factor(_tables.Grouping.Factors, acGroup) is null)
         {
-            Fail("The number of circuits laid together must be a whole number within the grouping table (1 to 9).");
+            Fail(L.T("The number of circuits laid together must be a whole number within the grouping table (1 to 9)."));
             return;
         }
 
@@ -141,26 +141,26 @@ public partial class CableSettingsWindow : ChromeWindow
             || !TryParse(AcDropInput.Text, out double acDrop) || acDrop <= 0 || acDrop > 10
             || !TryParse(BatteryDropInput.Text, out double batteryDrop) || batteryDrop <= 0 || batteryDrop > 10)
         {
-            Fail("The voltage drop limits must be above 0 and at most 10 %.");
+            Fail(L.T("The voltage drop limits must be above 0 and at most 10 %."));
             return;
         }
 
         if (!TryParse(LeadLengthInput.Text, out double leadLength) || leadLength <= 0 || leadLength > 10)
         {
-            Fail("The length per module lead must be above 0 and at most 10 m.");
+            Fail(L.T("The length per module lead must be above 0 and at most 10 m."));
             return;
         }
 
         if (!TryParse(BatteryLengthInput.Text, out double batteryLength) || batteryLength < 0
             || !TryParse(MainLengthInput.Text, out double mainLength) || mainLength < 0)
         {
-            Fail("The battery cable lengths must be 0 or more metres.");
+            Fail(L.T("The battery cable lengths must be 0 or more metres."));
             return;
         }
 
         if (!TryParse(BatteryAmbientInput.Text, out double batteryAmbient) || CableTables.Factor(_tables.AcCable.AmbientFactors, batteryAmbient) is null)
         {
-            Fail("The ambient temperature of the battery cables lies above the tables.");
+            Fail(L.T("The ambient temperature of the battery cables lies above the tables."));
             return;
         }
 

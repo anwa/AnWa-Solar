@@ -73,6 +73,18 @@ public partial class App : Application
 
         _host = builder.Build();
 
+        // Language and number format of the preferences (default: the Windows display language), before any window.
+        AppPreferences preferences = _host.Services.GetRequiredService<ISettingsService>().LoadPreferences();
+        L.SetLanguage(preferences.Language ?? (System.Globalization.CultureInfo.InstalledUICulture.TwoLetterISOLanguageName == L.German ? L.German : L.English));
+        System.Globalization.CultureInfo culture = L.Culture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+        System.Threading.Thread.CurrentThread.CurrentCulture = culture;
+        System.Threading.Thread.CurrentThread.CurrentUICulture = culture;
+        FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(System.Windows.Markup.XmlLanguage.GetLanguage(culture.IetfLanguageTag)));
+        UiTranslator.Register();
+
         // Apply the saved theme before the first window is shown
         _host.Services.GetRequiredService<ThemeService>().Apply(ThemeMapping.ToPreference(_host.Services.GetRequiredService<ISettingsService>().LoadTheme()));
 
@@ -108,7 +120,7 @@ public partial class App : Application
     {
         try
         {
-            if (projects.List().Count > 0 || ProjectMigration.FromSettings(settings, store, "My project", DateTime.Now) is not { } project)
+            if (projects.List().Count > 0 || ProjectMigration.FromSettings(settings, store, L.T("My project"), DateTime.Now) is not { } project)
             {
                 return;
             }

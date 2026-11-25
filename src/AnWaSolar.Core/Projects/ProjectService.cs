@@ -30,8 +30,24 @@ public interface IProjectService
 /// <summary>
 /// Stores projects as JSON files in <c>%LOCALAPPDATA%\AnWa-Solar\Projects</c>; files are written atomically.
 /// </summary>
-public sealed class ProjectService(ILogger<ProjectService> logger, IUserDataLocation userData) : IProjectService
+public sealed class ProjectService : IProjectService
 {
+    private readonly ILogger<ProjectService> logger;
+
+    public ProjectService(ILogger<ProjectService> logger, IUserDataLocation userData)
+        : this(logger, userData, null)
+    {
+    }
+
+    /// <summary>Projects in the folder of the preferences, otherwise in the user data folder.</summary>
+    public ProjectService(ILogger<ProjectService> logger, IUserDataLocation userData, ISettingsService? settings)
+    {
+        ArgumentNullException.ThrowIfNull(userData);
+        this.logger = logger;
+        string? folder = settings?.LoadPreferences().ProjectsFolder;
+        DirectoryPath = string.IsNullOrWhiteSpace(folder) ? Path.Combine(userData.DirectoryPath, FolderName) : folder;
+    }
+
     public const string FolderName = "Projects";
 
     private static readonly JsonSerializerOptions s_options = new()
@@ -41,7 +57,7 @@ public sealed class ProjectService(ILogger<ProjectService> logger, IUserDataLoca
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public string DirectoryPath { get; } = Path.Combine(userData.DirectoryPath, FolderName);
+    public string DirectoryPath { get; }
 
     public IReadOnlyList<ProjectInfo> List()
     {
@@ -73,12 +89,12 @@ public sealed class ProjectService(ILogger<ProjectService> logger, IUserDataLoca
             Project? project = JsonSerializer.Deserialize<Project>(File.ReadAllText(path), s_options);
             if (project is null || string.IsNullOrWhiteSpace(project.Name))
             {
-                throw new InvalidDataException("The file contains no project name.");
+                throw new InvalidDataException(L.T("The file contains no project name."));
             }
 
             if (project.SchemaVersion > Project.CurrentSchemaVersion)
             {
-                throw new InvalidDataException($"The project was saved by a newer version (schema {project.SchemaVersion}).");
+                throw new InvalidDataException(L.F($"The project was saved by a newer version (schema {project.SchemaVersion})."));
             }
 
             project.Parameters ??= new();
@@ -89,7 +105,7 @@ public sealed class ProjectService(ILogger<ProjectService> logger, IUserDataLoca
         }
         catch (Exception ex) when (ex is JsonException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
         {
-            throw new IOException($"The project {Path.GetFileName(path)} cannot be read: {ex.Message}", ex);
+            throw new IOException(L.F($"The project {Path.GetFileName(path)} cannot be read: {ex.Message}"), ex);
         }
     }
 
@@ -125,7 +141,7 @@ public sealed class ProjectService(ILogger<ProjectService> logger, IUserDataLoca
         ArgumentNullException.ThrowIfNull(name);
         char[] invalid = Path.GetInvalidFileNameChars();
         string clean = new string([.. name.Select(c => invalid.Contains(c) ? '_' : c)]).Trim().TrimEnd('.');
-        return clean.Length == 0 ? "Project" : clean;
+        return clean.Length == 0 ? L.T("Project") : clean;
     }
 
     /// <summary>JSON of a project as it is saved, for the export.</summary>
@@ -138,7 +154,8 @@ public sealed record ExportDatasheet(string Name, string? Path);
 /// <summary>Writes the ZIP export of a project: one folder with the report, the datasheets and the project file.</summary>
 public static class ProjectExporter
 {
-    public const string MissingFileName = "Missing datasheets.txt";
+    /// <summary>Name of the list of entries without datasheet, in the language of the application.</summary>
+    public static string MissingFileName => L.T("Missing datasheets") + ".txt";
 
     /// <summary>
     /// Writes <paramref name="zipPath"/> with the folder named after the project: the report as PDF (or as Markdown when
@@ -171,11 +188,11 @@ public static class ProjectExporter
 
             if (reportPdfPath is not null)
             {
-                AddFile($"{folder} - Report.pdf", reportPdfPath);
+                AddFile(L.F($"{folder} - Report") + ".pdf", reportPdfPath);
             }
             else
             {
-                AddText($"{folder} - Report.md", reportMarkdown);
+                AddText(L.F($"{folder} - Report") + ".md", reportMarkdown);
             }
 
             var missing = new List<string>();
@@ -183,7 +200,7 @@ public static class ProjectExporter
             {
                 if (sheet.Path is not null && File.Exists(sheet.Path))
                 {
-                    AddFile($"Datasheets/{ProjectService.FileNameOf(sheet.Name)}.pdf", sheet.Path);
+                    AddFile(L.T("Datasheets") + $"/{ProjectService.FileNameOf(sheet.Name)}.pdf", sheet.Path);
                 }
                 else
                 {
@@ -194,7 +211,7 @@ public static class ProjectExporter
             AddText($"{folder}.json", ProjectService.Serialize(project));
             if (missing.Count > 0)
             {
-                AddText(MissingFileName, "No datasheet is stored for these entries (shipped master data, or entered without a PDF):"
+                AddText(MissingFileName, L.T("No datasheet is stored for these entries (shipped master data, or entered without a PDF):")
                     + Environment.NewLine + string.Join(Environment.NewLine, missing.Select(m => "- " + m)) + Environment.NewLine);
             }
         }

@@ -1,5 +1,17 @@
 # Settings, Theme and Files
 
+## Settings page
+
+The settings button (cog) in the title bar opens the settings:
+
+| Setting | Meaning |
+|---|---|
+| Language | German or English, or the Windows display language. Applies after a restart; AnWa-Solar offers to restart. Numbers and dates follow the language (German 28,7 A and 25.11.2026, English 28.7 A and 25/11/2026). The window texts, the results, the report, the project export and this manual use the language. |
+| Theme | Windows theme, light or dark; the same as the theme button. |
+| Projects folder | Where projects are saved and listed, by default `%LOCALAPPDATA%\AnWa-Solar\Projects`. Applies after a restart. **Default** sets the default folder again. |
+| Export folder | Where the save dialogs of the report and the project export start. Empty: the folder Windows remembers. |
+| Defaults of new projects | **Parameters…** and **Cables…** set the calculation parameters and cable settings that a new project starts with. Existing projects keep their own values. |
+
 ## Theme
 
 The theme button in the title bar switches in this order:
@@ -15,7 +27,8 @@ The tooltip of the button shows the current mode. The report preview and this ma
 AnWa-Solar saves your settings per Windows user in `%LOCALAPPDATA%\AnWa-Solar\settings.json`:
 
 - the theme,
-- the five most recently opened projects.
+- the five most recently opened projects,
+- the settings of the settings page (language, folders, defaults of new projects).
 
 Your design (parameters, inverter, strings, cables, battery) is saved in the open [project](projects.md).
 

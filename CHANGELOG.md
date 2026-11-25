@@ -2,6 +2,12 @@
 
 All user-visible changes of AnWa-Solar.
 
+## v0.22.0 (2026-11-25)
+
+- New: German and English. The language is chosen on the settings page (German, English or the Windows language) and applies after a restart; window texts, results, the report, the project export and the user manual use it, and numbers and dates follow it (de-DE, en-GB). Without a choice, AnWa-Solar uses the Windows display language.
+- New: Settings page, opened with the gear button in the title bar: language, theme, projects folder, export folder for the save dialogs, and the parameters and cable settings that new projects start with.
+- New: The user manual is available in German (`docs/manual/de`).
+
 ## v0.21.0 (2026-11-25)
 
 - New: Component database. A window, opened from the title bar, lists the module, inverter and battery series in a tree (kind, manufacturer, series) and edits a series in a table with one column per power class: copy a value to all power classes, copy or remove a power class, add one, attach and show the datasheet, import a datasheet. Saving checks every power class like the import; a shipped series is saved as an own copy that replaces it; renaming moves the own series with its datasheet; deleting an own series brings back the shipped one. Unsaved changes are confirmed before switching or closing.

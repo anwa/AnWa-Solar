@@ -143,7 +143,7 @@ public sealed class CableTables
         try
         {
             CableTables? tables = JsonSerializer.Deserialize<CableTables>(File.ReadAllText(path));
-            error = tables is null ? "The file is empty." : tables.Validate();
+            error = tables is null ? L.T("The file is empty.") : tables.Validate();
             return error is null ? tables : null;
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
@@ -159,44 +159,44 @@ public sealed class CableTables
         int n = CrossSections.Length;
         if (n == 0 || CrossSections.Any(a => a <= 0) || CopperConductivity <= 0)
         {
-            return "Cross-sections and conductivity must be greater than 0.";
+            return L.T("Cross-sections and conductivity must be greater than 0.");
         }
 
         IEnumerable<KeyValuePair<string, double[]>> rows = SolarCable.Ampacity.Concat(AcCable.TwoLoaded).Concat(AcCable.ThreeLoaded);
         if (rows.FirstOrDefault(r => r.Value.Length != n || r.Value.Any(v => v <= 0)) is { Key: { } bad })
         {
-            return $"Ampacity row \"{bad}\" must have {n} values greater than 0.";
+            return L.F($"Ampacity row \"{bad}\" must have {n} values greater than 0.");
         }
 
         foreach (SolarCableInstallation installation in Enum.GetValues<SolarCableInstallation>())
         {
             if (!SolarCable.Ampacity.ContainsKey(installation.ToString()))
             {
-                return $"Solar cable row \"{installation}\" is missing.";
+                return L.F($"Solar cable row \"{installation}\" is missing.");
             }
         }
 
         if (!AcCable.ThreeLoaded.Keys.Order().SequenceEqual(AcCable.TwoLoaded.Keys.Order()))
         {
-            return "The AC tables for two and three loaded conductors must have the same installation methods.";
+            return L.T("The AC tables for two and three loaded conductors must have the same installation methods.");
         }
 
         if (Protection.DesignCurrentFactor < 1 || Protection.StringFuseMinFactor <= 0
             || Protection.StringFuseMaxFactor <= Protection.StringFuseMinFactor
             || Protection.StringFuseRatings.Length == 0 || Protection.BreakerRatings.Length == 0)
         {
-            return "The protection factors and rated currents are incomplete.";
+            return L.T("The protection factors and rated currents are incomplete.");
         }
 
         if (BatteryCable.CrossSections.Length == 0 || BatteryCable.CrossSections.Length != BatteryCable.Ampacity.Length
             || BatteryCable.CrossSections.Any(a => a <= 0) || BatteryCable.Ampacity.Any(a => a <= 0)
             || BatteryCable.FuseRatings.Length == 0 || BatteryCable.VoltageDropLimitPct <= 0)
         {
-            return "The battery cable table needs one current-carrying capacity per cross-section, fuse ratings and a voltage drop limit.";
+            return L.T("The battery cable table needs one current-carrying capacity per cross-section, fuse ratings and a voltage drop limit.");
         }
 
         return SolarCable.AmbientFactors.Count == 0 || AcCable.AmbientFactors.Count == 0 || Grouping.Factors.Count == 0
-            ? "Correction factors are missing."
+            ? L.T("Correction factors are missing.")
             : null;
     }
 

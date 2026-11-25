@@ -42,7 +42,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
         InitializeComponent();
 
         int pages = words.Count == 0 ? 0 : words.Max(w => w.Page);
-        FileText.Text = $"{Path.GetFileName(path)} · {words.Count} words on {pages} page(s)";
+        FileText.Text = L.F($"{Path.GetFileName(path)} · {words.Count} words on {pages} page(s)");
         KindSelector.SelectedIndex = (int)kind;
     }
 
@@ -81,7 +81,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
         SeriesInput.Text = SeriesNames.Suggest(_result.Variants) ?? Path.GetFileNameWithoutExtension(_path);
         // A column without heading (model names as graphics) is told apart by its energy.
         VariantCombo.ItemsSource = _result.Variants.Select((v, i) => !string.IsNullOrWhiteSpace(v) ? v
-            : _result.Get(DatasheetFields.NominalEnergyKWh, i) is { } energy ? $"Column {i + 1} · {energy.Text} kWh" : $"Column {i + 1}").ToList();
+            : _result.Get(DatasheetFields.NominalEnergyKWh, i) is { } energy ? L.F($"Column {i + 1} · {energy.Text} kWh") : L.F($"Column {i + 1}")).ToList();
         VariantCombo.Visibility = _result.Variants.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         VariantCombo.SelectedIndex = 0;
         _loading = false;
@@ -110,7 +110,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
     private void UpdateIncludedText()
     {
         int count = _included.Count(i => i);
-        IncludedText.Text = $"{count} of {_included.Count} power classes are saved";
+        IncludedText.Text = L.F($"{count} of {_included.Count} power classes are saved");
         IncludeCheck.Visibility = _included.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         IncludedText.Visibility = IncludeCheck.Visibility;
     }
@@ -210,11 +210,11 @@ public partial class ImportDatasheetWindow : ChromeWindow
         string text = row.Box.Text.Trim();
         (StatusKind kind, string tip) = text.Length == 0
             ? row.Field.Required
-                ? (StatusKind.Warning, "Not found in the datasheet. Enter the value from the datasheet.")
-                : (StatusKind.Neutral, "Optional; not found in the datasheet.")
+                ? (StatusKind.Warning, L.T("Not found in the datasheet. Enter the value from the datasheet."))
+                : (StatusKind.Neutral, L.T("Optional; not found in the datasheet."))
             : row.Found is { } found && found.Text == text
-                ? (StatusKind.Ok, $"Read from the datasheet: {found.Source}")
-                : (StatusKind.Neutral, "Entered or changed by you.");
+                ? (StatusKind.Ok, L.F($"Read from the datasheet: {found.Source}"))
+                : (StatusKind.Neutral, L.T("Entered or changed by you."));
         StatusAssist.SetKind(row.Icon, kind);
         row.Icon.ToolTip = tip;
         row.Box.ToolTip = tip;
@@ -248,8 +248,8 @@ public partial class ImportDatasheetWindow : ChromeWindow
         ExistingText.Text = existing switch
         {
             null => string.Empty,
-            { IsUserEntry: true } => $"Apply replaces your series {existing.Manufacturer} {existing.Series}.",
-            _ => $"{existing.Manufacturer} {existing.Series} is in the shipped master data. Apply saves your values as an own series that replaces it in the selection; the shipped data stays unchanged.",
+            { IsUserEntry: true } => L.F($"Apply replaces your series {existing.Manufacturer} {existing.Series}."),
+            _ => L.F($"{existing.Manufacturer} {existing.Series} is in the shipped master data. Apply saves your values as an own series that replaces it in the selection; the shipped data stays unchanged."),
         };
         ExistingText.Visibility = existing is null ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -270,7 +270,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
                 continue;
             }
 
-            string name = VariantCombo.Items.Count > i ? VariantCombo.Items[i]?.ToString() ?? $"Column {i + 1}" : $"Column {i + 1}";
+            string name = VariantCombo.Items.Count > i ? VariantCombo.Items[i]?.ToString() ?? L.F($"Column {i + 1}") : L.F($"Column {i + 1}");
             IReadOnlyList<string> problems = build(_variantValues[i], out T? entry);
             if (problems.Count > 0 || entry is null)
             {
@@ -311,12 +311,12 @@ public partial class ImportDatasheetWindow : ChromeWindow
         var errors = new List<string>();
         if (string.IsNullOrWhiteSpace(SeriesInput.Text))
         {
-            errors.Add("Series is missing.");
+            errors.Add(L.T("Series is missing."));
         }
 
         if (!_included.Any(i => i))
         {
-            errors.Add("Choose at least one power class to save.");
+            errors.Add(L.T("Choose at least one power class to save."));
         }
 
         if (errors.Count > 0)
@@ -345,7 +345,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            MessageDialog.Show(this, $"The entry could not be saved.\n\n{ex.Message}", Title, StatusKind.Error);
+            MessageDialog.Show(this, L.F($"The entry could not be saved.\n\n{ex.Message}"), Title, StatusKind.Error);
             return;
         }
 
@@ -354,7 +354,7 @@ public partial class ImportDatasheetWindow : ChromeWindow
 
     private void ShowErrors(IEnumerable<string> errors)
     {
-        ErrorText.Text = "Please correct:\n• " + string.Join("\n• ", errors);
+        ErrorText.Text = L.T("Please correct:\n• ") + string.Join("\n• ", errors);
         ErrorText.Visibility = Visibility.Visible;
     }
 }

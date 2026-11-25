@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- German texts, looked up by their English source text. -->
+    <EmbeddedResource Include="Localization\de.json" LogicalName="AnWaSolar.Core.Localization.de.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="AnWaSolar.Core.Tests" />
   </ItemGroup>
 </Project>

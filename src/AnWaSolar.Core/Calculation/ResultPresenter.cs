@@ -107,15 +107,15 @@ public static class ResultPresenter
     {
         if (result is null)
         {
-            return new ResultOverview(ResultState.Neutral, "No inverter selected",
-                "Select an inverter to start the calculation.", [], [], string.Empty);
+            return new ResultOverview(ResultState.Neutral, L.T("No inverter selected"),
+                L.T("Select an inverter to start the calculation."), [], [], string.Empty);
         }
 
         Inverter inv = result.Inverter;
         if (result.Limits is not { } limits)
         {
-            return new ResultOverview(ResultState.Error, "Invalid inverter data",
-                $"The MPPT voltage range of {inv.Manufacturer} {inv.Model} cannot be read: '{inv.MpptVoltageRangeV}'.", [], [], string.Empty);
+            return new ResultOverview(ResultState.Error, L.T("Invalid inverter data"),
+                L.F($"The MPPT voltage range of {inv.Manufacturer} {inv.Model} cannot be read: '{inv.MpptVoltageRangeV}'."), [], [], string.Empty);
         }
 
         List<MpptView> mppts = result.Mppts.Select(m => PresentMppt(m, inv, limits)).ToList();
@@ -130,22 +130,22 @@ public static class ResultPresenter
 
         (ResultState state, string headline) = (violations, withoutModule.Length, calculated) switch
         {
-            ( > 0, _, _) => (ResultState.Error, violations == 1 ? "1 limit violated" : $"{violations} limits violated"),
+            ( > 0, _, _) => (ResultState.Error, violations == 1 ? L.T("1 limit violated") : L.F($"{violations} limits violated")),
             (_, > 0, _) => (ResultState.Warning, withoutModule.Length == 1
-                ? $"MPPT {withoutModule[0]} has no PV module"
-                : $"MPPTs {string.Join(", ", withoutModule)} have no PV module"),
-            (_, _, 0) => (ResultState.Neutral, "All MPPTs are disabled"),
-            _ when ac?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the AC side"),
-            _ when batteryView?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the battery"),
-            _ when cableView?.State == ResultState.Warning => (ResultState.Warning, "All limits are met; see the notes of the cables and fuses"),
-            _ => (ResultState.Ok, "All limits are met"),
+                ? L.F($"MPPT {withoutModule[0]} has no PV module")
+                : L.F($"MPPTs {string.Join(", ", withoutModule)} have no PV module")),
+            (_, _, 0) => (ResultState.Neutral, L.T("All MPPTs are disabled")),
+            _ when ac?.State == ResultState.Warning => (ResultState.Warning, L.T("All limits are met; see the notes of the AC side")),
+            _ when batteryView?.State == ResultState.Warning => (ResultState.Warning, L.T("All limits are met; see the notes of the battery")),
+            _ when cableView?.State == ResultState.Warning => (ResultState.Warning, L.T("All limits are met; see the notes of the cables and fuses")),
+            _ => (ResultState.Ok, L.T("All limits are met")),
         };
 
         CalculationParameters p = result.Parameters;
-        string details = $"{inv.Manufacturer} {inv.Model} · cell temperature {Number(p.MinTempC, "0.#")} … {Number(p.MaxTempC, "0.#")} °C · safety margin {Number(p.SafetyMarginPct, "0.#")} %";
+        string details = L.F($"{inv.Manufacturer} {inv.Model} · cell temperature {Number(p.MinTempC, "0.#")} … {Number(p.MaxTempC, "0.#")} °C · safety margin {Number(p.SafetyMarginPct, "0.#")} %");
 
         return new ResultOverview(state, headline, details, mppts, PresentLimits(inv, limits), Ac: ac, Cables: cableView, Battery: batteryView, LimitsCaption:
-            $"Datasheet values and the limits used by the calculation (safety margin {Number(p.SafetyMarginPct, "0.#")} %).");
+            L.F($"Datasheet values and the limits used by the calculation (safety margin {Number(p.SafetyMarginPct, "0.#")} %)."));
     }
 
     private static MpptView PresentMppt(MpptResult mppt, Inverter inv, EffectiveLimits limits)
@@ -154,11 +154,11 @@ public static class ResultPresenter
         switch (mppt.Status)
         {
             case MpptStatus.MissingConfiguration:
-                return Empty(mppt, title, ResultState.Warning, "Missing", "No string configuration exists for this MPPT.");
+                return Empty(mppt, title, ResultState.Warning, L.T("Missing"), L.T("No string configuration exists for this MPPT."));
             case MpptStatus.Disabled:
-                return Empty(mppt, title, ResultState.Neutral, "Disabled", "This MPPT is disabled and skipped by the calculation.");
+                return Empty(mppt, title, ResultState.Neutral, L.T("Disabled"), L.T("This MPPT is disabled and skipped by the calculation."));
             case MpptStatus.NoModule:
-                return Empty(mppt, title, ResultState.Warning, "No module", "Select a PV module for this MPPT.");
+                return Empty(mppt, title, ResultState.Warning, L.T("No module"), L.T("Select a PV module for this MPPT."));
             case MpptStatus.Calculated:
             default:
                 break;
@@ -170,35 +170,35 @@ public static class ResultPresenter
 
         var rows = new List<ResultValueRow>
         {
-            new("String Voc", Volt(mppt.StringVocMinV), Volt(mppt.StringVocMaxV),
+            new(L.T("String Voc"), Volt(mppt.StringVocMinV), Volt(mppt.StringVocMaxV),
                 $"≤ {Volt(limits.MaxDcVoltageV)}", StateOf(ViolationKind.MaxDcVoltage)),
-            new("String Vmpp", Volt(mppt.StringVmppMinV), Volt(mppt.StringVmppMaxV),
-                $"{Number(limits.MpptLowerBoundV, "F1")} … {Volt(limits.MpptUpperBoundV)}, start {Volt(limits.StartVoltageV)}",
+            new(L.T("String Vmpp"), Volt(mppt.StringVmppMinV), Volt(mppt.StringVmppMaxV),
+                L.F($"{Number(limits.MpptLowerBoundV, "F1")} … {Volt(limits.MpptUpperBoundV)}, start {Volt(limits.StartVoltageV)}"),
                 StateOf(ViolationKind.MpptLowerBound, ViolationKind.MpptUpperBound, ViolationKind.StartVoltage)),
-            new("Isc of all strings", Ampere(mppt.ArrayIscMinA), Ampere(mppt.ArrayIscMaxA),
+            new(L.T("Isc of all strings"), Ampere(mppt.ArrayIscMinA), Ampere(mppt.ArrayIscMaxA),
                 $"≤ {Ampere(limits.MaxShortCircuitCurrentA)}", StateOf(ViolationKind.ShortCircuitCurrent)),
-            new("Impp of all strings", Ampere(mppt.ArrayImppMinA), Ampere(mppt.ArrayImppMaxA),
+            new(L.T("Impp of all strings"), Ampere(mppt.ArrayImppMinA), Ampere(mppt.ArrayImppMaxA),
                 $"≤ {Ampere(limits.MaxInputCurrentA)}", StateOf(ViolationKind.InputCurrent)),
-            new("DC power (cold)", None, Watt(mppt.ArrayPowerAtTminW),
+            new(L.T("DC power (cold)"), None, Watt(mppt.ArrayPowerAtTminW),
                 $"≤ {Watt(limits.DcPowerPerMpptLimitW)}", StateOf(ViolationKind.DcPower)),
-            new("Parallel strings", None, mppt.ParallelStrings.ToString(CultureInfo.CurrentCulture),
-                inv.MaxStringsPerMppt > 0 ? $"≤ {inv.MaxStringsPerMppt.ToString(CultureInfo.CurrentCulture)}" : "n/a",
+            new(L.T("Parallel strings"), None, mppt.ParallelStrings.ToString(CultureInfo.CurrentCulture),
+                inv.MaxStringsPerMppt > 0 ? $"≤ {inv.MaxStringsPerMppt.ToString(CultureInfo.CurrentCulture)}" : L.T("n/a"),
                 StateOf(ViolationKind.MaxStringsPerMppt)),
         };
 
         var notes = mppt.Violations.Select(v => new ResultNote(CalculationTextFormatter.FormatViolation(v), ResultState.Error)).ToList();
         if (mppt.Temperatures is { VmppCoefficientApproximated: true })
         {
-            notes.Add(new ResultNote("The datasheet states no Vmpp temperature coefficient; the Pmax coefficient is used as an approximation.", ResultState.Neutral));
+            notes.Add(new ResultNote(L.T("The datasheet states no Vmpp temperature coefficient; the Pmax coefficient is used as an approximation."), ResultState.Neutral));
         }
 
         int count = mppt.Violations.Count;
         string subtitle = $"{module.Manufacturer} {module.Model} · {mppt.ModulesPerString} × {mppt.ParallelStrings} " +
-                          $"({(mppt.ModulesPerString == 1 ? "1 module" : $"{mppt.ModulesPerString} modules")} per string, " +
-                          $"{(mppt.ParallelStrings == 1 ? "1 string" : $"{mppt.ParallelStrings} strings")})";
+                          L.F($"({(mppt.ModulesPerString == 1 ? L.T("1 module") : L.F($"{mppt.ModulesPerString} modules"))} per string, ") +
+                          L.F($"{(mppt.ParallelStrings == 1 ? L.T("1 string") : L.F($"{mppt.ParallelStrings} strings"))})");
         string allowed = mppt.HasValidModuleRange
-            ? $"Allowed modules per string: {mppt.MinModulesPerString} … {mppt.MaxModulesPerString}"
-            : "No module count per string meets all voltage limits.";
+            ? L.F($"Allowed modules per string: {mppt.MinModulesPerString} … {mppt.MaxModulesPerString}")
+            : L.T("No module count per string meets all voltage limits.");
 
         var voltage = new VoltageWindow(
             ScaleMaxV: Math.Max(Math.Max(inv.MaxDcInputVoltageV, limits.MpptMaxV), mppt.StringVocMaxV) * 1.05,
@@ -214,7 +214,7 @@ public static class ResultPresenter
 
         return new MpptView(mppt.MpptIndex, title, subtitle,
             count == 0 ? ResultState.Ok : ResultState.Error,
-            count == 0 ? "OK" : count == 1 ? "1 issue" : $"{count} issues",
+            count == 0 ? "OK" : count == 1 ? L.T("1 issue") : L.F($"{count} issues"),
             rows, voltage, allowed, notes);
     }
 
@@ -222,38 +222,38 @@ public static class ResultPresenter
     {
         ResultState StateOf(params AcCheckKind[] kinds) =>
             ac.Checks.Where(c => kinds.Contains(c.Kind)).Select(c => c.State).DefaultIfEmpty(ResultState.Ok).Max();
-        string Kilo(double? value, string unit) => value is { } v ? $"{Number(v / 1000, "F1")} {unit}" : "not stated";
+        string Kilo(double? value, string unit) => value is { } v ? $"{Number(v / 1000, "F1")} {unit}" : L.T("not stated");
 
         var rows = new List<AcRow>
         {
-            new("PV peak power (STC)", $"{Number(ac.PvPeakPowerW / 1000, "F2")} kWp", None, ResultState.Neutral),
-            new("Rated AC power", Kilo(ac.RatedAcPowerW, "kW"), None, ac.RatedAcPowerW is null ? ResultState.Warning : ResultState.Neutral),
-            new("DC/AC ratio", ac.DcAcRatio is { } r ? Number(r, "F2") : None,
+            new(L.T("PV peak power (STC)"), $"{Number(ac.PvPeakPowerW / 1000, "F2")} kWp", None, ResultState.Neutral),
+            new(L.T("Rated AC power"), Kilo(ac.RatedAcPowerW, "kW"), None, ac.RatedAcPowerW is null ? ResultState.Warning : ResultState.Neutral),
+            new(L.T("DC/AC ratio"), ac.DcAcRatio is { } r ? Number(r, "F2") : None,
                 $"{Number(p.DcAcRatioMin, "0.0#")} … {Number(p.DcAcRatioMax, "0.0#")}",
                 ac.DcAcRatio is null ? ResultState.Neutral : StateOf(AcCheckKind.DcAcRatioLow, AcCheckKind.DcAcRatioHigh)),
-            new("Apparent power", Kilo(ac.ApparentPowerVA, "kVA"),
-                $"≤ {Number(p.SimplifiedRegistrationLimitVA / 1000, "0.#")} kVA (simplified registration)",
+            new(L.T("Apparent power"), Kilo(ac.ApparentPowerVA, "kVA"),
+                L.F($"≤ {Number(p.SimplifiedRegistrationLimitVA / 1000, "0.#")} kVA (simplified registration)"),
                 ac.ApparentPowerVA is null ? ResultState.Neutral : StateOf(AcCheckKind.RegistrationLimit)),
         };
         if (ac.Phases == 1)
         {
-            rows.Add(new("Unbalanced load (single-phase)", Kilo(ac.ApparentPowerVA, "kVA"),
-                $"≤ {Number(p.UnbalancedLoadLimitVA / 1000, "0.0#")} kVA", StateOf(AcCheckKind.UnbalancedLoad)));
+            rows.Add(new(L.T("Unbalanced load (single-phase)"), Kilo(ac.ApparentPowerVA, "kVA"),
+                L.F($"≤ {Number(p.UnbalancedLoadLimitVA / 1000, "0.0#")} kVA"), StateOf(AcCheckKind.UnbalancedLoad)));
         }
 
-        rows.Add(new("AC current per phase",
-            ac.MaxAcCurrentA is { } max ? $"{Number(max, "F1")} A max." + (ac.RatedAcCurrentA is { } rated ? $" ({Number(rated, "F1")} A rated)" : string.Empty) : "not stated",
+        rows.Add(new(L.T("AC current per phase"),
+            ac.MaxAcCurrentA is { } max ? L.F($"{Number(max, "F1")} A max.") + (ac.RatedAcCurrentA is { } rated ? L.F($" ({Number(rated, "F1")} A rated)") : string.Empty) : L.T("not stated"),
             None, ac.MaxAcCurrentA is null ? ResultState.Warning : ResultState.Neutral));
         if (ac.FeedInCapW is { } cap)
         {
-            rows.Add(new("Feed-in limit", $"{Number(cap / 1000, "F1")} kW", $"{Number(p.FeedInLimitPct, "0.#")} % of the PV peak power", ResultState.Neutral));
+            rows.Add(new(L.T("Feed-in limit"), $"{Number(cap / 1000, "F1")} kW", L.F($"{Number(p.FeedInLimitPct, "0.#")} % of the PV peak power"), ResultState.Neutral));
         }
 
         var notes = ac.Checks.Select(c => new ResultNote(CalculationTextFormatter.FormatAcCheck(c, ac), c.State)).ToList();
         ResultState state = ac.Checks.Select(c => c.State).Where(s => s != ResultState.Neutral).DefaultIfEmpty(ResultState.Ok).Max();
         int issues = ac.Checks.Count(c => c.State is ResultState.Error or ResultState.Warning);
-        string subtitle = $"{inv.Manufacturer} {inv.Model} · " + (ac.Phases is { } phases ? (phases == 1 ? "single-phase" : "three-phase") : "phases not stated");
-        return new AcView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
+        string subtitle = $"{inv.Manufacturer} {inv.Model} · " + (ac.Phases is { } phases ? (phases == 1 ? "single-phase" : "three-phase") : L.T("phases not stated"));
+        return new AcView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? L.T("1 note") : L.F($"{issues} notes"), rows, notes);
     }
 
     private static CableView PresentCables(CableCalculationResult cables, CableSettings settings)
@@ -276,30 +276,30 @@ public static class ResultPresenter
                 ? (d.State == ResultState.Error ? ResultState.Error : ResultState.Neutral)
                 : d.CarryingCapacityA < (d.FuseRatingA ?? d.DesignCurrentA) - 1e-9 ? ResultState.Error
                     : d.VoltageDropPct > d.DropLimitPct + 1e-9 ? ResultState.Warning : ResultState.Ok;
-            rows.Add(new AcRow($"MPPT {d.MpptIndex} string cables",
-                d.CrossSectionMm2 is { } a ? $"{Number(a, "0.#")} mm²{(d.CrossSectionChosen ? " (chosen)" : string.Empty)} · {Number(d.VoltageDropPct!.Value, "F2")} %" : "not sized",
-                $"≥ {Number(d.FuseRatingA ?? d.DesignCurrentA, "F1")} A · ≤ {Number(d.DropLimitPct, "0.##")} %",
+            rows.Add(new AcRow(L.F($"MPPT {d.MpptIndex} string cables"),
+                d.CrossSectionMm2 is { } a ? L.F($"{Number(a, "0.#")} mm²{(d.CrossSectionChosen ? L.T(" (chosen)") : string.Empty)} · {Number(d.VoltageDropPct!.Value, "F2")} %") : L.T("not sized"),
+                L.F($"≥ {Number(d.FuseRatingA ?? d.DesignCurrentA, "F1")} A · ≤ {Number(d.DropLimitPct, "0.##")} %"),
                 cableState));
-            rows.Add(new AcRow($"MPPT {d.MpptIndex} module leads",
-                $"{d.ModulesPerString} × {Number(d.LeadLengthPerModuleM, "0.##")} m · {Number(d.LeadCrossSectionMm2, "0.#")} mm² · {Number(d.LeadDropPct, "F2")} %",
-                d.LeadsFromDatasheet ? "datasheet" : "your default", ResultState.Neutral));
-            rows.Add(new AcRow($"MPPT {d.MpptIndex} string fuses",
-                d.FuseRequired ? (d.FuseRatingA is { } f ? $"gPV {Number(f, "F0")} A" : "no rating fits") : "not needed",
-                d.FuseRequired ? $"{Number(d.FuseMinA!.Value, "F1")} … {Number(d.FuseMaxA!.Value, "F1")} A" : None,
+            rows.Add(new AcRow(L.F($"MPPT {d.MpptIndex} module leads"),
+                L.F($"{d.ModulesPerString} × {Number(d.LeadLengthPerModuleM, "0.##")} m · {Number(d.LeadCrossSectionMm2, "0.#")} mm² · {Number(d.LeadDropPct, "F2")} %"),
+                d.LeadsFromDatasheet ? "datasheet" : L.T("your default"), ResultState.Neutral));
+            rows.Add(new AcRow(L.F($"MPPT {d.MpptIndex} string fuses"),
+                d.FuseRequired ? (d.FuseRatingA is { } f ? L.F($"gPV {Number(f, "F0")} A") : L.T("no rating fits")) : L.T("not needed"),
+                d.FuseRequired ? L.F($"{Number(d.FuseMinA!.Value, "F1")} … {Number(d.FuseMaxA!.Value, "F1")} A") : None,
                 d.FuseRequired ? (d.FuseRatingA is null ? ResultState.Error : ResultState.Warning) : ResultState.Neutral));
-            notes.AddRange(d.Notes.Select(n => n with { Text = $"MPPT {d.MpptIndex}: {n.Text}" }));
+            notes.AddRange(d.Notes.Select(n => n with { Text = L.F($"MPPT {d.MpptIndex}: {n.Text}") }));
         }
 
         if (cables.Ac is { } ac)
         {
-            rows.Add(new AcRow("AC circuit breaker", ac.BreakerA is { } b ? $"{Number(b, "F0")} A" : "–",
-                ac.DesignCurrentA > 0 ? $"≥ {Number(ac.DesignCurrentA, "F1")} A (max. AC current)" : None,
+            rows.Add(new AcRow(L.T("AC circuit breaker"), ac.BreakerA is { } b ? $"{Number(b, "F0")} A" : "–",
+                ac.DesignCurrentA > 0 ? L.F($"≥ {Number(ac.DesignCurrentA, "F1")} A (max. AC current)") : None,
                 ac.BreakerA is null ? ac.State : ResultState.Ok));
-            rows.Add(new AcRow("AC line",
-                ac.CrossSectionMm2 is { } area ? $"{Number(area, "0.#")} mm² · {Number(ac.VoltageDropPct!.Value, "F2")} %" : "not sized",
-                ac.BreakerA is { } breaker ? $"Iz ≥ {Number(breaker, "F0")} A · ≤ {Number(ac.DropLimitPct, "0.##")} %" : None,
+            rows.Add(new AcRow(L.T("AC line"),
+                ac.CrossSectionMm2 is { } area ? L.F($"{Number(area, "0.#")} mm² · {Number(ac.VoltageDropPct!.Value, "F2")} %") : L.T("not sized"),
+                ac.BreakerA is { } breaker ? L.F($"Iz ≥ {Number(breaker, "F0")} A · ≤ {Number(ac.DropLimitPct, "0.##")} %") : None,
                 ac.CrossSectionMm2 is null ? (ac.State == ResultState.Error ? ResultState.Error : ResultState.Neutral) : ResultState.Ok));
-            notes.AddRange(ac.Notes.Select(n => n with { Text = $"AC line: {n.Text}" }));
+            notes.AddRange(ac.Notes.Select(n => n with { Text = L.F($"AC line: {n.Text}") }));
         }
 
         if (cables.Battery is { } battery)
@@ -309,59 +309,59 @@ public static class ResultPresenter
                 bool tooSmall = run.CrossSectionMm2 is not null && run.CarryingCapacityA < run.FuseA - 1e-9;
                 rows.Add(new AcRow(run.Count > 1 ? $"{run.Name} ({run.Count} ×)" : run.Name,
                     run.CrossSectionMm2 is { } area
-                        ? $"{Number(area, "0.#")} mm²{(run.CrossSectionChosen ? " (chosen)" : string.Empty)} · fuse {Number(run.FuseA!.Value, "F0")} A"
-                        : run.FuseA is { } f ? $"not sized · fuse {Number(f, "F0")} A" : "no fuse rating",
-                    $"Ib {Number(run.DesignCurrentA, "F0")} A ≤ In ≤ Iz" + (run.CarryingCapacityA is { } iz ? $" {Number(iz, "F0")} A" : string.Empty),
+                        ? L.F($"{Number(area, "0.#")} mm²{(run.CrossSectionChosen ? L.T(" (chosen)") : string.Empty)} · fuse {Number(run.FuseA!.Value, "F0")} A")
+                        : run.FuseA is { } f ? L.F($"not sized · fuse {Number(f, "F0")} A") : L.T("no fuse rating"),
+                    L.F($"Ib {Number(run.DesignCurrentA, "F0")} A ≤ In ≤ Iz") + (run.CarryingCapacityA is { } iz ? $" {Number(iz, "F0")} A" : string.Empty),
                     run.FuseA is null || tooSmall ? ResultState.Error : run.CrossSectionMm2 is null ? ResultState.Neutral : ResultState.Ok));
             }
 
-            rows.Add(new AcRow("Battery voltage drop",
-                battery.TotalDropPct is { } drop ? $"{Number(drop, "F2")} % of {Number(battery.BankNominalV, "0.#")} V" : "not sized",
+            rows.Add(new AcRow(L.T("Battery voltage drop"),
+                battery.TotalDropPct is { } drop ? L.F($"{Number(drop, "F2")} % of {Number(battery.BankNominalV, "0.#")} V") : L.T("not sized"),
                 $"≤ {Number(battery.DropLimitPct, "0.##")} %",
                 battery.TotalDropPct is { } d2 ? (d2 > battery.DropLimitPct + 1e-9 ? ResultState.Warning : ResultState.Ok) : ResultState.Neutral));
-            notes.AddRange(battery.Notes.Select(n => n with { Text = $"Battery: {n.Text}" }));
+            notes.AddRange(battery.Notes.Select(n => n with { Text = L.F($"Battery: {n.Text}") }));
         }
 
         ResultState state = cables.State;
         int issues = notes.Count(n => n.State is ResultState.Error or ResultState.Warning);
-        string subtitle = $"DC: {CableTexts.Installation(settings.DcInstallation)}, {Number(settings.DcAmbientC, "0.#")} °C · AC: method {settings.AcMethod}, {Number(settings.AcAmbientC, "0.#")} °C";
-        return new CableView(subtitle, state, issues == 0 ? (state == ResultState.Neutral ? "Lengths missing" : "OK") : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
+        string subtitle = L.F($"DC: {CableTexts.Installation(settings.DcInstallation)}, {Number(settings.DcAmbientC, "0.#")} °C · AC: method {settings.AcMethod}, {Number(settings.AcAmbientC, "0.#")} °C");
+        return new CableView(subtitle, state, issues == 0 ? (state == ResultState.Neutral ? L.T("Lengths missing") : "OK") : issues == 1 ? L.T("1 note") : L.F($"{issues} notes"), rows, notes);
     }
 
     private static BatteryView PresentBattery(BatteryCalculationResult b, Inverter inv)
     {
         ResultState StateOf(params BatteryCheckKind[] kinds) =>
             b.Checks.Where(c => kinds.Contains(c.Kind)).Select(c => c.State).DefaultIfEmpty(ResultState.Ok).Max();
-        string Range((double Min, double Max)? range) => range is { } r ? $"{Number(r.Min, "0.#")} … {Number(r.Max, "0.#")} V" : "not stated";
+        string Range((double Min, double Max)? range) => range is { } r ? L.F($"{Number(r.Min, "0.#")} … {Number(r.Max, "0.#")} V") : L.T("not stated");
 
         var rows = new List<AcRow>();
         if (b.Battery is { } battery)
         {
             ResultState voltage = b.InverterRangeV is null ? ResultState.Neutral
                 : StateOf(BatteryCheckKind.NominalVoltageOutside, BatteryCheckKind.MaxVoltageAbove, BatteryCheckKind.MinVoltageBelow);
-            rows.Add(new("Bank voltage", Range(b.BankRangeV) + (b.BankNominalV is { } n ? $" ({Number(n, "0.#")} V nominal)" : string.Empty),
+            rows.Add(new(L.T("Bank voltage"), Range(b.BankRangeV) + (b.BankNominalV is { } n ? L.F($" ({Number(n, "0.#")} V nominal)") : string.Empty),
                 Range(b.InverterRangeV), voltage));
-            rows.Add(new("Modules in series", b.InSeries.ToString(CultureInfo.CurrentCulture),
-                battery.MaxModulesInSeries > 0 ? $"≤ {battery.MaxModulesInSeries.ToString(CultureInfo.CurrentCulture)}" : "not stated",
+            rows.Add(new(L.T("Modules in series"), b.InSeries.ToString(CultureInfo.CurrentCulture),
+                battery.MaxModulesInSeries > 0 ? $"≤ {battery.MaxModulesInSeries.ToString(CultureInfo.CurrentCulture)}" : L.T("not stated"),
                 StateOf(BatteryCheckKind.SeriesExceeded, BatteryCheckKind.SeriesNotStated)));
-            rows.Add(new("Modules in parallel", b.InParallel.ToString(CultureInfo.CurrentCulture),
-                battery.MaxModulesInParallel > 0 ? $"≤ {battery.MaxModulesInParallel.ToString(CultureInfo.CurrentCulture)}" : "not stated",
+            rows.Add(new(L.T("Modules in parallel"), b.InParallel.ToString(CultureInfo.CurrentCulture),
+                battery.MaxModulesInParallel > 0 ? $"≤ {battery.MaxModulesInParallel.ToString(CultureInfo.CurrentCulture)}" : L.T("not stated"),
                 StateOf(BatteryCheckKind.ParallelExceeded, BatteryCheckKind.ParallelNotStated)));
-            rows.Add(new("Charge current", b.ChargeCurrentA is { } c ? $"{Number(c, "0.#")} A · {Number(b.ChargePowerW!.Value / 1000, "F1")} kW" : None,
-                $"bank {Number(b.BankChargeCurrentA!.Value, "0.#")} A · inverter {Number(inv.MaxBatteryChargeCurrentA, "0.#")} A", ResultState.Neutral));
-            rows.Add(new("Discharge current", b.DischargeCurrentA is { } d ? $"{Number(d, "0.#")} A · {Number(b.DischargePowerW!.Value / 1000, "F1")} kW" : None,
-                $"bank {Number(b.BankDischargeCurrentA!.Value, "0.#")} A · inverter {Number(inv.MaxBatteryDischargeCurrentA, "0.#")} A", ResultState.Neutral));
-            rows.Add(new("Energy", $"{Number(b.NominalEnergyKWh!.Value, "0.##")} kWh nominal"
-                + (b.UsableEnergyKWh is { } u ? $" · {Number(u, "0.##")} kWh usable" : string.Empty), None, ResultState.Neutral));
+            rows.Add(new(L.T("Charge current"), b.ChargeCurrentA is { } c ? L.F($"{Number(c, "0.#")} A · {Number(b.ChargePowerW!.Value / 1000, "F1")} kW") : None,
+                L.F($"bank {Number(b.BankChargeCurrentA!.Value, "0.#")} A · inverter {Number(inv.MaxBatteryChargeCurrentA, "0.#")} A"), ResultState.Neutral));
+            rows.Add(new(L.T("Discharge current"), b.DischargeCurrentA is { } d ? L.F($"{Number(d, "0.#")} A · {Number(b.DischargePowerW!.Value / 1000, "F1")} kW") : None,
+                L.F($"bank {Number(b.BankDischargeCurrentA!.Value, "0.#")} A · inverter {Number(inv.MaxBatteryDischargeCurrentA, "0.#")} A"), ResultState.Neutral));
+            rows.Add(new(L.T("Energy"), L.F($"{Number(b.NominalEnergyKWh!.Value, "0.##")} kWh nominal")
+                + (b.UsableEnergyKWh is { } u ? L.F($" · {Number(u, "0.##")} kWh usable") : string.Empty), None, ResultState.Neutral));
         }
 
         var notes = b.Checks.Select(c => new ResultNote(BatteryTexts.Format(c, b), c.State)).ToList();
         ResultState state = b.State;
         int issues = b.Checks.Count(c => c.State is ResultState.Error or ResultState.Warning);
         string subtitle = b.Battery is { } selected
-            ? $"{selected.Manufacturer} {selected.Model} · {b.InSeries} × {b.InParallel} ({(b.ModuleCount == 1 ? "1 module" : $"{b.ModuleCount} modules")})"
-            : "No battery selected";
-        return new BatteryView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? "1 note" : $"{issues} notes", rows, notes);
+            ? L.F($"{selected.Manufacturer} {selected.Model} · {b.InSeries} × {b.InParallel} ({(b.ModuleCount == 1 ? L.T("1 module") : L.F($"{b.ModuleCount} modules"))})")
+            : L.T("No battery selected");
+        return new BatteryView(subtitle, state, issues == 0 ? "OK" : issues == 1 ? L.T("1 note") : L.F($"{issues} notes"), rows, notes);
     }
 
     private static MpptView Empty(MpptResult mppt, string title, ResultState state, string status, string note) =>
@@ -369,15 +369,15 @@ public static class ResultPresenter
 
     private static List<LimitRow> PresentLimits(Inverter inv, EffectiveLimits limits) =>
     [
-        new("Max. DC voltage", Volt(inv.MaxDcInputVoltageV), Volt(limits.MaxDcVoltageV)),
-        new("MPPT voltage range", $"{Number(limits.MpptMinV, "F1")} … {Volt(limits.MpptMaxV)}",
+        new(L.T("Max. DC voltage"), Volt(inv.MaxDcInputVoltageV), Volt(limits.MaxDcVoltageV)),
+        new(L.T("MPPT voltage range"), $"{Number(limits.MpptMinV, "F1")} … {Volt(limits.MpptMaxV)}",
             $"{Number(limits.MpptLowerBoundV, "F1")} … {Volt(limits.MpptUpperBoundV)}"),
-        new("Start voltage", Volt(inv.StartVoltageV), Volt(limits.StartVoltageV)),
-        new("Max. input current per MPPT", Ampere(inv.MaxInputCurrentA), Ampere(limits.MaxInputCurrentA)),
-        new("Max. short-circuit current per MPPT", Ampere(inv.MaxShortCircuitCurrentA), Ampere(limits.MaxShortCircuitCurrentA)),
-        new("DC power per MPPT", Watt(limits.DcPowerPerMpptW), Watt(limits.DcPowerPerMpptLimitW)),
-        new("MPPTs / max. strings per MPPT",
-            $"{inv.MpptCount.ToString(CultureInfo.CurrentCulture)} / {(inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(CultureInfo.CurrentCulture) : "n/a")}",
+        new(L.T("Start voltage"), Volt(inv.StartVoltageV), Volt(limits.StartVoltageV)),
+        new(L.T("Max. input current per MPPT"), Ampere(inv.MaxInputCurrentA), Ampere(limits.MaxInputCurrentA)),
+        new(L.T("Max. short-circuit current per MPPT"), Ampere(inv.MaxShortCircuitCurrentA), Ampere(limits.MaxShortCircuitCurrentA)),
+        new(L.T("DC power per MPPT"), Watt(limits.DcPowerPerMpptW), Watt(limits.DcPowerPerMpptLimitW)),
+        new(L.T("MPPTs / max. strings per MPPT"),
+            $"{inv.MpptCount.ToString(CultureInfo.CurrentCulture)} / {(inv.MaxStringsPerMppt > 0 ? inv.MaxStringsPerMppt.ToString(CultureInfo.CurrentCulture) : L.T("n/a"))}",
             None),
     ];
 

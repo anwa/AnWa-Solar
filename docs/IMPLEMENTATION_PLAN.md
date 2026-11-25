@@ -135,3 +135,15 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] Window with a tree of kinds, manufacturers and series and an editor with one column per power class
 - [x] Create, change, copy and delete own series and power classes; shipped series are saved as own copies
 - [x] Attach and show datasheets; import from the window
+
+## M21 – Settings and German language (`feature/localization`, v0.22.0)
+
+- [x] Settings page: language, theme, projects and export folder, defaults of new projects
+- [x] German texts for windows, results and report (`Localization/de.json`), numbers and dates in the language's format; the language applies after a restart
+- [x] German user manual in `docs/manual/de`, links checked in both languages
+
+## M22 – Datasheets per language (`feature/datasheet-language`, v1.0.0)
+
+- [ ] A series keeps a German and an English datasheet
+- [ ] Import and component database attach a datasheet with its language
+- [ ] Viewer and project export use the datasheet of the current language, otherwise the only one

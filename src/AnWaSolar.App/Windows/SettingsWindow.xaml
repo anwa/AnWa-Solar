@@ -1,0 +1,105 @@
+<aw:ChromeWindow x:Class="AnWaSolar.Windows.SettingsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:aw="https://anwa-soft.de/design/wpf"
+                 Style="{StaticResource AppDialog}"
+                 WindowStartupLocation="CenterOwner"
+                 Title="Settings"
+                 Width="760"
+                 SizeToContent="Height">
+    <DockPanel>
+        <Border Style="{StaticResource AnWaSoft.DialogButtonBar}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        MinWidth="96"
+                        Margin="0,0,8,0"
+                        IsCancel="True" />
+                <Button Content="Save"
+                        MinWidth="96"
+                        IsDefault="True"
+                        Click="OnSaveClick" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Margin="24,20,24,16">
+            <!-- General -->
+            <TextBlock Text="General" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,0,0,12" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="LanguageCombo"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Language"
+                          materialDesign:HintAssist.HelperText="Applies after a restart"
+                          AutomationProperties.Name="Language" />
+                <ComboBox x:Name="ThemeCombo"
+                          Grid.Column="2"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                          materialDesign:HintAssist.Hint="Theme"
+                          AutomationProperties.Name="Theme setting" />
+            </Grid>
+
+            <!-- Folders -->
+            <TextBlock Text="Folders" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,36,0,12" />
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Top">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" Click="OnBrowseProjectsClick" Margin="0,4,8,0"
+                            AutomationProperties.Name="Choose projects folder" ToolTip="Choose a folder">
+                        <materialDesign:PackIcon Kind="FolderOpenOutline" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" Click="OnDefaultProjectsClick" Margin="0,4,0,0"
+                            Content="Default" AutomationProperties.Name="Default projects folder" />
+                </StackPanel>
+                <TextBox x:Name="ProjectsFolderInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Projects folder"
+                         materialDesign:HintAssist.HelperText="Where projects are saved and listed; applies after a restart"
+                         AutomationProperties.Name="Projects folder" />
+            </DockPanel>
+            <DockPanel Margin="0,30,0,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Top">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" Click="OnBrowseExportClick" Margin="0,4,8,0"
+                            AutomationProperties.Name="Choose export folder" ToolTip="Choose a folder">
+                        <materialDesign:PackIcon Kind="FolderOpenOutline" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" Click="OnDefaultExportClick" Margin="0,4,0,0"
+                            Content="Default" AutomationProperties.Name="Default export folder" />
+                </StackPanel>
+                <TextBox x:Name="ExportFolderInput"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Export folder"
+                         materialDesign:HintAssist.HelperText="Where the save dialogs of reports and project exports start; empty: the last folder used"
+                         AutomationProperties.Name="Export folder" />
+            </DockPanel>
+
+            <!-- Defaults of new projects -->
+            <TextBlock Text="Defaults of new projects" Style="{StaticResource AnWaSoft.Text.CardTitle}" Margin="0,36,0,8" />
+            <TextBlock Style="{StaticResource AnWaSoft.Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="A new project starts with these calculation parameters and cable settings. Existing projects keep their own values." />
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" Click="OnDefaultParametersClick" Margin="0,0,8,0"
+                            AutomationProperties.Name="Default parameters">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Thermometer" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Parameters…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" Click="OnDefaultCablesClick"
+                            AutomationProperties.Name="Default cables">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="PowerPlugOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Cables…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <TextBlock x:Name="DefaultsText" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
+        </StackPanel>
+    </DockPanel>
+</aw:ChromeWindow>

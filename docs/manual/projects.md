@@ -7,7 +7,7 @@ Every design is a project: a file that contains everything you entered, the proj
 When AnWa-Solar starts, the **Open project** dialog appears:
 
 - **Recent projects** lists the five projects you opened last. The last project is preselected: press **Enter** or click **Open** to continue with it. Double-click opens any other project of the list.
-- **New project…** asks for the project data and starts with an empty design.
+- **New project…** asks for the project data and starts with an empty design and the defaults of new projects from the [settings](settings.md#settings-page).
 - **Other…** opens a project file that is not in the list.
 - **Exit** ends AnWa-Solar.
 
@@ -27,13 +27,13 @@ The window title shows the name of the open project.
 
 ## Saving
 
-Every change is saved automatically into the project, at the latest half a second after the last change, when you switch the project and when you close the window. Projects are stored per Windows user in `%LOCALAPPDATA%\AnWa-Solar\Projects`, one JSON file per project named after the project.
+Every change is saved automatically into the project, at the latest half a second after the last change, when you switch the project and when you close the window. Projects are stored per Windows user in `%LOCALAPPDATA%\AnWa-Solar\Projects`, one JSON file per project named after the project; the [settings](settings.md#settings-page) can set another projects folder.
 
 For the inverter, every module and the battery, the project stores manufacturer and model, the datasheet file and a copy of the datasheet values. When a project is opened, the entries of the [master data](master-data.md) are used, so that corrected values apply. When an entry is missing, for example on another computer, the copy from the project is used, and a message lists these entries; import their datasheets to add them to the master data.
 
 ## Export as ZIP
 
-**Export ZIP** saves one ZIP file with a folder named after the project:
+**Export ZIP** saves one ZIP file with a folder named after the project, in the language of the application (the report, the file names and the list of missing datasheets):
 
 | File | Content |
 |---|---|

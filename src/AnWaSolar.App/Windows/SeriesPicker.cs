@@ -11,7 +11,7 @@ namespace AnWaSolar.Windows;
 internal sealed class SeriesPicker<T>
     where T : class, IMasterDataEntry
 {
-    public const string AllTypes = "All types";
+    public static string AllTypes => L.T("All types");
 
     private readonly ComboBox _manufacturer;
     private readonly ComboBox? _type;

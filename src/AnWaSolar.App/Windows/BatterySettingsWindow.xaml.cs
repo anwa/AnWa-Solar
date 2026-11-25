@@ -32,10 +32,9 @@ public partial class BatterySettingsWindow : ChromeWindow
 
         InverterNote.Text = inverter switch
         {
-            null => "Select an inverter first.",
-            { HasBatteryInput: true } => string.Create(CultureInfo.CurrentCulture,
-                $"{inverter.Manufacturer} {inverter.Model}: battery {inverter.BatteryVoltageRangeV} V, max. charge {inverter.MaxBatteryChargeCurrentA:0.#} A, max. discharge {inverter.MaxBatteryDischargeCurrentA:0.#} A."),
-            _ => $"{inverter.Manufacturer} {inverter.Model} has no battery input in the master data. Import its datasheet when it is a hybrid inverter.",
+            null => L.T("Select an inverter first."),
+            { HasBatteryInput: true } => L.F($"{inverter.Manufacturer} {inverter.Model}: battery {inverter.BatteryVoltageRangeV} V, max. charge {inverter.MaxBatteryChargeCurrentA:0.#} A, max. discharge {inverter.MaxBatteryDischargeCurrentA:0.#} A."),
+            _ => L.F($"{inverter.Manufacturer} {inverter.Model} has no battery input in the master data. Import its datasheet when it is a hybrid inverter."),
         };
 
         SeriesInput.Text = Settings.InSeries.ToString(CultureInfo.CurrentCulture);
@@ -83,13 +82,13 @@ public partial class BatterySettingsWindow : ChromeWindow
         {
             if (Selected is null)
             {
-                Fail("Select a battery, or import its datasheet.");
+                Fail(L.T("Select a battery, or import its datasheet."));
                 return;
             }
 
             if (!TryCount(SeriesInput.Text, out int series) || !TryCount(ParallelInput.Text, out int parallel))
             {
-                Fail("The numbers of modules in series and in parallel must be whole numbers from 1 to 99.");
+                Fail(L.T("The numbers of modules in series and in parallel must be whole numbers from 1 to 99."));
                 return;
             }
 
@@ -109,21 +108,21 @@ public partial class BatterySettingsWindow : ChromeWindow
         DetailGrid.RowDefinitions.Clear();
         if (Selected is not { } b)
         {
-            AddDetail("Battery", "–");
+            AddDetail(L.T("Battery"), "–");
             return;
         }
 
         CultureInfo c = CultureInfo.CurrentCulture;
-        string Stated(double? value, string format, string unit) => value is { } v ? v.ToString(format, c) + unit : "not stated";
-        string Count(int value) => value > 0 ? value.ToString(c) : "not stated";
-        AddDetail("Nominal voltage", b.NominalVoltageV.ToString("0.#", c) + " V");
-        AddDetail("Operating voltage range", b.VoltageRangeV + " V");
-        AddDetail("Nominal capacity", Stated(b.NominalCapacityAh, "0.#", " Ah"));
-        AddDetail("Nominal / usable energy", b.NominalEnergyKWh.ToString("0.##", c) + " kWh / " + Stated(b.UsableEnergyKWh, "0.##", " kWh"));
-        AddDetail("Depth of discharge", Stated(b.DepthOfDischargePct, "0.#", " %"));
-        AddDetail("Max. charge / discharge current", $"{b.MaxChargeCurrentA.ToString("0.#", c)} A / {b.MaxDischargeCurrentA.ToString("0.#", c)} A");
-        AddDetail("Max. modules in series / parallel", $"{Count(b.MaxModulesInSeries)} / {Count(b.MaxModulesInParallel)}");
-        AddDetail("Source", b.IsUserEntry ? (DatasheetButton.IsEnabled ? "Own master data, with datasheet" : "Own master data") : "Shipped master data");
+        string Stated(double? value, string format, string unit) => value is { } v ? v.ToString(format, c) + unit : L.T("not stated");
+        string Count(int value) => value > 0 ? value.ToString(c) : L.T("not stated");
+        AddDetail(L.T("Nominal voltage"), b.NominalVoltageV.ToString("0.#", c) + " V");
+        AddDetail(L.T("Operating voltage range"), b.VoltageRangeV + " V");
+        AddDetail(L.T("Nominal capacity"), Stated(b.NominalCapacityAh, "0.#", L.T(" Ah")));
+        AddDetail(L.T("Nominal / usable energy"), b.NominalEnergyKWh.ToString("0.##", c) + L.T(" kWh / ") + Stated(b.UsableEnergyKWh, "0.##", " kWh"));
+        AddDetail(L.T("Depth of discharge"), Stated(b.DepthOfDischargePct, "0.#", " %"));
+        AddDetail(L.T("Max. charge / discharge current"), L.F($"{b.MaxChargeCurrentA.ToString("0.#", c)} A / {b.MaxDischargeCurrentA.ToString("0.#", c)} A"));
+        AddDetail(L.T("Max. modules in series / parallel"), $"{Count(b.MaxModulesInSeries)} / {Count(b.MaxModulesInParallel)}");
+        AddDetail(L.T("Source"), b.IsUserEntry ? (DatasheetButton.IsEnabled ? L.T("Own master data, with datasheet") : L.T("Own master data")) : L.T("Shipped master data"));
     }
 
     private void AddDetail(string label, string value)
