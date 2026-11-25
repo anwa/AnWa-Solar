@@ -71,6 +71,8 @@ public static partial class DatasheetParser
         [DatasheetFields.IscCoeff] = [Re(@"(koeff|coeff).*?(i-?sc(?![a-z])|kurzschlus|short-?circuit)|(i-?sc).*?(koeff|coeff)")],
     };
 
+    private static readonly Regex[] s_seriesFuse = [Re(@"maximaleabsicherung|max(imum)?\.?seriesfuse|seriesfuserating|max\.?rückstrom|reversecurrent|max\.?sicherung")];
+
     private static readonly Regex[] s_operatingTemperature = [Re(@"(?<!nenn)betriebstemperatur|operatingtemperature|operationaltemperature|operatingambienttemperature")];
 
     private static readonly Dictionary<string, Regex[]> s_inverterLabels = new()
@@ -135,6 +137,8 @@ public static partial class DatasheetParser
             {
                 values[key] = Shared(columns, FirstValue(lines, patterns, NumberOf, sameLineOnly: true));
             }
+
+            values[DatasheetFields.MaxSeriesFuseA] = Shared(columns, FirstValue(lines, s_seriesFuse, NumberOf, sameLineOnly: true));
 
             DatasheetValue?[] temperature = ReadOperatingTemperature(lines, columns);
             values[DatasheetFields.OperatingMinC] = [.. temperature.Select(v => v is null ? null : v with { Text = v.Text.Split('|')[0] })];
@@ -271,11 +275,6 @@ public static partial class DatasheetParser
             for (int i = 0; i < lines.Count; i++)
             {
                 Line line = lines[i];
-                if (IsCoefficient(line.Key) && !pattern.ToString().Contains("coeff", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
                 Match match = pattern.Match(line.Key);
                 if (!match.Success)
                 {
@@ -283,6 +282,11 @@ public static partial class DatasheetParser
                 }
 
                 int labelEnd = WordIndexAt(line, match.Index + match.Length - 1);
+                if (!pattern.ToString().Contains("coeff", StringComparison.Ordinal) && BelongsToCoefficient(line, WordIndexAt(line, match.Index)))
+                {
+                    continue;
+                }
+
                 double labelRight = line.Words[labelEnd].Right;
                 List<DatasheetWord> same = ValueTokens(MergeFragments(line.Words.Skip(labelEnd + 1)));
                 if (same.Count > 0)
@@ -309,6 +313,27 @@ public static partial class DatasheetParser
     }
 
     private static bool IsCoefficient(string key) => key.Contains("koeff", StringComparison.Ordinal) || key.Contains("coeff", StringComparison.Ordinal);
+
+    // A label is part of a temperature coefficient ("Temperaturkoeffizient von VOC") when a coefficient word precedes
+    // it without a value in between; "… –0,24 %/K Maximale Absicherung 20 A" is a separate label on the same line.
+    private static bool BelongsToCoefficient(Line line, int labelStart)
+    {
+        for (int i = labelStart; i >= 0; i--)
+        {
+            string word = Normalize(line.Words[i].Text).ToLowerInvariant();
+            if (IsCoefficient(word))
+            {
+                return true;
+            }
+
+            if (i < labelStart && ValueTokens([line.Words[i]]).Count > 0)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
 
     // A neighbouring line with its own label (text left of the values) belongs to another row.
     private static bool HasOwnLabel(Line line, double labelRight) =>

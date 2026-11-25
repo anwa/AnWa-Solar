@@ -27,6 +27,9 @@ public interface IDataStore
     /// <summary>Problems of the last <see cref="Load"/>; skipped entries are listed individually.</summary>
     IReadOnlyList<DataLoadIssue> Issues { get; }
 
+    /// <summary>Standard tables for cable and fuse sizing; null when the file is missing or invalid.</summary>
+    CableTables? CableTables { get; }
+
     void Load();
 
     /// <summary>Full path of the datasheet of an entry, or null when it has none or the file is missing.</summary>
@@ -110,6 +113,8 @@ public class JsonDataStore : IDataStore
 
     public IReadOnlyList<DataLoadIssue> Issues => _issues;
 
+    public CableTables? CableTables { get; private set; }
+
     public void Load()
     {
         var issues = new List<DataLoadIssue>();
@@ -119,6 +124,12 @@ public class JsonDataStore : IDataStore
         _inverters = Merge(
             LoadEntries<Inverter>(_paths.GetFilePath(InverterFileName), InverterFileName, "Inverters", ValidateInverter, issues, own: false),
             LoadEntries<Inverter>(UserFilePath(InverterFileName), InverterFileName + OwnSuffix, "Inverters", ValidateInverter, issues, own: true));
+        CableTables = CableTables.Load(_paths.GetFilePath(CableTables.FileName), out string? tableError);
+        if (tableError is not null)
+        {
+            issues.Add(new DataLoadIssue(CableTables.FileName, null, $"Cable tables cannot be used ({tableError}); cables and fuses are not sized."));
+        }
+
         _issues = issues;
 
         _logger.LogInformation("Master data loaded: {ModuleCount} PV modules, {InvCount} inverters ({OwnModules} and {OwnInverters} own).",

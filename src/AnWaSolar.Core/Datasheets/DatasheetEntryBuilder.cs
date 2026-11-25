@@ -33,6 +33,7 @@ public static class DatasheetEntryBuilder
             VocTempCoeffPctPerC = reader.Number(DatasheetFields.VocCoeff),
             VmppTempCoeffPctPerC = reader.OptionalNumber(DatasheetFields.VmppCoeff),
             IscTempCoeffPctPerC = reader.Number(DatasheetFields.IscCoeff),
+            MaxSeriesFuseA = reader.OptionalNumber(DatasheetFields.MaxSeriesFuseA),
             OperatingTempMinC = reader.Number(DatasheetFields.OperatingMinC),
             OperatingTempMaxC = reader.Number(DatasheetFields.OperatingMaxC),
         };
@@ -52,6 +53,11 @@ public static class DatasheetEntryBuilder
             if (candidate.VmppTempCoeffPctPerC >= 0)
             {
                 errors.Add("The temperature coefficient of Vmpp must be negative when it is given.");
+            }
+
+            if (candidate.MaxSeriesFuseA is <= 0)
+            {
+                errors.Add("The max. series fuse rating must be greater than 0 when it is given.");
             }
 
             if (candidate.OperatingTempMinC >= candidate.OperatingTempMaxC)

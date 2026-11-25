@@ -44,7 +44,11 @@ public sealed class JsonDataStoreTests : IDisposable
 
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "AnWaSolar.Tests", Guid.NewGuid().ToString("N"));
 
-    public JsonDataStoreTests() => Directory.CreateDirectory(_directory);
+    public JsonDataStoreTests()
+    {
+        Directory.CreateDirectory(_directory);
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Data", Calculation.CableTables.FileName), Path.Combine(_directory, Calculation.CableTables.FileName));
+    }
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 

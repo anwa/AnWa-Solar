@@ -43,6 +43,7 @@ public static class DatasheetFields
     public const string VmppCoeff = "VmppCoeff";
     public const string IscCoeff = "IscCoeff";
     public const string OperatingMinC = "OperatingMinC";
+    public const string MaxSeriesFuseA = "MaxSeriesFuseA";
     public const string OperatingMaxC = "OperatingMaxC";
 
     public const string MaxDcPowerW = "MaxDcPowerW";
@@ -74,6 +75,7 @@ public static class DatasheetFields
         new(VocCoeff, "Temperature coefficient of Voc", "%/°C", DatasheetValueType.Number, true, "Negative, for example -0.24. Decides the voltage when cold."),
         new(VmppCoeff, "Temperature coefficient of Vmpp", "%/°C", DatasheetValueType.Number, false, "Optional; most datasheets do not state it. Without it the Pmax coefficient is used."),
         new(IscCoeff, "Temperature coefficient of Isc", "%/°C", DatasheetValueType.Number, true),
+        new(MaxSeriesFuseA, "Max. series fuse rating", "A", DatasheetValueType.Number, false, "Reverse current rating of the module; decides whether string fuses are needed."),
         new(OperatingMinC, "Operating temperature min", "°C", DatasheetValueType.Number, true),
         new(OperatingMaxC, "Operating temperature max", "°C", DatasheetValueType.Number, true),
     ];

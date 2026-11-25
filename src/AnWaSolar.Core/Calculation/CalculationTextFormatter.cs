@@ -101,6 +101,36 @@ public static class CalculationTextFormatter
         return sb.ToString();
     }
 
+    /// <summary>Text of the results including the cable and fuse sizing.</summary>
+    public static string Format(StringCalculationResult result, CableCalculationResult? cables)
+    {
+        string text = Format(result);
+        if (cables is null)
+        {
+            return text;
+        }
+
+        var sb = new StringBuilder(text);
+        sb.AppendLine(string.Empty);
+        sb.AppendLine("Cables and fuses:");
+        if (!cables.TablesConfirmed)
+        {
+            sb.AppendLine($"- {CableTexts.Unconfirmed}");
+        }
+
+        foreach (DcCableResult d in cables.Dc)
+        {
+            sb.AppendLine($"- {CableTexts.Dc(d)}");
+        }
+
+        if (cables.Ac is { } ac)
+        {
+            sb.AppendLine($"- {CableTexts.Ac(ac)}");
+        }
+
+        return sb.ToString();
+    }
+
     /// <summary>Note for a check of the AC side.</summary>
     public static string FormatAcCheck(AcCheck check, AcCalculationResult ac)
     {

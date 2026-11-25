@@ -1,0 +1,52 @@
+{
+  "Confirmed": false,
+  "Note": "Common standard values, entered by the agent on 2026-11-24 at the user's request. Set Confirmed to true after checking every value against the standards.",
+  "Copper conductivity (m/(Ohm*mm2))": 56,
+  "Cross-sections (mm2)": [ 1.5, 2.5, 4, 6, 10, 16, 25, 35 ],
+  "SolarCable": {
+    "Source": "EN 50618:2014, Annex A, Table A.3 (H1Z2Z2-K, ambient 60 °C, conductor 120 °C) and Table A.4",
+    "Reference ambient (°C)": 60,
+    "Ampacity (A)": {
+      "FreeAir": [ 30, 41, 55, 70, 98, 132, 176, 218 ],
+      "OnSurface": [ 29, 39, 52, 67, 93, 125, 167, 207 ],
+      "TwoTouchingOnSurface": [ 24, 33, 44, 57, 79, 107, 142, 176 ]
+    },
+    "Ambient factors": { "60": 1.0, "70": 0.91, "80": 0.82, "90": 0.71, "100": 0.58, "110": 0.41 }
+  },
+  "AcCable": {
+    "Source": "IEC 60364-5-52:2009, Tables B.52.2/B.52.4 (= DIN VDE 0298-4, Table 3), PVC, copper, ambient 30 °C, conductor 70 °C",
+    "Reference ambient (°C)": 30,
+    "Ampacity two loaded conductors (A)": {
+      "A1": [ 14.5, 19.5, 26, 34, 46, 61, 80, 99 ],
+      "B1": [ 17.5, 24, 32, 41, 57, 76, 101, 125 ],
+      "B2": [ 16.5, 23, 30, 38, 52, 69, 90, 111 ],
+      "C": [ 19.5, 27, 36, 46, 63, 85, 112, 138 ],
+      "E": [ 22, 30, 40, 51, 70, 94, 119, 148 ]
+    },
+    "Ampacity three loaded conductors (A)": {
+      "A1": [ 13.5, 18, 24, 31, 42, 56, 73, 89 ],
+      "B1": [ 15.5, 21, 28, 36, 50, 68, 89, 110 ],
+      "B2": [ 15, 20, 27, 34, 46, 62, 80, 99 ],
+      "C": [ 17.5, 24, 32, 41, 57, 76, 96, 119 ],
+      "E": [ 18.5, 25, 34, 43, 60, 80, 101, 126 ]
+    },
+    "Ambient factors": { "10": 1.22, "15": 1.17, "20": 1.12, "25": 1.06, "30": 1.0, "35": 0.94, "40": 0.87, "45": 0.79, "50": 0.71, "55": 0.61, "60": 0.5 }
+  },
+  "Grouping": {
+    "Source": "IEC 60364-5-52:2009, Table B.52.17, row 1 (bunched in air, on a surface, embedded or enclosed)",
+    "Factors": { "1": 1.0, "2": 0.8, "3": 0.7, "4": 0.65, "5": 0.6, "6": 0.57, "7": 0.54, "8": 0.52, "9": 0.5 }
+  },
+  "Protection": {
+    "Source": "IEC 62548-1:2023, 6.5 and 7.4 (string overcurrent protection, cable sizing); IEC 60898-1 / IEC 60269-6 rated currents",
+    "Design current factor (x Isc STC)": 1.25,
+    "String fuse min. (x Isc STC)": 1.5,
+    "String fuse max. (x Isc STC)": 2.4,
+    "String fuse ratings (A)": [ 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 25, 30, 32 ],
+    "Circuit breaker ratings (A)": [ 6, 10, 13, 16, 20, 25, 32, 40, 50, 63 ]
+  },
+  "Voltage drop": {
+    "Source": "Design recommendations (DC 1 %; AC from the inverter to the grid connection 3 %, DIN VDE 0100-520 Annex G gives 3 % for lighting and 5 % for other loads)",
+    "DC limit (%)": 1,
+    "AC limit (%)": 3
+  }
+}

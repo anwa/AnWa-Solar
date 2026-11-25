@@ -51,9 +51,36 @@ The **AC side and grid connection** card checks the inverter against the grid:
 
 AC values that the master data of the inverter does not contain are shown as "not stated" with a note; they are not estimated. Import the datasheet of the inverter to add them, see [Datasheet Import](datasheet-import.md).
 
+The **Cables and fuses** card sizes the string cables of each MPPT and the AC line:
+
+| Row | Meaning |
+|---|---|
+| MPPT n string cables | Smallest solar cable cross-section that carries the design current (1.25 × Isc, or the string fuse rating) with the temperature and grouping factors and keeps the voltage drop at the MPP below the limit. Each string has its own cable pair. |
+| MPPT n string fuses | Needed when (parallel strings − 1) × 1.25 × Isc exceeds the max. series fuse rating of the module (IEC 62548); the fuse rating lies between 1.5 × Isc and 2.4 × Isc and not above the module rating. |
+| AC circuit breaker | Next standard rating at or above the max. AC current of the inverter. |
+| AC line | Smallest cross-section whose current-carrying capacity (installation method, temperature, grouping) is at least the breaker rating and whose voltage drop stays below the limit. |
+
+The values come from the standard tables in `Data\CableTables.json` in the installation folder, with their sources. As long as these values are not confirmed (`"Confirmed": false`), the card shows a note. A cable is only sized when its length is entered. The result is a design aid; the installer remains responsible for the choice of cables and protective devices.
+
 The **Inverter limits** card lists every limit from the datasheet and with the safety margin. **Copy** above the results copies them as text.
 
 The meaning of every check is described in [How the Calculation Works](calculation.md#checks).
+
+## Cables
+
+**Change** in the **Cables** card opens the cable settings:
+
+| Field | Meaning |
+|---|---|
+| Installation (DC) | Single solar cable in free air, on a surface, or two cables touching on a surface (EN 50618). |
+| Cable length MPPT n | One-way length of the string cables of this MPPT; 0 means not entered. |
+| Ambient temperature (DC) | Reference 60 °C; above it the current-carrying capacity is reduced. |
+| Circuits laid together | Grouping factor, 1 to 9 circuits. |
+| Max. voltage drop DC | Of the string voltage at the MPP; default 1 %. |
+| Installation method (AC) | A1, B1, B2, C or E (IEC 60364-5-52 / DIN VDE 0298-4). |
+| Length of the AC line | One way, from the inverter to the distribution board. |
+| Ambient temperature (AC) | Reference 30 °C. |
+| Max. voltage drop AC | Of 400 V (three-phase) or 230 V (single-phase); default 3 %. |
 
 ## Parameters
 

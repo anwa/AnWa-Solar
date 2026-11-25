@@ -96,12 +96,12 @@ This plan brings AnWa-Solar in line with `AGENTS.md` and then extends it. Each m
 - [x] DC/AC ratio, AC current and grid connection checks with limits set by the user (unbalanced load, system size, feed-in limit)
 - [x] Result card and report section
 
-## M15 – Cables and fuses (`feature/cables-fuses`)
+## M15 – Cables and fuses (`feature/cables-fuses`, v0.16.0)
 
-- [ ] Module datasheet value max. series fuse rating, with import
-- [ ] Standard tables (current-carrying capacity, correction factors, conductivity) as shipped data with sources, values given or confirmed by the user
-- [ ] Cross-section from current-carrying capacity and voltage drop for DC strings and the AC line; string fuses and AC line protection
-- [ ] Input dialog, result card and report section with formulas
+- [x] Module datasheet value max. series fuse rating, with import
+- [x] Standard tables (current-carrying capacity, correction factors, conductivity) as shipped data with sources, values given or confirmed by the user
+- [x] Cross-section from current-carrying capacity and voltage drop for DC strings and the AC line; string fuses and AC line protection
+- [x] Input dialog, result card and report section with formulas
 
 ## M16 – Battery storage compatibility (`feature/battery`)
 

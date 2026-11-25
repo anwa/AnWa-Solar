@@ -45,6 +45,10 @@ public class PVModule : IMasterDataEntry
     [JsonPropertyName("Temperature coefficient of Isc (%/°C)")]
     public double IscTempCoeffPctPerC { get; set; }
 
+    /// <summary>Max. series fuse rating (reverse current) of the module; null when not stated.</summary>
+    [JsonPropertyName("Max. series fuse rating (A)")]
+    public double? MaxSeriesFuseA { get; set; }
+
     [JsonPropertyName("Operating temperature min (°C)")]
     public double OperatingTempMinC { get; set; }
 
